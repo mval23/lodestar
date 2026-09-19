@@ -1,0 +1,79 @@
+/* Lodestar design tokens: Stone + Electric blue, Apple-style. Source of truth: brand/BRAND.md */
+:root {
+  /* surfaces */
+  --ground: #F5F4F1;      /* Stone: window and page background */
+  --surface: #FFFFFF;     /* grouped lists, tables, sheets */
+  --sunk: #EDEBE6;        /* fills, tracks */
+  --line: #E2DFD8;        /* decorative separators */
+  --line-strong: #8C867C; /* control borders (>= 3:1) */
+
+  /* text */
+  --ink: #1C1A17;
+  --ink-2: #5E5A53;
+  --ink-3: #6E6961;
+
+  /* tint: only for "act" or "now" */
+  --blue: #1F4BFF;
+  --blue-soft: #EEF1FF;
+  --on-blue: #FFFFFF;
+  --fix: #1F4BFF;
+
+  /* status: always paired with an icon and words */
+  --ok: #1F7A35;   --ok-soft: #EDF7EF;
+  --warn: #C93400; --warn-soft: #FDF1EA;
+  --err: #D70015;  --err-soft: #FDEDEE;
+
+  /* charts: grey by default; categorical only for breakdowns, fixed order */
+  --in: #1C1A17;
+  --out: #8C867C;
+  --c1: #1F4BFF; --c2: #D0663A; --c3: #008574; --c4: #B064AE;
+  --c5: #6D8B24; --c6: #3F95C8; --c7: #A98016; --c8: #B0525F;
+
+  /* materials: glass is only for navigation */
+  --glass: rgba(245, 244, 241, .72);
+  --glass-filter: saturate(180%) blur(20px);
+  --shadow-float: 0 1px 2px rgba(28, 26, 23, .05), 0 8px 24px rgba(28, 26, 23, .07);
+
+  /* type */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /* spacing: 8 pt grid */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-11: 44px; --space-16: 64px;
+
+  /* motion: web approximation of an Apple spring */
+  --ease-spring: cubic-bezier(.2, .8, .2, 1);
+  --dur-fast: 200ms;
+  --dur: 350ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #12110F; --surface: #1C1B18; --sunk: #26241F; --line: #302D28; --line-strong: #7D776D;
+    --ink: #EEECE7; --ink-2: #B3AEA5; --ink-3: #948F86;
+    --blue: #6F8BFF; --blue-soft: #1A2040; --on-blue: #12110F; --fix: #6F8BFF;
+    --ok: #30D158; --ok-soft: #132A1A; --warn: #FF9F0A; --warn-soft: #2B1F0C; --err: #FF6961; --err-soft: #33161A;
+    --in: #EEECE7; --out: #7D776D;
+    --c1: #5C7BFF; --c2: #D9744A; --c3: #12997F; --c4: #BD72BA; --c5: #7E9E35; --c6: #3A94CC; --c7: #B08620; --c8: #C96170;
+    --glass: rgba(18, 17, 15, .72);
+    --shadow-float: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #12110F; --surface: #1C1B18; --sunk: #26241F; --line: #302D28; --line-strong: #7D776D;
+  --ink: #EEECE7; --ink-2: #B3AEA5; --ink-3: #948F86;
+  --blue: #6F8BFF; --blue-soft: #1A2040; --on-blue: #12110F; --fix: #6F8BFF;
+  --ok: #30D158; --ok-soft: #132A1A; --warn: #FF9F0A; --warn-soft: #2B1F0C; --err: #FF6961; --err-soft: #33161A;
+  --in: #EEECE7; --out: #7D776D;
+  --c1: #5C7BFF; --c2: #D9744A; --c3: #12997F; --c4: #BD72BA; --c5: #7E9E35; --c6: #3A94CC; --c7: #B08620; --c8: #C96170;
+  --glass: rgba(18, 17, 15, .72);
+  --shadow-float: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
+}

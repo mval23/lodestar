@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lodestar Identity Direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&display=swap">
+<style>
+:root{
+  --ground:#F5F4F1; --surface:#FFFFFF; --sunk:#EDEBE6; --line:#E2DFD8; --line-strong:#8C867C;
+  --ink:#1C1A17; --ink-2:#5E5A53; --ink-3:#6E6961;
+  --blue:#1F4BFF; --blue-soft:#EEF1FF; --on-blue:#FFFFFF; --fix:#1F4BFF;
+  --appr:#B25000; --appr-soft:#FFF4E5;
+  --ok:#1F7A35; --ok-soft:#EDF7EF; --warn:#C93400; --warn-soft:#FDF1EA; --err:#D70015; --err-soft:#FDEDEE;
+  --in:#1C1A17; --out:#8C867C;
+  --c1:#1F4BFF; --c2:#D0663A; --c3:#008574; --c4:#B064AE; --c5:#6D8B24; --c6:#3F95C8; --c7:#A98016; --c8:#B0525F;
+  --glass:rgba(245,244,241,.72);
+  --shadow:0 1px 2px rgba(28,26,23,.05),0 8px 24px rgba(28,26,23,.07);
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",system-ui,sans-serif;
+  --display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Segoe UI",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#12110F; --surface:#1C1B18; --sunk:#26241F; --line:#302D28; --line-strong:#7D776D;
+    --ink:#EEECE7; --ink-2:#B3AEA5; --ink-3:#948F86;
+    --blue:#6F8BFF; --blue-soft:#1A2040; --on-blue:#12110F; --fix:#6F8BFF;
+    --appr:#FF9F0A; --appr-soft:#2B1F0C;
+    --ok:#30D158; --ok-soft:#132A1A; --warn:#FF9F0A; --warn-soft:#2B1F0C; --err:#FF6961; --err-soft:#33161A;
+    --in:#EEECE7; --out:#7D776D;
+    --c1:#5C7BFF; --c2:#D9744A; --c3:#12997F; --c4:#BD72BA; --c5:#7E9E35; --c6:#3A94CC; --c7:#B08620; --c8:#C96170;
+    --glass:rgba(18,17,15,.72);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+    --ground:#12110F; --surface:#1C1B18; --sunk:#26241F; --line:#302D28; --line-strong:#7D776D;
+    --ink:#EEECE7; --ink-2:#B3AEA5; --ink-3:#948F86;
+    --blue:#6F8BFF; --blue-soft:#1A2040; --on-blue:#12110F; --fix:#6F8BFF;
+    --appr:#FF9F0A; --appr-soft:#2B1F0C;
+    --ok:#30D158; --ok-soft:#132A1A; --warn:#FF9F0A; --warn-soft:#2B1F0C; --err:#FF6961; --err-soft:#33161A;
+    --in:#EEECE7; --out:#7D776D;
+    --c1:#5C7BFF; --c2:#D9744A; --c3:#12997F; --c4:#BD72BA; --c5:#7E9E35; --c6:#3A94CC; --c7:#B08620; --c8:#C96170;
+    --glass:rgba(18,17,15,.72);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;letter-spacing:-.005em;padding-inline:20px;padding-block:0 72px;-webkit-font-smoothing:antialiased}
+a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--blue) 45%,transparent);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:220px minmax(0,1fr);gap:44px}
+nav.toc{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;margin-top:20px;padding:14px 10px;font-size:13px;background:var(--glass);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-radius:14px}
+nav.toc .brand{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;margin:0 6px 14px;color:var(--ink);letter-spacing:-.01em}
+nav.toc ol{list-style:none;padding:0;margin:0;display:grid;gap:1px}
+nav.toc a{display:grid;grid-template-columns:24px 1fr;padding:6px 8px;border-radius:8px;color:var(--ink-2);text-decoration:none}
+nav.toc a:hover{background:var(--sunk);color:var(--ink)}
+nav.toc a span{font-size:11.5px;color:var(--ink-3);padding-top:1px;font-variant-numeric:tabular-nums}
+main{min-width:0;padding-block:36px}
+header.doc{padding-bottom:12px}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--ink-3)}
+h1{font-family:var(--display);font-size:clamp(36px,5.4vw,56px);line-height:1.05;letter-spacing:-.03em;font-weight:700;margin:8px 0 14px;text-wrap:balance}
+h2{font-family:var(--display);font-size:32px;line-height:1.12;letter-spacing:-.025em;font-weight:700;margin:0 0 6px;text-wrap:balance}
+h3{font-family:var(--display);font-size:19px;line-height:1.3;letter-spacing:-.015em;font-weight:600;margin:30px 0 8px}
+h4{font-size:14px;font-weight:600;margin:0 0 4px}
+p{margin:0 0 12px;max-width:68ch}
+.lede{font-size:19px;line-height:1.45;color:var(--ink-2);max-width:58ch;letter-spacing:-.01em}
+section.s{padding-block:64px 8px;scroll-margin-top:16px}
+.s-head{margin-bottom:24px}
+.s-num{display:block;font-size:13px;color:var(--blue);font-weight:600;margin-bottom:4px;font-variant-numeric:tabular-nums}
+.s-head p{color:var(--ink-2);margin:6px 0 0;font-size:16px}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;vertical-align:2px;white-space:nowrap;letter-spacing:0}
+.t-rec{background:var(--blue-soft);color:var(--blue)}
+.t-opt{background:var(--sunk);color:var(--ink-2)}
+.t-asm{background:transparent;color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.t-appr{background:var(--appr-soft);color:var(--appr)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:18px;font-size:13px;color:var(--ink-2);align-items:center}
+.tw{overflow-x:auto;margin:14px 0 18px;border-radius:14px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:10px 14px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+thead th{font-size:12px;color:var(--ink-3);font-weight:600;background:var(--surface);position:sticky;top:0}
+td.k{font-weight:600;white-space:nowrap;color:var(--ink)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.win{color:var(--blue);font-weight:700}
+.score{font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}
+.cols-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.panel{background:var(--surface);border-radius:16px;padding:20px 22px}
+.panel.rec{box-shadow:inset 0 0 0 1.5px var(--blue)}
+dl.spec{display:grid;grid-template-columns:minmax(120px,180px) 1fr;margin:0}
+dl.spec dt,dl.spec dd{padding:10px 0;border-bottom:1px solid var(--line);margin:0}
+dl.spec dt:last-of-type,dl.spec dd:last-of-type{border-bottom:0}
+dl.spec dt{font-size:13px;color:var(--ink-3);font-weight:500;padding-right:14px}
+dl.spec dd{font-size:14.5px}
+ul.tight{margin:0 0 12px;padding-left:18px} ul.tight li{margin:4px 0}
+.quote{font-family:var(--display);font-size:24px;line-height:1.25;font-weight:600;letter-spacing:-.02em;margin:6px 0 10px;text-wrap:balance}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1px;background:var(--line);border-radius:16px;overflow:hidden;margin-top:28px}
+.summary > div{padding:16px 18px;background:var(--surface)}
+.summary b{display:block;font-size:17px;font-weight:600;margin-top:3px;line-height:1.3;letter-spacing:-.01em}
+.mark{display:inline-block;vertical-align:middle;color:var(--ink)}
+.mark svg{display:block}
+.note{font-size:13.5px;color:var(--ink-2)}
+.callout{background:var(--surface);border-radius:14px;padding:14px 18px;margin:18px 0;color:var(--ink-2);font-size:14.5px;box-shadow:inset 3px 0 0 var(--blue)}
+.callout strong{color:var(--ink)}
+code,.mono{font-family:var(--mono);font-size:.86em}
+/* swatches */
+.sw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.sw{border-radius:14px;overflow:hidden;background:var(--surface)}
+.sw .chip{height:78px;display:flex;align-items:flex-end;padding:9px 12px;font-size:12.5px;font-weight:600}
+.sw .meta{padding:11px 13px;font-size:13px;color:var(--ink-2)}
+.sw .meta b{display:block;color:var(--ink);font-size:14.5px}
+.sw .meta .mono{color:var(--ink)}
+.ramp{display:grid;grid-template-columns:repeat(12,1fr);border-radius:14px;overflow:hidden}
+.ramp div{height:68px;padding:7px;font-family:var(--mono);font-size:10px;display:flex;flex-direction:column;justify-content:flex-end}
+.series{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.series div{font-size:12.5px;display:grid;grid-template-columns:20px 1fr;gap:2px 8px;align-items:center}
+.series i{width:20px;height:20px;border-radius:6px;grid-row:span 2}
+.series .mono{color:var(--ink-3);font-size:11px}
+@media (max-width:860px){
+  .wrap{grid-template-columns:1fr;gap:0}
+  nav.toc{position:static;margin-top:16px}
+  nav.toc ol{display:flex;overflow-x:auto;gap:4px;padding-bottom:4px}
+  nav.toc a{white-space:nowrap;grid-template-columns:auto auto;gap:4px;background:var(--sunk)}
+  .ramp{grid-template-columns:repeat(6,1fr)}
+  dl.spec{grid-template-columns:1fr} dl.spec dt{border-bottom:0;padding-bottom:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="lm" viewBox="0 0 16 16"><path d="M2 2H5V11H14V14H2Z" fill="currentColor"/><rect x="8" y="5" width="3" height="3" fill="var(--fixc, currentColor)"/></symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+<nav class="toc" aria-label="Sections">
+  <div class="brand"><span class="mark" style="--fixc:var(--fix)"><svg width="22" height="22"><use href="#lm"/></svg></span>Lodestar</div>
+  <ol>
+    <li><a href="#s1"><span>01</span>Strategic foundation</a></li>
+    <li><a href="#s2"><span>02</span>Naming rationale</a></li>
+    <li><a href="#s3"><span>03</span>Visual territories</a></li>
+    <li><a href="#s4"><span>04</span>Logo system</a></li>
+    <li><a href="#s5"><span>05</span>Color system</a></li>
+    <li><a href="#s6"><span>06</span>Typography</a></li>
+    <li><a href="#s7"><span>07</span>Graphic language</a></li>
+    <li><a href="#s8"><span>08</span>Product application</a></li>
+    <li><a href="#s9"><span>09</span>Voice &amp; language</a></li>
+    <li><a href="#s10"><span>10</span>Final recommendation</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="doc">
+  <div class="eyebrow">Visual identity direction · Draft v0.3 · 19 Sep 2026</div>
+  <h1>Lodestar: a fixed point for everyday money</h1>
+  <p class="lede">A private personal-finance tracker with a calm, Apple-style interface: warm Stone greys, generous space, and a single electric-blue accent that appears only where it matters.</p>
+  <div class="summary">
+    <div><span class="eyebrow">Name</span><b>Lodestar</b></div>
+    <div><span class="eyebrow">Style</span><b>Bearing concept, Apple-style interface</b></div>
+    <div><span class="eyebrow">Color</span><b>Stone greys + Electric blue</b></div>
+    <div><span class="eyebrow">Symbol</span><b>Axes &amp; Fix</b></div>
+  </div>
+  <div class="legend" aria-label="Label key">
+    <span><span class="tag t-rec">Recommendation</span> our strategic call</span>
+    <span><span class="tag t-opt">Option</span> an alternative to consider</span>
+    <span><span class="tag t-asm">Assumption</span> something we took as given</span>
+    <span><span class="tag t-appr">Needs approval</span> needs a decision or clearance</span>
+  </div>
+  <h3>Decisions so far</h3>
+  <ul class="tight note">
+    <li><b>Approved:</b> the name Lodestar, the Bearing concept, the Axes &amp; Fix logo, Stone as the grey base, Electric blue as the accent, an Apple-style interface, and English only.</li>
+    <li><b>Rejected:</b> the name Constella, the first spruce, brass and harbor palette (felt like a dull office) and the four brighter palettes (Cobalt &amp; Marigold, Graphite &amp; Tangerine, Lagoon &amp; Coral, Raspberry &amp; Butter).</li>
+    <li><b>Scope:</b> Lodestar is for individuals. Each person has their own private account, with no shared or household access and no invitations.</li>
+  </ul>
+  <h3>Working assumptions <span class="tag t-asm">Assumption</span></h3>
+  <ul class="tight note">
+    <li>This is a web-first product with a responsive mobile layout. Native iOS and macOS apps may follow, so the system mirrors Apple’s interface conventions.</li>
+    <li>“Apple-style” means following Apple’s design approach (clarity, restraint, depth, system type, one tint color). It does not mean using Apple’s brand, logos or icon artwork.</li>
+    <li>There are no existing brand assets, domains or trademarks, and the name has not been through legal clearance.</li>
+    <li>The first release has no bank sync. Everything here is direction; no final vector artwork has been produced.</li>
+  </ul>
+</header>
+
+<!-- ============ 1 ============ -->
+<section class="s" id="s1">
+  <div class="s-head"><span class="s-num">01</span><h2>Strategic foundation</h2><p>The approved name, built out in full.</p></div>
+
+  <div class="cols">
+    <div class="panel rec">
+      <div class="eyebrow">Approved name</div>
+      <h3 style="margin-top:6px">Lodestar</h3>
+      <p class="note"><strong>Meaning.</strong> From Middle English <em>lode</em> (“way, course”) plus <em>star</em>: the star that shows the way. Traditionally this is Polaris, which navigators relied on because it stays still while the rest of the sky turns. In everyday English it also means a guiding principle. Associations: orientation, steadiness, a trusted reference point, keeping on course.</p>
+      <dl class="spec">
+        <dt>Brand idea</dt><dd><strong>A fixed point in a moving picture.</strong> Money keeps moving. Lodestar is the steady reference that tells you where you are.</dd>
+        <dt>Positioning</dt><dd>For people who want to understand their money without handing it over, Lodestar is the private finance tracker that shows exactly where you stand and what to do next. Banking apps are built to sell products, and spreadsheets need constant upkeep. Lodestar is both precise and calm.</dd>
+        <dt>Brand promise</dt><dd>You will always know where you stand, and what a sensible next move looks like.</dd>
+        <dt>Pillars</dt><dd><b>Orientation</b>: one accurate, current picture across every account.<br><b>Precision</b>: every number can be traced, reconciled and explained.<br><b>Privacy</b>: your data belongs to you, and only you can see it.</dd>
+        <dt>Personality</dt><dd>Steady · Exact · Candid · Unhurried · Encouraging</dd>
+        <dt>Emotional benefit</dt><dd>The relief of knowing where you are. Vague worry about money turns into calm confidence.</dd>
+        <dt>Functional benefit</dt><dd>Accounts, transactions, budgets, bills, goals and reports in one private, precise place, with CSV import and export so your data is never locked in.</dd>
+        <dt>Perception</dt><dd>“A serious tool that respects me. It’s clear, it’s private, and it doesn’t lecture.”</dd>
+        <dt>Brand story</dt><dd>Sailors crossing open water didn’t need to see the whole ocean. They needed one point that stayed still, so they could work out where they were and choose a heading. Personal finances feel like open water: balances change, bills arrive, plans drift. Lodestar is that steady point. It is a quiet, private tracker that shows where you stand today, so tomorrow’s decisions feel deliberate rather than anxious.</dd>
+      </dl>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section class="s" id="s2">
+  <div class="s-head"><span class="s-num">02</span><h2>Naming rationale</h2><p>Why Lodestar, and what still needs clearance. Scores are strategic judgments on a 1–5 scale, not research results.</p></div>
+
+  <div class="tw"><table>
+    <thead><tr><th>Criterion</th><th>Lodestar</th><th class="num">Score</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Fit with purpose</td><td>The literal meaning, “the star you steer by,” matches the promise: know where you stand, then choose a direction.</td><td class="num score">5</td></tr>
+      <tr><td class="k">Trust &amp; credibility</td><td>A real, long-established word. It sounds steady and considered.</td><td class="num score">5</td></tr>
+      <tr><td class="k">Emotional resonance</td><td>Reassuring and grounded. The risk is that it sounds solemn or literary.</td><td class="num score">4</td></tr>
+      <tr><td class="k">Memorability</td><td>A vivid image and a real word. Less distinctive, because many businesses use it.</td><td class="num score">4</td></tr>
+      <tr><td class="k">Pronunciation &amp; spelling</td><td>LODE-star. Likely misspellings are “Loadstar” and “Lodestarr.”</td><td class="num score">4</td></tr>
+      <tr><td class="k">Visual identity potential</td><td>Axes, bearings, a fixed reference, alignment. Plenty of abstract routes that avoid star clichés.</td><td class="num score">5</td></tr>
+      <tr><td class="k">Future expansion</td><td>Works for planning features and future bank sync.</td><td class="num score">4</td></tr>
+      <tr><td class="k">Confusion risk <span class="tag t-appr">Needs approval</span></td><td>A dictionary word already used by many companies. As far as we know this includes mortgage software and crypto projects (a DeFi lending protocol and an Ethereum client), which brings a speculative association.</td><td class="num score">2</td></tr>
+      <tr><td class="k">Total</td><td></td><td class="num score">33 / 40</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">The confusion-risk notes come from general knowledge, not a trademark search. A formal clearance search in every launch market, in classes 9, 36 and 42, is required before launch.</p>
+
+  <div class="cols" style="margin-top:22px">
+    <div class="panel rec">
+      <span class="tag t-rec">Approved</span>
+      <p class="quote" style="margin-top:10px">The name is <strong>Lodestar</strong>.</p>
+      <p><strong>Why.</strong> The name <em>is</em> the brand promise. A lodestar is the point you check to know where you are before deciding where to go, and that is exactly what the product does. It carries built-in credibility without sounding like a bank. It also gives the identity a rich, abstract vocabulary (axes, bearings, a fixed point) that stays away from the forbidden star, space and crypto clichés.</p>
+      <p><strong>Main tradeoff.</strong> Lodestar gains clear meaning and gravity but loses ownability. It is a dictionary word in a crowded namespace, including some crypto use, so domains and handles will probably need a modifier (for example <span class="mono">lodestar.app</span> or <span class="mono">uselodestar</span>). It can also read as serious, so the identity adds warmth through color, copy and motion.</p>
+    </div>
+    <div class="panel">
+      <h4>Descriptor</h4>
+      <p>Private personal-finance tracker</p>
+      <h4 style="margin-top:14px">Elevator pitch</h4>
+      <p>Lodestar is a private finance tracker that brings your accounts, budgets, bills and goals into one calm, precise view, so you always know where you stand and what to do next.</p>
+      <h4 style="margin-top:14px">Primary tagline</h4>
+      <p class="quote">Know where you stand.</p>
+    </div>
+  </div>
+
+  <h3>Alternative taglines <span class="tag t-opt">Option</span></h3>
+  <div class="tw"><table>
+    <thead><tr><th>Tagline</th><th>Best used for</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Find your bearings. Keep your course.</td><td>Onboarding and campaigns: the arc from “today” to “goal.”</td></tr>
+      <tr><td class="k">A steady point for moving money.</td><td>Brand story and about page.</td></tr>
+      <tr><td class="k">Private by design. Clear by default.</td><td>Privacy-led messaging, security page, app-store subtitle.</td></tr>
+      <tr><td class="k">Every account. One clear picture.</td><td>Feature-led marketing, CSV import, and future bank sync.</td></tr>
+      <tr><td class="k">Clear on today. Steady on tomorrow.</td><td>Planning features: goals, bills and cash-flow forecasts.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ 3 ============ -->
+<style>
+.plate{display:block;width:100%;height:auto;border-radius:6px;border:1px solid var(--line)}
+.terr .panel{display:flex;flex-direction:column;gap:12px}
+.terr dl.spec dt{min-width:0}
+.terr-grid{display:grid;grid-template-columns:1fr;gap:20px}
+.terr-row{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:980px){.terr-row{grid-template-columns:1fr}}
+.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:26px}
+.chips{display:flex;gap:4px;margin-top:8px}.chips i{width:28px;height:14px;border-radius:2px}
+</style>
+<section class="s" id="s3">
+  <div class="s-head"><span class="s-num">03</span><h2>Visual territories</h2><p>The approved Lodestar direction, then three genuinely different territories that were explored for it.</p></div>
+
+  <h3 style="margin-top:0">The approved direction</h3>
+  <div class="cmp">
+    <div class="panel rec">
+      <svg class="plate" viewBox="0 0 320 150" role="img" aria-label="Lodestar direction: ink L-corner symbol with a blue point and wordmark on Stone">
+        <rect width="320" height="150" fill="#F5F4F1"/>
+        <g fill="#D9D5CD"><rect x="24" y="126" width="272" height="1"/>
+          <rect x="24" y="120" width="1" height="6"/><rect x="92" y="120" width="1" height="6"/><rect x="160" y="120" width="1" height="6"/><rect x="228" y="120" width="1" height="6"/><rect x="295" y="120" width="1" height="6"/>
+          <rect x="58" y="123" width="1" height="3"/><rect x="126" y="123" width="1" height="3"/><rect x="194" y="123" width="1" height="3"/><rect x="262" y="123" width="1" height="3"/></g>
+        <g transform="translate(24,34) scale(3.6)"><path d="M2 2H5V11H14V14H2Z" fill="#1C1A17"/><rect x="8" y="5" width="3" height="3" fill="#1F4BFF"/></g>
+        <text x="96" y="84" font-family="Inter, -apple-system, Segoe UI, sans-serif" font-size="34" font-weight="600" fill="#1C1A17" letter-spacing="-0.5">Lodestar</text>
+        <text x="97" y="104" font-family="SF Mono, Menlo, Consolas, monospace" font-size="9.5" fill="#5E5A53" letter-spacing="0.6">KNOW WHERE YOU STAND</text>
+      </svg>
+      <h4>Lodestar · “Bearing”</h4>
+      <p class="note">Instrument-like precision: an L-corner (the axes, your position) and one plotted point (the fixed reference you steer by). Warm Stone greys with one electric-blue spark, set in Apple-style system type.</p>
+      <div class="chips"><i style="background:#1C1A17"></i><i style="background:#F5F4F1;border:1px solid var(--line)"></i><i style="background:#1F4BFF"></i><i style="background:#8C867C"></i><i style="background:#FFFFFF;border:1px solid var(--line)"></i></div>
+    </div>
+  </div>
+
+  <h3>Three territories for Lodestar</h3>
+  <div class="terr-grid terr">
+
+    <div class="panel rec terr-row">
+      <div>
+        <svg class="plate" viewBox="0 0 360 220" role="img" aria-label="Territory A Bearing: graduated scale, L corner, blue fix and tabular figures">
+          <rect width="360" height="220" fill="#F5F4F1"/>
+          <g fill="#D9D5CD">
+            <rect x="20" y="30" width="1" height="170"/><rect x="20" y="199" width="320" height="1"/>
+            <rect x="60" y="195" width="1" height="4"/><rect x="100" y="191" width="1" height="8"/><rect x="140" y="195" width="1" height="4"/><rect x="180" y="191" width="1" height="8"/><rect x="220" y="195" width="1" height="4"/><rect x="260" y="191" width="1" height="8"/><rect x="300" y="195" width="1" height="4"/>
+          </g>
+          <path d="M40 150 L100 138 L140 144 L180 120 L220 126 L260 102" fill="none" stroke="#1C1A17" stroke-width="2"/>
+          <rect x="255" y="97" width="10" height="10" fill="#1F4BFF"/>
+          <path d="M259 40 V92" stroke="#1F4BFF" stroke-width="1" stroke-dasharray="2 3"/>
+          <text x="272" y="92" font-family="SF Mono, Menlo, Consolas, monospace" font-size="10" fill="#5E5A53">SEP 19</text>
+          <text x="30" y="52" font-family="Inter, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#5E5A53" font-weight="500">Net worth</text>
+          <text x="30" y="80" font-family="Inter, -apple-system, Segoe UI, sans-serif" font-size="26" fill="#1C1A17" font-weight="600" style="font-variant-numeric:tabular-nums">$48,210.37</text>
+          <path d="M318 26 h14 v14" fill="none" stroke="#1C1A17" stroke-width="2"/>
+          <text x="100" y="214" font-family="SF Mono, Menlo, Consolas, monospace" font-size="8.5" fill="#6E6961" text-anchor="middle">MAY</text>
+          <text x="180" y="214" font-family="SF Mono, Menlo, Consolas, monospace" font-size="8.5" fill="#6E6961" text-anchor="middle">JUL</text>
+          <text x="260" y="214" font-family="SF Mono, Menlo, Consolas, monospace" font-size="8.5" fill="#6E6961" text-anchor="middle">SEP</text>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">Territory A <span class="tag t-rec">Recommended</span></div>
+        <h3 style="margin-top:4px">Bearing: the precision of a navigational instrument, with an Apple-style interface</h3>
+        <dl class="spec">
+          <dt>Concept</dt><dd>Borrowed from chart tables, compasses and sextants: tools built for one careful reading. Your position is plotted, never guessed. <em>Why it works:</em> it expresses precision and trust without looking like a bank, and it translates directly into data-dense product UI.</dd>
+          <dt>Mood</dt><dd>Quiet, exact, well-lit. A tidy desk at 9 a.m.</dd>
+          <dt>Logo idea</dt><dd><b>Axes &amp; Fix</b>: an L-shaped corner (the axes of your position, and the initial L) with one small square plotted in the open quadrant. That square is the fixed point you steer by. See Section 04.</dd>
+          <dt>Graphic language</dt><dd>Graduated tick rules, hairline axes, corner brackets that frame the key figure, and the blue “fix” square that marks <em>now</em> or <em>you are here</em>.</dd>
+          <dt>Color</dt><dd>Warm Stone greys do almost all the work. Electric blue is the single tint: it marks what you can tap or click, the fix, and “now.”</dd>
+          <dt>Typography</dt><dd>Apple’s system typeface (SF Pro) on Apple devices, with Inter elsewhere. Tabular figures throughout.</dd>
+          <dt>Icons</dt><dd>SF Symbols on Apple platforms, and a matched rounded-stroke set on the web.</dd>
+          <dt>Data viz</dt><dd>Thin 2 px lines, bars with a small 2 px top radius, recessive tick scales, direct labels, and a blue fix marker on the current value.</dd>
+          <dt>Imagery</dt><dd>Almost no illustration. When needed: close, daylight photography of real desks, paper and hands (no faces required), in a desaturated, cool-neutral grade.</dd>
+          <dt>Motion</dt><dd>Apple-style springs: quick and damped, never bouncy. The fix settles into place like a needle coming to rest.</dd>
+          <dt>Distinctive</dt><dd>The fix square and corner bracket are unique to this brand, yet they read as plain UI. The brand lives <em>inside</em> the product rather than sitting on top of it.</dd>
+          <dt>Risk</dt><dd>It can drift cold or technical. The Apple-style refinement counters this with warm Stone greys, generous space, soft materials and approachable empty states.</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel terr-row">
+      <div>
+        <svg class="plate" viewBox="0 0 360 220" role="img" aria-label="Territory B Horizon: two-tone field with a single raised point and serif wordmark">
+          <rect width="360" height="220" fill="#DCE7EA"/>
+          <rect y="138" width="360" height="82" fill="#35524A"/>
+          <rect x="228" y="80" width="12" height="12" fill="#C9795A" transform="rotate(45 234 86)"/>
+          <text x="26" y="72" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#1F2E2A">lodestar</text>
+          <text x="26" y="94" font-family="Inter, -apple-system, Segoe UI, sans-serif" font-size="11" fill="#3E504B">Where you are. Where you’re heading.</text>
+          <text x="26" y="178" font-family="Georgia, serif" font-size="22" fill="#EEF2EF">$1,240</text>
+          <text x="26" y="198" font-family="Inter, -apple-system, Segoe UI, sans-serif" font-size="10" fill="#C7D3CE">to go, to reach Emergency fund</text>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">Territory B <span class="tag t-opt">Option</span></div>
+        <h3 style="margin-top:4px">Horizon: the line between now and next</h3>
+        <dl class="spec">
+          <dt>Concept</dt><dd>The lodestar sits just above the horizon. The horizon line divides where you are (below) from where you are heading (above). <em>Why it works:</em> it puts the “quietly optimistic” quality first, with a forward-looking, human feel.</dd>
+          <dt>Mood</dt><dd>Open, editorial, early-morning calm.</dd>
+          <dt>Logo idea</dt><dd>A lowercase serif wordmark, with a small tilted square that sits above the baseline after the final “r,” like a point just clearing the horizon.</dd>
+          <dt>Graphic language</dt><dd>Wide horizontal two-tone fields split by one horizon line, with plenty of negative space. A single raised element per composition.</dd>
+          <dt>Color</dt><dd>Mist blue-grey sky, deep moss ground, and a clay accent. The warm-cool split carries the meaning.</dd>
+          <dt>Typography</dt><dd>A contemporary text serif for display (for example Newsreader or Tiempos), paired with a grotesk for UI.</dd>
+          <dt>Icons</dt><dd>Soft 1.75 px strokes with rounded ends.</dd>
+          <dt>Data viz</dt><dd>Area charts with a strong zero “horizon,” goals drawn above the line, and a baseline that is always visible.</dd>
+          <dt>Imagery</dt><dd>Real landscapes with low horizons, never staged lifestyle shots.</dd>
+          <dt>Motion</dt><dd>Slow vertical reveals, as if the horizon is lifting. 300–400 ms.</dd>
+          <dt>Distinctive</dt><dd>Very ownable in marketing, and emotionally warm.</dd>
+          <dt>Risk</dt><dd>A serif-led look can tip into luxury or wealth-management cues. Large fields do not suit dense tables, so the product and the marketing would diverge.</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel terr-row">
+      <div>
+        <svg class="plate" viewBox="0 0 360 220" role="img" aria-label="Territory C Waypoint: contour lines, dashed route and orange waypoints">
+          <rect width="360" height="220" fill="#F1F2EC"/>
+          <g fill="none" stroke="#B9C2AE" stroke-width="1">
+            <path d="M-10 170 C60 140 110 190 180 160 S300 120 380 150"/><path d="M-10 145 C60 115 120 165 190 135 S300 95 380 120"/><path d="M-10 120 C70 92 130 140 200 110 S300 70 380 92"/><path d="M-10 95 C70 70 140 115 210 86 S300 48 380 64"/><path d="M-10 70 C80 48 150 92 220 62 S310 26 380 38"/></g>
+          <path d="M40 186 L110 150 L170 158 L240 104 L300 70" fill="none" stroke="#2B2F2C" stroke-width="2" stroke-dasharray="6 4"/>
+          <g fill="#E5602E"><circle cx="110" cy="150" r="5"/><circle cx="240" cy="104" r="5"/></g>
+          <circle cx="300" cy="70" r="8" fill="none" stroke="#E5602E" stroke-width="2.5"/><circle cx="300" cy="70" r="2.5" fill="#E5602E"/>
+          <text x="22" y="36" font-family="Arial Narrow, Roboto Condensed, sans-serif" font-size="24" font-weight="700" fill="#2B2F2C" letter-spacing="1">LODESTAR</text>
+          <text x="248" y="112" font-family="SF Mono, Menlo, Consolas, monospace" font-size="9" fill="#2B2F2C">62%</text>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">Territory C <span class="tag t-opt">Option</span></div>
+        <h3 style="margin-top:4px">Waypoint: a map of the route you’re on</h3>
+        <dl class="spec">
+          <dt>Concept</dt><dd>Wayfinding and cartography. Goals are destinations, milestones are waypoints, and your history becomes terrain. <em>Why it works:</em> it makes progress tangible and suits the savings-goal and planning features.</dd>
+          <dt>Mood</dt><dd>Exploratory, tactile, energetic.</dd>
+          <dt>Logo idea</dt><dd>A condensed uppercase wordmark with a waypoint ring (a circle around a dot, the chart symbol for a fixed position) replacing the counter of the “O.”</dd>
+          <dt>Graphic language</dt><dd>Contour lines generated from the user’s own data (net-worth history drawn as terrain), dashed routes and waypoint rings.</dd>
+          <dt>Color</dt><dd>Chalk, graphite and lichen green, with a trail-marker orange signal.</dd>
+          <dt>Typography</dt><dd>A condensed grotesk for display (signage feel) and a mono for coordinates and figures.</dd>
+          <dt>Icons</dt><dd>Signage-style pictograms, filled, on a strict grid.</dd>
+          <dt>Data viz</dt><dd>Route-style progress lines, milestone markers, and elevation-profile area charts.</dd>
+          <dt>Imagery</dt><dd>Generative topographic textures rather than photography.</dd>
+          <dt>Motion</dt><dd>Route lines draw themselves, and markers drop in as you reach them.</dd>
+          <dt>Distinctive</dt><dd>Very memorable and feels good to use, with strong gamified goals.</dd>
+          <dt>Risk</dt><dd>It reads as outdoors or travel. Contour textures are a current trend and easy to overuse. It gets busy in dense views, and the orange collides with warning states.</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4 ============ -->
+<style>
+.logo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.tile{border-radius:16px;background:var(--surface);padding:16px;display:flex;flex-direction:column;gap:10px}
+.tile .stage{display:flex;align-items:center;justify-content:center;min-height:124px;border-radius:12px;background:var(--ground);gap:18px;flex-wrap:wrap;padding:14px}
+.tile .stage.dark{background:#12110F}
+.tile h4{margin:0}
+.tile p{font-size:13.5px;color:var(--ink-2);margin:0}
+.dont{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.dont div{border-radius:12px;background:var(--surface);padding:10px;font-size:12.5px;color:var(--ink-2);display:flex;flex-direction:column;gap:8px}
+.dont svg{background:var(--ground);border-radius:8px;width:100%;height:auto}
+.dont b{color:var(--err);font-weight:600;font-size:12px}
+.wm{font-family:var(--display);font-weight:600;letter-spacing:-.02em}
+</style>
+<section class="s" id="s4">
+  <div class="s-head"><span class="s-num">04</span><h2>Logo system: Axes &amp; Fix</h2><p>The symbol stays exactly as approved. Only its color changes: ink axes with an electric-blue fix. These are concept renderings, not finished vector artwork. <span class="tag t-appr">Needs approval</span></p></div>
+
+  <div class="cols">
+    <div>
+      <h3 style="margin-top:0">Symbol construction</h3>
+      <svg viewBox="0 0 320 300" style="width:100%;max-width:420px;height:auto;display:block" role="img" aria-label="Construction drawing on a 16-unit grid showing the L corner, the fix square and equal three-unit gaps">
+        <defs><pattern id="g16" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M16 0H0V16" fill="none" stroke="var(--line)" stroke-width="1"/></pattern></defs>
+        <rect x="20" y="20" width="256" height="256" rx="4" fill="url(#g16)" stroke="var(--line-strong)" stroke-width="1"/>
+        <g transform="translate(20,20) scale(16)"><path d="M2 2H5V11H14V14H2Z" fill="var(--ink)"/><rect x="8" y="5" width="3" height="3" fill="var(--fix)"/></g>
+        <path d="M100 20 V276" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>
+        <path d="M20 196 H276" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>
+        <path d="M100 196 L196 100" stroke="var(--ink-3)" stroke-width="1" stroke-dasharray="2 3"/>
+        <g font-family="-apple-system, Inter, sans-serif" font-size="11" fill="var(--ink-2)">
+          <text x="108" y="140">3u gap</text><text x="200" y="176">3u gap</text>
+          <text x="52" y="292">stroke 3u</text><text x="286" y="234">3u</text><text x="200" y="96">fix 3×3u</text>
+          <text x="104" y="190">45°</text>
+        </g>
+      </svg>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Symbol concept</h3>
+      <dl class="spec">
+        <dt>Grid</dt><dd>A 16 × 16 unit square with a 2-unit margin, so the live area is 12 × 12. The same drawing is the favicon master, so every edge lands on a whole pixel at 16 px.</dd>
+        <dt>The axes</dt><dd>An L-shaped corner. The vertical arm runs from x 2–5 and y 2–14. The horizontal arm runs from x 2–14 and y 11–14. Stroke is 3 units, with square terminals and a sharp corner.</dd>
+        <dt>The fix</dt><dd>A solid 3 × 3 square at x 8–11, y 5–8, sitting in the open quadrant, 3 units from each arm, with its center on the 45° diagonal from the inner corner. It is the fixed point you steer by.</dd>
+        <dt>Color</dt><dd>Two colors: ink axes (<span class="mono">#1C1A17</span>) with an electric-blue fix (<span class="mono">#1F4BFF</span>; <span class="mono">#6F8BFF</span> on dark). One color: the whole mark in ink or white. Blue holds 6:1 contrast on white, so the two-color mark works even at 16 px.</dd>
+        <dt>Sharp on purpose</dt><dd>The interface is soft and rounded in Apple style, but the mark keeps its sharp corners. That contrast is what makes it feel precise.</dd>
+        <dt>Explore</dt><dd><span class="tag t-opt">Option</span> Try the fix as a square rotated 45°, a quiet nod to a star point. Test it at 16 px before adopting.</dd>
+      </dl>
+    </div>
+  </div>
+
+  <h3>Lockups &amp; formats</h3>
+  <div class="logo-grid">
+    <div class="tile">
+      <div class="stage"><svg viewBox="0 0 156 32" width="220" height="45" role="img" aria-label="Horizontal lockup"><use href="#lm" x="0" y="4" width="24" height="24" style="color:var(--ink);--fixc:var(--fix)"/><text x="31" y="25" class="wm" font-size="22" fill="var(--ink)">Lodestar</text></svg></div>
+      <h4>Horizontal lockup (primary)</h4>
+      <p>The symbol’s bottom arm sits on the wordmark baseline. Symbol height (the 12-unit live area) is 1.15× the cap height. The gap between symbol and wordmark is 4 units.</p>
+    </div>
+    <div class="tile">
+      <div class="stage"><svg viewBox="0 0 90 70" width="120" height="93" role="img" aria-label="Compact stacked lockup"><use href="#lm" x="27" y="0" width="36" height="36" style="color:var(--ink);--fixc:var(--fix)"/><text x="45" y="60" text-anchor="middle" class="wm" font-size="17" fill="var(--ink)">Lodestar</text></svg></div>
+      <h4>Compact lockup</h4>
+      <p>Stacked version for splash screens, the sign-in screen and square spaces. The wordmark is centered below at 0.5× the symbol height.</p>
+    </div>
+    <div class="tile">
+      <div class="stage">
+        <svg viewBox="0 0 64 64" width="76" height="76" role="img" aria-label="Light app icon"><defs><linearGradient id="il" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#EDEBE6"/></linearGradient></defs><rect width="64" height="64" rx="14.3" fill="url(#il)" stroke="#E2DFD8" stroke-width=".5"/><g transform="translate(14.5,13.5) scale(2.25)"><path d="M2 2H5V11H14V14H2Z" fill="#1C1A17"/><rect x="8" y="5" width="3" height="3" fill="#1F4BFF"/></g></svg>
+        <svg viewBox="0 0 64 64" width="76" height="76" role="img" aria-label="Dark app icon"><rect width="64" height="64" rx="14.3" fill="#1C1A17"/><g transform="translate(14.5,13.5) scale(2.25)"><path d="M2 2H5V11H14V14H2Z" fill="#EEECE7"/><rect x="8" y="5" width="3" height="3" fill="#6F8BFF"/></g></svg>
+        <svg viewBox="0 0 64 64" width="76" height="76" role="img" aria-label="Tinted app icon"><rect width="64" height="64" rx="14.3" fill="#26241F"/><g transform="translate(14.5,13.5) scale(2.25)"><path d="M2 2H5V11H14V14H2Z" fill="#B3AEA5"/><rect x="8" y="5" width="3" height="3" fill="#EEECE7"/></g></svg>
+      </div>
+      <h4>App icon: light, dark, tinted</h4>
+      <p>Light is the default: a Stone-white tile with a barely visible top-to-bottom gradient, ink axes and a blue fix. Dark and tinted versions follow Apple’s appearance options. Supply the tile, the axes and the fix as separate layers so the icon can be built in Apple’s Icon Composer. <span class="tag t-appr">Needs approval</span> Check against the current Apple HIG.</p>
+    </div>
+    <div class="tile">
+      <div class="stage">
+        <svg viewBox="0 0 16 16" width="16" height="16" shape-rendering="crispEdges" role="img" aria-label="Favicon at actual 16 pixel size"><path d="M2 2H5V11H14V14H2Z" fill="var(--ink)"/><rect x="8" y="5" width="3" height="3" fill="var(--fix)"/></svg>
+        <svg viewBox="0 0 160 160" width="128" height="128" shape-rendering="crispEdges" aria-label="Favicon zoomed to show pixel grid" role="img">
+          <defs><pattern id="px" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M10 0H0V10" fill="none" stroke="var(--line)" stroke-width="1"/></pattern></defs>
+          <rect width="160" height="160" fill="var(--surface)"/>
+          <g transform="scale(10)"><path d="M2 2H5V11H14V14H2Z" fill="var(--ink)"/><rect x="8" y="5" width="3" height="3" fill="var(--fix)"/></g>
+          <rect width="160" height="160" fill="url(#px)"/>
+        </svg>
+      </div>
+      <h4>Favicon · 16 × 16</h4>
+      <p>Two colors and pixel-snapped: 3 px strokes, 3 px gaps. The SVG favicon switches to Stone-white with a light-blue fix when the browser is in dark mode (via <code>prefers-color-scheme</code>).</p>
+    </div>
+    <div class="tile">
+      <div class="stage">
+        <svg viewBox="0 0 16 16" width="40" height="40" aria-hidden="true"><path d="M2 2H5V11H14V14H2Z" fill="#1C1A17"/><rect x="8" y="5" width="3" height="3" fill="#1C1A17"/></svg>
+        <svg viewBox="0 0 16 16" width="40" height="40" aria-hidden="true"><path d="M2 2H5V11H14V14H2Z" fill="#1C1A17"/><rect x="8" y="5" width="3" height="3" fill="#1F4BFF"/></svg>
+      </div>
+      <div class="stage dark">
+        <svg viewBox="0 0 16 16" width="40" height="40" aria-hidden="true"><path d="M2 2H5V11H14V14H2Z" fill="#EEECE7"/><rect x="8" y="5" width="3" height="3" fill="#EEECE7"/></svg>
+        <svg viewBox="0 0 16 16" width="40" height="40" aria-hidden="true"><path d="M2 2H5V11H14V14H2Z" fill="#EEECE7"/><rect x="8" y="5" width="3" height="3" fill="#6F8BFF"/></svg>
+      </div>
+      <h4>Monochrome &amp; reversed</h4>
+      <p>One-color ink or Stone-white works anywhere. On dark grounds the fix uses light blue <span class="mono">#6F8BFF</span>, because the standard blue drops to 2.8:1 on ink.</p>
+    </div>
+    <div class="tile">
+      <div class="stage">
+        <svg viewBox="0 0 200 72" width="220" height="79" role="img" aria-label="Clear space diagram">
+          <rect x="4" y="4" width="192" height="64" rx="6" fill="none" stroke="var(--blue)" stroke-dasharray="3 3"/>
+          <g transform="translate(22,22)"><use href="#lm" x="0" y="0" width="28" height="28" style="color:var(--ink);--fixc:var(--fix)"/><text x="34" y="25" class="wm" font-size="25" fill="var(--ink)">Lodestar</text></g>
+          <text x="13" y="16" text-anchor="middle" font-family="-apple-system, Inter, sans-serif" font-size="8" font-weight="600" fill="var(--blue)">2X</text>
+        </svg>
+      </div>
+      <h4>Clear space &amp; minimum size</h4>
+      <p><b>X</b> = the side of the fix square. Keep at least <b>2X</b> clear on every side. Minimum sizes: symbol 16 px (use the favicon master below 24 px); horizontal lockup 88 px wide on screen, 22 mm in print; wordmark alone 64 px.</p>
+    </div>
+  </div>
+
+  <h3>Wordmark concept</h3>
+  <p>“Lodestar” in sentence case, in the spirit of Apple’s own typography: semibold, tightly spaced and quiet. Start from Inter Display SemiBold and redraw it. SF Pro’s license does not allow it in a logo. Required refinements: (1) the <b>t</b> crossbar extends to the right only, a small echo of the L-corner; (2) the <b>L</b> is kerned tight to the <b>o</b>; (3) the counters are opened slightly for small sizes; (4) tracking is −2% at display sizes and 0 below 20 px. No stars, dots or swashes: the symbol does that work.</p>
+
+  <h3>Small-size behavior</h3>
+  <ul class="tight">
+    <li><b>≤ 24 px:</b> use the pixel-snapped 16-unit master. Never scale the full lockup down to this size.</li>
+    <li><b>All sizes:</b> two colors are allowed on light grounds (blue on white is 6:1). On dark grounds, switch the fix to light blue.</li>
+    <li>The recognition test: at 16 px, the mark still reads as “a corner and a point” in a browser tab next to ten other favicons.</li>
+  </ul>
+
+  <h3>Incorrect use</h3>
+  <div class="dont">
+    <div><svg viewBox="0 0 64 48" aria-hidden="true"><g transform="translate(16,8) scale(2) rotate(90 8 8)"><path d="M2 2H5V11H14V14H2Z" fill="var(--ink)"/><rect x="8" y="5" width="3" height="3" fill="var(--fix)"/></g></svg><b>✕ Rotate</b>The fix always stays in the upper-right quadrant.</div>
+    <div><svg viewBox="0 0 64 48" aria-hidden="true"><g transform="translate(48,8) scale(-2,2)"><path d="M2 2H5V11H14V14H2Z" fill="var(--ink)"/><rect x="8" y="5" width="3" height="3" fill="var(--fix)"/></g></svg><b>✕ Mirror</b>A mirrored L reads as a different corner.</div>
+    <div><svg viewBox="0 0 64 48" aria-hidden="true"><g transform="translate(16,8) scale(2)"><path d="M2 2H5V11H14V14H2Z" fill="var(--ink)"/><rect x="8" y="5" width="3" height="3" fill="#D70015"/></g></svg><b>✕ Status colors</b>The fix is never red or green; it doesn’t signal gains or losses.</div>
+    <div><svg viewBox="0 0 64 48" aria-hidden="true"><g transform="translate(16,8) scale(2)"><path d="M2.6 2H4.4Q5 2 5 2.6V11H13.4Q14 11 14 11.6V13.4Q14 14 13.4 14H2.6Q2 14 2 13.4V2.6Q2 2 2.6 2Z" fill="var(--ink)"/><rect x="8" y="5" width="3" height="3" rx=".9" fill="var(--fix)"/></g></svg><b>✕ Round the corners</b>The mark stays sharp even though the interface is rounded.</div>
+    <div><svg viewBox="0 0 64 48" aria-hidden="true"><g transform="translate(16,8) scale(2)"><path d="M2 2H5V11H14V14H2Z" fill="none" stroke="var(--ink)" stroke-width=".5"/><rect x="8" y="5" width="3" height="3" fill="none" stroke="var(--ink)" stroke-width=".5"/></g></svg><b>✕ Outline or glow</b>No outline, glass, glow or gradient on the mark itself.</div>
+    <div><svg viewBox="0 0 64 48" aria-hidden="true"><g transform="translate(16,8) scale(2)"><path d="M2 2H5V11H14V14H2Z" fill="var(--ink)"/><path d="M9.5 3.5L10.2 5.8 12.5 6.5 10.2 7.2 9.5 9.5 8.8 7.2 6.5 6.5 8.8 5.8Z" fill="var(--fix)"/></g></svg><b>✕ Literal star</b>The fix is never a star, sparkle or dot cluster.</div>
+    <div><svg viewBox="0 0 64 48" aria-hidden="true" style="background:#1C1A17"><g transform="translate(16,8) scale(2)"><path d="M2 2H5V11H14V14H2Z" fill="#EEECE7"/><rect x="8" y="5" width="3" height="3" fill="#1F4BFF"/></g></svg><b>✕ Dark blue on dark</b>Only 2.8:1 contrast. Use light blue <span class="mono">#6F8BFF</span> instead.</div>
+    <div><svg viewBox="0 0 64 48" aria-hidden="true"><g transform="translate(6,8) scale(3.2,2)"><path d="M2 2H5V11H14V14H2Z" fill="var(--ink)"/><rect x="8" y="5" width="3" height="3" fill="var(--fix)"/></g></svg><b>✕ Stretch</b>Always scale in proportion.</div>
+    <div><svg viewBox="0 0 64 48" aria-hidden="true"><g transform="translate(16,8) scale(2)"><path d="M2 2H5V11H14V14H2Z" fill="var(--ink)"/><rect x="5.6" y="7.8" width="3" height="3" fill="var(--fix)"/></g></svg><b>✕ Move the fix</b>Keep the 3-unit gap and the 45° diagonal.</div>
+  </div>
+</section>
+
+<!-- ============ 5 ============ -->
+<section class="s" id="s5">
+  <div class="s-head"><span class="s-num">05</span><h2>Color system: Stone &amp; Electric blue</h2><p>Roughly 95% warm grey and under 5% blue. Like Apple’s own apps, the interface is almost monochrome, and a single tint color marks what you can act on. Contrast ratios below were calculated with the WCAG 2.x formula.</p></div>
+
+  <div style="display:flex;height:16px;border-radius:999px;overflow:hidden;margin:0 0 6px" role="img" aria-label="Proportion: mostly white and Stone greys, a little ink, a sliver of blue"><div style="flex:48;background:#FFFFFF;box-shadow:inset 0 0 0 1px var(--line)"></div><div style="flex:26;background:#EDEBE6"></div><div style="flex:12;background:#8C867C"></div><div style="flex:10;background:#1C1A17"></div><div style="flex:4;background:#1F4BFF"></div></div>
+  <p class="note">Approximate share of a typical screen: white and Stone surfaces, grey text and lines, ink for key text, and a sliver of blue.</p>
+
+  <h3>Brand colors</h3>
+  <div class="sw-grid">
+    <div class="sw"><div class="chip" style="background:#1F4BFF;color:#FFFFFF">Aa 6.0:1</div><div class="meta"><b>Electric blue</b><span class="mono">#1F4BFF</span> · The one tint color: primary buttons, links, selected states, toggles, focus, the fix and “now.” Dark mode uses <span class="mono">#6F8BFF</span> (5.6:1).</div></div>
+    <div class="sw"><div class="chip" style="background:#1C1A17;color:#F5F4F1">Aa 15.8:1</div><div class="meta"><b>Ink</b><span class="mono">#1C1A17</span> · Headings, key text, the logo, and money-in bars. A warm near-black, never pure black. Dark mode: <span class="mono">#EEECE7</span>.</div></div>
+    <div class="sw"><div class="chip" style="background:#F5F4F1;color:#1C1A17;box-shadow:inset 0 -1px 0 #E2DFD8">Stone</div><div class="meta"><b>Stone</b><span class="mono">#F5F4F1</span> · Window and page background: Apple’s grouped background, but warm.</div></div>
+    <div class="sw"><div class="chip" style="background:#FFFFFF;color:#1C1A17;box-shadow:inset 0 -1px 0 #E2DFD8">White</div><div class="meta"><b>Surface</b><span class="mono">#FFFFFF</span> · Grouped lists, tables and sheets sit on white against Stone.</div></div>
+    <div class="sw"><div class="chip" style="background:#12110F;color:#EEECE7">Night</div><div class="meta"><b>Night</b><span class="mono">#12110F</span> · Dark-mode background, a warm near-black. Surfaces: <span class="mono">#1C1B18</span>, then <span class="mono">#26241F</span>.</div></div>
+    <div class="sw"><div class="chip" style="background:#EEF1FF;color:#1F4BFF">Selected · 5.3:1</div><div class="meta"><b>Blue tint</b><span class="mono">#EEF1FF</span> · Selected rows, active filters and info banners. Dark: <span class="mono">#1A2040</span>.</div></div>
+  </div>
+
+  <h3>Status colors <span class="note" style="font-weight:400">· based on Apple’s accessible system colors, and always paired with an icon and a word</span></h3>
+  <div class="sw-grid">
+    <div class="sw"><div class="chip" style="background:#EDF7EF;color:#1F7A35">✓ Paid · 4.9:1</div><div class="meta"><b>Success</b><span class="mono">#1F7A35</span> on <span class="mono">#EDF7EF</span> · Dark <span class="mono">#30D158</span>.</div></div>
+    <div class="sw"><div class="chip" style="background:#FDF1EA;color:#C93400">▲ Due in 3 days · 4.8:1</div><div class="meta"><b>Warning</b><span class="mono">#C93400</span> on <span class="mono">#FDF1EA</span> · Dark <span class="mono">#FF9F0A</span>.</div></div>
+    <div class="sw"><div class="chip" style="background:#FDEDEE;color:#D70015">● Couldn’t save · 4.8:1</div><div class="meta"><b>Error</b><span class="mono">#D70015</span> on <span class="mono">#FDEDEE</span> · Dark <span class="mono">#FF6961</span>. Only for errors, never for spending.</div></div>
+  </div>
+
+  <h3>Stone neutral scale</h3>
+  <div class="ramp" role="img" aria-label="Stone neutral scale from white to near-black">
+    <div style="background:#FFFFFF;color:#5E5A53">0<br>FFFFFF</div><div style="background:#F5F4F1;color:#5E5A53">50<br>F5F4F1</div><div style="background:#EDEBE6;color:#5E5A53">100<br>EDEBE6</div><div style="background:#E2DFD8;color:#5E5A53">200<br>E2DFD8</div><div style="background:#CFCBC2;color:#3A3732">300<br>CFCBC2</div><div style="background:#A8A298;color:#1C1A17">400<br>A8A298</div><div style="background:#8C867C;color:#1C1A17">500<br>8C867C</div><div style="background:#6E6961;color:#FFFFFF">600<br>6E6961</div><div style="background:#5E5A53;color:#FFFFFF">700<br>5E5A53</div><div style="background:#3A3732;color:#EEECE7">800<br>3A3732</div><div style="background:#1C1A17;color:#EEECE7">900<br>1C1A17</div><div style="background:#12110F;color:#EEECE7">950<br>12110F</div>
+  </div>
+  <p class="note" style="margin-top:8px">200 = separators (decorative only). 500 <span class="mono">#8C867C</span> = the minimum for input borders and control outlines (3.3:1 on Stone, meeting WCAG 1.4.11). 600 = the lightest allowed for text (5.0:1 on Stone).</p>
+
+  <h3>Text &amp; surface pairs</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Role (Apple name)</th><th>Light</th><th class="num">Ratio</th><th>Dark</th><th class="num">Ratio</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Label</td><td><span class="mono">#1C1A17</span> on Stone</td><td class="num">15.8:1</td><td><span class="mono">#EEECE7</span> on Night</td><td class="num">16.0:1</td></tr>
+      <tr><td class="k">Secondary label</td><td><span class="mono">#5E5A53</span> on Stone</td><td class="num">6.2:1</td><td><span class="mono">#B3AEA5</span> on surface</td><td class="num">7.8:1</td></tr>
+      <tr><td class="k">Tertiary label</td><td><span class="mono">#6E6961</span> on Stone</td><td class="num">5.0:1</td><td><span class="mono">#948F86</span> on surface</td><td class="num">5.4:1</td></tr>
+      <tr><td class="k">Filled button</td><td>White on Electric blue</td><td class="num">6.0:1</td><td>Night on <span class="mono">#6F8BFF</span></td><td class="num">6.1:1</td></tr>
+      <tr><td class="k">Link / tint</td><td>Electric blue on Stone</td><td class="num">5.4:1</td><td><span class="mono">#6F8BFF</span> on surface</td><td class="num">5.6:1</td></tr>
+      <tr><td class="k">Control border</td><td><span class="mono">#8C867C</span> on white</td><td class="num">3.6:1</td><td><span class="mono">#7D776D</span> on surface</td><td class="num">3.9:1</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Chart colors</h3>
+  <p><strong>Most charts use no color at all.</strong> Money in is ink and money out is Stone 500, so they are told apart by lightness. That works for colorblind users and in print. Blue marks only “now” (this month, today’s balance). <strong>Category breakdowns</strong> are the one place several colors appear: eight series in a fixed order that is never cycled, always with a legend and direct labels. They pass a colorblind-safety check; the closest neighboring pair is borderline (~7 ΔE), which is why labels are required.</p>
+  <div class="series">
+    <div><i style="background:var(--c1)"></i><b>1 Electric</b><span class="mono">#1F4BFF / #5C7BFF</span></div>
+    <div><i style="background:var(--c2)"></i><b>2 Copper</b><span class="mono">#D0663A / #D9744A</span></div>
+    <div><i style="background:var(--c3)"></i><b>3 Teal</b><span class="mono">#008574 / #12997F</span></div>
+    <div><i style="background:var(--c4)"></i><b>4 Orchid</b><span class="mono">#B064AE / #BD72BA</span></div>
+    <div><i style="background:var(--c5)"></i><b>5 Olive</b><span class="mono">#6D8B24 / #7E9E35</span></div>
+    <div><i style="background:var(--c6)"></i><b>6 Sky</b><span class="mono">#3F95C8 / #3A94CC</span></div>
+    <div><i style="background:var(--c7)"></i><b>7 Ochre</b><span class="mono">#A98016 / #B08620</span></div>
+    <div><i style="background:var(--c8)"></i><b>8 Rose</b><span class="mono">#B0525F / #C96170</span></div>
+  </div>
+  <p class="note" style="margin-top:10px">Light value / dark value. The swatches switch with the page theme.</p>
+  <div class="callout"><strong>Gains, losses and states never rely on red and green.</strong> Amounts always carry a sign (<span class="mono">+</span> / <span class="mono">−</span>, the true minus U+2212) and stay ink-colored in lists. A budget overage shows a label (“$38 over plan”), a limit tick and a hatched bar, not just a color.</div>
+</section>
+
+<!-- ============ 6 ============ -->
+<style>
+.spec-type{display:grid;border-radius:16px;background:var(--surface);overflow:hidden}
+.spec-type > div{display:grid;grid-template-columns:190px 1fr;gap:16px;align-items:baseline;padding:13px 18px;border-bottom:1px solid var(--line)}
+.spec-type > div:last-child{border-bottom:0}
+.spec-type .lbl{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.spec-type .d{font-family:var(--display)}
+@media (max-width:600px){.spec-type > div{grid-template-columns:1fr;gap:4px}}
+.tnum{font-variant-numeric:tabular-nums}
+</style>
+<section class="s" id="s6">
+  <div class="s-head"><span class="s-num">06</span><h2>Typography</h2><p>Apple-style type: the system font, big confident titles with tight letter spacing, and quiet, readable body text. Numbers always use tabular figures.</p></div>
+
+  <div class="cols">
+    <div class="panel rec">
+      <span class="tag t-rec">Recommendation</span>
+      <h3 style="margin-top:10px">System font: SF Pro, then Inter</h3>
+      <p>On Apple devices the product uses the system font, SF Pro (Text below 20 px, Display at 20 px and above; the browser switches automatically). Everywhere else it falls back to <b>Inter</b>, an open-source font designed in the same spirit.</p>
+      <p class="mono" style="font-size:12px;background:var(--ground);padding:10px 12px;border-radius:10px;max-width:none">font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;</p>
+      <p><b>Numbers:</b> <code>font-variant-numeric: tabular-nums</code> on every amount, so columns line up. SF Pro and Inter both support it.</p>
+      <p><b>Mono:</b> <code>ui-monospace</code> (SF Mono on Apple devices, Menlo or Consolas elsewhere), only for reference numbers, card masks and CSV previews.</p>
+    </div>
+    <div class="panel">
+      <span class="tag t-appr">Needs approval</span>
+      <h4 style="margin-top:10px">Licensing note</h4>
+      <p class="note">SF Pro can be used in apps for Apple platforms, and it reaches the web through the system font stack. Never self-host SF font files on the web, and never use SF in the logo or marketing artwork. The wordmark is drawn from Inter Display instead.</p>
+      <h4>Native apps</h4>
+      <p class="note">Use Apple’s Dynamic Type text styles directly (Large Title, Title 1–3, Headline, Body, Callout, Subheadline, Footnote, Caption), so text scales with each user’s accessibility settings.</p>
+    </div>
+  </div>
+
+  <h3>Hierarchy (web product, 1 rem = 16 px)</h3>
+  <div class="spec-type">
+    <div><span class="lbl">Large title · 34/41 · 700 · −2.2%</span><span class="d" style="font-size:34px;line-height:41px;font-weight:700;letter-spacing:-.022em">Overview</span></div>
+    <div><span class="lbl">Title 1 · 28/34 · 700 · −2%</span><span class="d" style="font-size:28px;line-height:34px;font-weight:700;letter-spacing:-.02em">Cash flow</span></div>
+    <div><span class="lbl">Title 2 · 22/28 · 600 · −1.5%</span><span class="d" style="font-size:22px;line-height:28px;font-weight:600;letter-spacing:-.015em">September spending</span></div>
+    <div><span class="lbl">Headline · 17/22 · 600</span><span style="font-size:17px;line-height:22px;font-weight:600">Upcoming bills</span></div>
+    <div><span class="lbl">Figure · 32/38 · 600 · tabular</span><span class="d tnum" style="font-size:32px;line-height:38px;font-weight:600;letter-spacing:-.02em">$48,210.37</span></div>
+    <div><span class="lbl">Body · 15/22 · 400</span><span style="font-size:15px;line-height:22px">Default product text: tables, descriptions and settings.</span></div>
+    <div><span class="lbl">Callout · 14/19 · 400</span><span style="font-size:14px;line-height:19px">Form labels and secondary rows.</span></div>
+    <div><span class="lbl">Footnote · 13/18 · 400</span><span style="font-size:13px;line-height:18px;color:var(--ink-2)">Helper text, metadata, timestamps.</span></div>
+    <div><span class="lbl">Caption · 12/16 · 500</span><span style="font-size:12px;line-height:16px;font-weight:500;color:var(--ink-2)">Column headers and chart legends (sentence case, never all caps)</span></div>
+    <div><span class="lbl">Marketing display · 64/68 · 700 · −3%</span><span class="d" style="font-size:clamp(34px,6vw,64px);line-height:1.06;font-weight:700;letter-spacing:-.03em">Know where you stand.</span></div>
+  </div>
+
+  <div class="cols" style="margin-top:20px">
+    <div>
+      <h3 style="margin-top:0">Tables &amp; forms</h3>
+      <ul class="tight">
+        <li>Table rows use Body 15/22. Headers use Caption: weight 500, secondary label color, sentence case.</li>
+        <li>Rows are 44 px by default (Apple’s minimum touch target), with a 36 px compact option on desktop.</li>
+        <li>Amount columns are right-aligned and tabular, with a fixed number of decimals. Only totals are bold.</li>
+        <li>Forms use Apple-style grouped rows: the label on the left, the value on the right, inside a white rounded group. Errors appear below the group in Footnote size, with an icon.</li>
+        <li>Mobile inputs are at least 16 px to stop iOS from zooming in.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Number formatting</h3>
+      <div class="tw" style="margin-top:0"><table>
+        <thead><tr><th>Case</th><th class="num">Format</th></tr></thead>
+        <tbody>
+          <tr><td>Amount</td><td class="num">$1,234.50</td></tr>
+          <tr><td>Money out</td><td class="num">−$84.20</td></tr>
+          <tr><td>Change</td><td class="num">+$120.00 · +2.4%</td></tr>
+          <tr><td>Other currency</td><td class="num">EUR 1,200.00</td></tr>
+          <tr><td>Chart axis only</td><td class="num">$1.2M</td></tr>
+          <tr><td>Date</td><td class="num">Sep 19, 2026</td></tr>
+          <tr><td>No data</td><td class="num">—</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Format with <code>Intl.NumberFormat</code> using the account currency. Use the true minus sign (U+2212). Parentheses for negatives are an optional “accounting style” setting. Abbreviations belong only in chart axes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section class="s" id="s7">
+  <div class="s-head"><span class="s-num">07</span><h2>Graphic language</h2><p>Apple’s principles (clarity, deference to content, and depth) combined with Lodestar’s three instrument details.</p></div>
+
+  <div class="cols-3">
+    <div class="panel">
+      <svg viewBox="0 0 200 70" style="width:100%;height:auto" aria-hidden="true"><path d="M20 20 V10 H30 M170 10 H180 V20 M180 50 V60 H170 M30 60 H20 V50" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><text x="100" y="42" text-anchor="middle" font-family="-apple-system, Inter, sans-serif" font-size="19" font-weight="600" fill="var(--ink)" style="font-variant-numeric:tabular-nums">$3,118.40</text></svg>
+      <h4>Corner bracket</h4><p class="note">Thin blue corners with rounded line ends, around the one number that matters on a screen. At most one per view.</p>
+    </div>
+    <div class="panel">
+      <svg viewBox="0 0 200 70" style="width:100%;height:auto" aria-hidden="true"><rect x="10" y="50" width="180" height="1" fill="var(--line)"/><path d="M10 52 C60 42 100 40 130 28" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/><path d="M130 8 V62" stroke="var(--blue)" stroke-width="1.2" stroke-dasharray="2 3"/><rect x="125" y="23" width="10" height="10" fill="var(--fix)"/></svg>
+      <h4>The fix &amp; “now”</h4><p class="note">The blue square marks the current position, such as today’s balance or this month. A thin dashed blue line marks “now” on time charts. One per chart.</p>
+    </div>
+    <div class="panel">
+      <svg viewBox="0 0 200 70" style="width:100%;height:auto" aria-hidden="true"><rect x="10" y="30" width="180" height="8" rx="4" fill="var(--sunk)"/><rect x="10" y="30" width="128" height="8" rx="4" fill="var(--ink)"/><g fill="var(--line-strong)"><rect x="10" y="44" width="1" height="6"/><rect x="55" y="46" width="1" height="4"/><rect x="100" y="44" width="1" height="6"/><rect x="145" y="46" width="1" height="4"/><rect x="189" y="44" width="1" height="6"/></g></svg>
+      <h4>Graduated rule</h4><p class="note">Fine ticks under progress bars, so progress reads as a measurement rather than a game. The bars themselves are rounded capsules, in Apple style.</p>
+    </div>
+  </div>
+
+  <div class="cols" style="margin-top:18px">
+    <dl class="spec">
+      <dt>Layout &amp; spacing</dt><dd>An 8 pt grid (4, 8, 12, 16, 20, 24, 32, 44, 64) with generous margins: 20 px on phones and 32 px or more on desktop. Desktop is a sidebar and content split, like macOS apps. Mobile uses a tab bar with large titles.</dd>
+      <dt>Corners</dt><dd>Continuous, squircle-style corners: 8 px on small controls, 12 px on fields and buttons, 16 px on grouped containers, and the platform’s mask on the app icon. Buttons can be capsules. Tables inside a group have no inner corners.</dd>
+      <dt>Materials &amp; depth</dt><dd>Translucent “glass” (background blur plus saturation) only on navigation: the sidebar, toolbar and tab bar. Content sits on solid white groups against Stone. Soft, large shadows only on floating layers such as popovers, sheets and menus.</dd>
+      <dt>Containers</dt><dd>Apple-style inset grouped lists for settings, accounts and forms. Dashboards use a few large white groups, not a mosaic of small floating cards. Dense data such as transactions goes in one continuous table.</dd>
+      <dt>Iconography</dt><dd>SF Symbols in native apps. On the web, a matched rounded-stroke set (for example Lucide at 1.75 px). Icons are ink or grey, and blue only when selected. No coins, wallets, piggy banks or bank buildings.</dd>
+    </dl>
+    <dl class="spec">
+      <dt>Charts</dt><dd>In the style of Apple’s Swift Charts: bars with rounded tops, a very light horizontal grid, and axis labels in grey Footnote text. Hovering or dragging shows a vertical line with the exact value. A “Show as table” option is always available.</dd>
+      <dt>Tables</dt><dd>Hairline separators inset from the left edge, as in iOS lists. The selected row gets a blue tint. Headers stay fixed at the top while scrolling. Pending items appear in grey with a “Pending” capsule.</dd>
+      <dt>Imagery</dt><dd>Marketing uses real product screenshots on Stone, never stock photography. Any photos are soft, daylight and neutral in tone, with no luxury cues and no piles of cash.</dd>
+      <dt>Empty states</dt><dd>A large icon in light grey, a one-line title, one sentence, and one blue button. Calm, never cute.</dd>
+      <dt>Motion</dt><dd>Springs rather than fixed-length animations: quick (about 0.35 s) and damped, with no visible bounce. Sheets slide up, and numbers cross-fade instead of counting up. The fix does a gentle settle. When the user turns on Reduce Motion (<code>prefers-reduced-motion</code>), everything becomes a simple fade.</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- ============ 8 ============ -->
+<style>
+.scroller{overflow-x:auto;margin:14px 0 8px;padding:6px 2px 10px}
+.mwin{min-width:920px;border-radius:14px;overflow:hidden;background:var(--ground);box-shadow:var(--shadow),0 0 0 .5px var(--line-strong);font-size:13.5px;line-height:1.4;display:grid;grid-template-columns:200px 1fr}
+.side{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-right:.5px solid var(--line);padding:12px 10px;display:flex;flex-direction:column;gap:1px}
+.lights{display:flex;gap:7px;padding:2px 6px 16px}.lights i{width:11px;height:11px;border-radius:50%;background:var(--line-strong);opacity:.45}
+.side .b{display:flex;align-items:center;gap:7px;font-weight:600;font-size:14px;padding:0 8px 12px}
+.side .grp{font-size:11px;font-weight:600;color:var(--ink-3);padding:10px 8px 4px}
+.side a{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:7px;color:var(--ink);text-decoration:none}
+.side a svg{color:var(--blue)}
+.side a.on{background:var(--sunk);font-weight:600}
+.ico{width:15px;height:15px;flex:none}
+.dmain{padding:22px 26px 26px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.top h5{font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:-.022em;margin:0}
+.segc{display:inline-flex;background:var(--sunk);border-radius:9px;padding:2px;gap:2px}
+.segc span{padding:4px 12px;border-radius:7px;font-size:12.5px;font-weight:500;color:var(--ink)}
+.segc span.on{background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 15px;font-size:13px;font-weight:600}
+.btn.p{background:var(--blue);color:var(--on-blue)}
+.btn.s{background:var(--sunk);color:var(--blue)}
+.grpbox{background:var(--surface);border-radius:14px;padding:16px 18px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);padding:6px}
+.kpis > div{padding:12px 14px;position:relative;border-right:.5px solid var(--line)}
+.kpis > div:last-child{border-right:0}
+.kpis .l{font-size:12.5px;color:var(--ink-2)}
+.kpis .v{font-family:var(--display);font-size:25px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em;margin-top:2px}
+.kpis .d{font-size:12px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.bracket::before,.bracket::after{content:"";position:absolute;width:10px;height:10px;border:2px solid var(--blue)}
+.bracket::before{top:5px;left:5px;border-right:0;border-bottom:0;border-top-left-radius:3px}
+.bracket::after{bottom:5px;right:5px;border-left:0;border-top:0;border-bottom-right-radius:3px}
+.two{display:grid;grid-template-columns:1.35fr 1fr;gap:16px}
+.gt{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.gt b{font-size:15px;font-weight:600}
+.gt span{font-size:12.5px;color:var(--blue)}
+.lg{display:flex;gap:14px;font-size:12px;color:var(--ink-2);margin-bottom:6px}
+.lg span{display:inline-flex;align-items:center;gap:5px}.lg i{width:9px;height:9px;border-radius:3px;display:inline-block}
+.bud{display:grid;gap:13px}
+.bud .row{display:grid;grid-template-columns:1fr auto;gap:5px 10px;font-size:13.5px}
+.bud .amt{font-variant-numeric:tabular-nums;color:var(--ink-2);font-size:13px}
+.bud .amt.over{color:var(--warn);font-weight:600}
+.meter{grid-column:1/-1;position:relative;height:16px}
+.meter .track{position:absolute;left:0;right:0;top:0;height:7px;background:var(--sunk);border-radius:99px}
+.meter .fill{position:absolute;left:0;top:0;height:7px;background:var(--ink);border-radius:99px}
+.meter .overfill{position:absolute;top:0;height:7px;border-radius:0 99px 99px 0;background:repeating-linear-gradient(135deg,var(--warn) 0 2px,transparent 2px 4px)}
+.meter .lim{position:absolute;top:-2px;width:2px;height:11px;border-radius:1px;background:var(--ink)}
+.meter .ticks{position:absolute;left:0;right:0;top:10px;height:4px;background:linear-gradient(90deg,var(--line-strong) 1px,transparent 1px) 0 0/25% 100%;border-right:1px solid var(--line-strong);opacity:.7}
+.list{display:grid}
+.list > div{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:.5px solid var(--line);font-size:13.5px}
+.list > div:last-child{border-bottom:0}
+.list .m{color:var(--ink-2)}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.cap{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--sunk);color:var(--ink-2)}
+.cap.w{background:var(--warn-soft);color:var(--warn)}
+.apps{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;align-items:start}
+.phone{width:300px;max-width:100%;border-radius:38px;overflow:hidden;background:var(--ground);margin:0 auto;box-shadow:var(--shadow),0 0 0 .5px var(--line-strong);position:relative}
+.phone .sb{display:flex;justify-content:space-between;padding:12px 26px 4px;font-size:12px;font-weight:600}
+.phone .nav{display:flex;justify-content:space-between;align-items:center;padding:4px 18px 0;color:var(--blue);font-size:15px}
+.phone .lt{font-family:var(--display);font-size:30px;font-weight:700;letter-spacing:-.022em;padding:2px 18px 10px}
+.phone .body{padding:0 14px 14px;display:flex;flex-direction:column;gap:12px}
+.phone .g{background:var(--surface);border-radius:14px;padding:12px 14px}
+.phone .tabs{display:grid;grid-template-columns:repeat(4,1fr);background:var(--glass);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-top:.5px solid var(--line);font-size:10px;color:var(--ink-3);text-align:center;padding:8px 0 18px}
+.phone .tabs div{display:flex;flex-direction:column;align-items:center;gap:3px}
+.phone .tabs .on{color:var(--blue)}
+.sheet{background:var(--ground);border-radius:16px;box-shadow:var(--shadow),0 0 0 .5px var(--line-strong);overflow:hidden}
+.sheet .grab{width:36px;height:5px;border-radius:3px;background:var(--line-strong);opacity:.5;margin:8px auto 4px}
+.sheet .hd{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:6px 16px 12px;font-size:15px}
+.sheet .hd .c{color:var(--blue)}
+.sheet .hd .t{font-weight:600}
+.sheet .hd .s{color:var(--blue);font-weight:600;text-align:right;opacity:.4}
+.sheet .bd{padding:0 16px 18px;display:grid;gap:14px}
+.amount{text-align:center;padding:6px 0}
+.amount .v{font-family:var(--display);font-size:44px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--ink-3)}
+.amount .e{font-size:13px;color:var(--err);display:inline-flex;gap:5px;align-items:center}
+.rows{background:var(--surface);border-radius:12px}
+.rows > div{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;margin-left:0;border-bottom:.5px solid var(--line);font-size:15px}
+.rows > div:last-child{border-bottom:0}
+.rows .v{color:var(--ink-2)}
+.segw{display:grid;grid-template-columns:repeat(3,1fr);background:var(--sunk);border-radius:9px;padding:2px}
+.segw span{text-align:center;padding:5px;font-size:13px;font-weight:500;border-radius:7px}
+.segw span.on{background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.login{background:var(--surface);border-radius:20px;padding:28px 24px;display:grid;gap:14px;max-width:340px;margin:0 auto;width:100%;box-shadow:var(--shadow)}
+.fieldg{background:var(--ground);border-radius:12px;padding:12px 14px;font-size:15px;color:var(--ink-3)}
+.ledger{width:100%;border-collapse:collapse;font-size:14px}
+.ledger th{font-size:12px;font-weight:500;color:var(--ink-2);text-align:left;padding:10px 12px;border-bottom:.5px solid var(--line);background:var(--surface);position:static}
+.ledger td{padding:11px 12px;border-bottom:.5px solid var(--line);vertical-align:middle}
+.ledger tr:last-child td{border-bottom:0}
+.ledger .num{text-align:right}
+.ledger tr.sel td{background:var(--blue-soft)}
+.ledger .pend td{color:var(--ink-2)}
+.cat{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.cat i{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--line-strong)}
+.mask{font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+</style>
+<section class="s" id="s8">
+  <div class="s-head"><span class="s-num">08</span><h2>Product application</h2><p>Concept mockups in the Apple style: mostly Stone and white, with blue only where you can act and on “now.” All figures are example data, and none of these are final layouts.</p></div>
+
+  <h3 style="margin-top:0">Desktop dashboard</h3>
+  <div class="scroller">
+  <div class="mwin" role="img" aria-label="Desktop dashboard mockup in a Mac-style window with a translucent sidebar, key figures, cash flow chart, budgets and upcoming bills">
+    <aside class="side">
+      <div class="lights"><i></i><i></i><i></i></div>
+      <div class="b"><svg width="18" height="18" style="color:var(--ink);--fixc:var(--fix)"><use href="#lm"/></svg>Lodestar</div>
+      <a class="on"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2.5 2.5v11h11"/><rect x="6" y="5" width="2.5" height="2.5" fill="currentColor" stroke="none"/></svg>Overview</a>
+      <a><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 4h10M3 8h10M3 12h6"/></svg>Transactions</a>
+      <a><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="3.5" width="12" height="9" rx="2"/><path d="M2 7h12"/></svg>Accounts</a>
+      <div class="grp">Plan</div>
+      <a><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 12h10M3 8h7M3 4h4"/></svg>Budgets</a>
+      <a><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="2" width="10" height="12" rx="2"/><path d="M6 6h4M6 9h4"/></svg>Bills</a>
+      <a><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2"/></svg>Goals</a>
+      <a><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 13V9M7 13V5M11 13V8M14 13V3"/></svg>Reports</a>
+    </aside>
+    <div class="dmain">
+      <div class="top"><h5>Overview</h5><div style="display:flex;gap:10px;align-items:center"><span class="segc"><span class="on">Month</span><span>Quarter</span><span>Year</span></span><span class="btn s">Import CSV</span><span class="btn p">＋ Add transaction</span></div></div>
+      <div class="grpbox kpis">
+        <div><div class="l">Net worth</div><div class="v">$48,210.37</div><div class="d">+$1,204.10 since Sep 1</div></div>
+        <div><div class="l">Cash available</div><div class="v">$6,842.15</div><div class="d">3 accounts</div></div>
+        <div class="bracket"><div class="l">Safe to spend until payday</div><div class="v">$3,118.40</div><div class="d">after bills &amp; goals · 11 days</div></div>
+        <div><div class="l">Bills due in 7 days</div><div class="v">$75.48</div><div class="d"><span class="cap w">▲ 2 due</span></div></div>
+      </div>
+      <div class="two">
+        <div class="grpbox">
+          <div class="gt"><b>Cash flow</b><span>Show as table</span></div>
+          <div class="lg"><span><i style="background:var(--in)"></i>Money in</span><span><i style="background:var(--out)"></i>Money out</span><span><i style="background:var(--fix)"></i>Month to date</span></div>
+          <svg viewBox="0 0 520 176" style="width:100%;height:auto;display:block">
+            <g stroke="var(--line)" stroke-width="1"><path d="M40 16H512M40 60.7H512M40 105.3H512"/></g>
+            <path d="M40 150H512" stroke="var(--line-strong)" stroke-width="1"/>
+            <g font-family="-apple-system, Inter, sans-serif" font-size="11" fill="var(--ink-3)" text-anchor="end"><text x="34" y="19">$6k</text><text x="34" y="64">$4k</text><text x="34" y="108">$2k</text><text x="34" y="153">$0</text></g>
+            <g fill="var(--in)">
+              <path d="M56 150V38.9a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5V150Z"><title>Apr · in $5,200</title></path>
+              <path d="M134 150V38.9a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5V150Z"><title>May · in $5,200</title></path>
+              <path d="M212 150V33.3a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5V150Z"><title>Jun · in $5,450</title></path>
+              <path d="M290 150V38.9a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5V150Z"><title>Jul · in $5,200</title></path>
+              <path d="M368 150V38.9a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5V150Z"><title>Aug · in $5,200</title></path>
+              <path d="M446 150V29.9a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5V150Z"><title>Sep · in $5,600</title></path>
+            </g>
+            <g fill="var(--out)">
+              <path d="M80 150V63.4a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5V150Z"><title>Apr · out $4,100</title></path>
+              <path d="M158 150V51.2a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5V150Z"><title>May · out $4,650</title></path>
+              <path d="M236 150V67.9a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5V150Z"><title>Jun · out $3,900</title></path>
+              <path d="M314 150V35.5a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5V150Z"><title>Jul · out $5,350</title></path>
+              <path d="M392 150V59a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5V150Z"><title>Aug · out $4,300</title></path>
+              <path d="M470 150V99.6a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5V150Z"><title>Sep 1–19 · out $2,480</title></path>
+            </g>
+            <rect x="476" y="80" width="10" height="10" fill="var(--fix)"/>
+            <text x="470" y="74" font-family="-apple-system, Inter, sans-serif" font-size="12" fill="var(--ink)" text-anchor="end" font-weight="600">$2,480</text>
+            <g font-family="-apple-system, Inter, sans-serif" font-size="11" fill="var(--ink-3)" text-anchor="middle"><text x="79" y="167">Apr</text><text x="157" y="167">May</text><text x="235" y="167">Jun</text><text x="313" y="167">Jul</text><text x="391" y="167">Aug</text><text x="469" y="167">Sep</text></g>
+          </svg>
+        </div>
+        <div style="display:grid;gap:16px;align-content:start">
+          <div class="grpbox">
+            <div class="gt"><b>Budgets</b><span>See all</span></div>
+            <div class="bud">
+              <div class="row"><span>Groceries</span><span class="amt">$612 of $700</span><div class="meter"><div class="track"></div><div class="fill" style="width:87.4%"></div><div class="ticks"></div></div></div>
+              <div class="row"><span>Dining out</span><span class="amt over">▲ $38 over plan</span><div class="meter"><div class="track"></div><div class="fill" style="width:84%;border-radius:99px 0 0 99px"></div><div class="overfill" style="left:84%;width:16%"></div><div class="lim" style="left:84%"></div><div class="ticks"></div></div></div>
+              <div class="row"><span>Transport</span><span class="amt">$140 of $250</span><div class="meter"><div class="track"></div><div class="fill" style="width:56%"></div><div class="ticks"></div></div></div>
+            </div>
+          </div>
+          <div class="grpbox">
+            <div class="gt"><b>Upcoming bills</b><span>See all</span></div>
+            <div class="list"><div><span>Internet <span class="m">· Sep 22</span></span><span class="num">$59.99</span></div><div><span>Streaming Plus <span class="m">· Sep 24</span></span><span class="num">$15.49</span></div><div><span>Rent <span class="m">· Sep 30</span></span><span class="num">$1,450.00</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <p class="note">Hierarchy: a large title, one white group of key figures, then the chart beside budgets and bills. The sidebar is translucent, and the content sits on solid white. Blue appears in five places only: the sidebar icons, the primary button, the “See all” links, the bracket, and the fix on this month’s bar.</p>
+
+  <div class="apps" style="margin-top:26px">
+    <div>
+      <h3 style="margin-top:0">Mobile dashboard</h3>
+      <div class="phone" role="img" aria-label="iPhone-style mobile dashboard mockup">
+        <div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="nav"><svg width="20" height="20" style="color:var(--ink);--fixc:var(--fix)"><use href="#lm"/></svg><span style="font-size:22px;line-height:1">＋</span></div>
+        <div class="lt">Overview</div>
+        <div class="body">
+          <div class="g"><div style="font-size:13px;color:var(--ink-2)">Net worth</div><div style="font-family:var(--display);font-size:30px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums">$48,210.37</div><div style="font-size:13px;color:var(--ink-2)">+$1,204.10 since Sep 1</div></div>
+          <div class="g bracket" style="position:relative"><div style="font-size:13px;color:var(--ink-2)">Safe to spend until payday</div><div style="font-family:var(--display);font-size:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums">$3,118.40</div></div>
+          <div class="g" style="padding-block:4px"><div class="list">
+            <div><span>▲ Dining out</span><span class="num" style="color:var(--warn);font-weight:600">$38 over</span></div>
+            <div><span>Internet <span class="m">· Sep 22</span></span><span class="num">$59.99</span></div>
+          </div></div>
+        </div>
+        <div class="tabs"><div class="on"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2.5 2.5v11h11"/><rect x="6" y="5" width="2.5" height="2.5" fill="currentColor" stroke="none"/></svg>Overview</div><div><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 4h10M3 8h10M3 12h6"/></svg>Activity</div><div><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 12h10M3 8h7M3 4h4"/></svg>Budgets</div><div><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5.5"/><circle cx="8" cy="8" r="2"/></svg>Goals</div></div>
+      </div>
+      <p class="note" style="margin-top:12px">iOS conventions: a large title, white groups on Stone, a “＋” for adding a transaction in the top corner, and a translucent tab bar with the selected tab in blue.</p>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0">Transaction entry (sheet)</h3>
+      <div class="sheet" role="img" aria-label="Transaction entry sheet mockup with a validation message">
+        <div class="grab"></div>
+        <div class="hd"><span class="c">Cancel</span><span class="t">New transaction</span><span class="s">Save</span></div>
+        <div class="bd">
+          <div class="segw"><span class="on">Expense</span><span>Income</span><span>Transfer</span></div>
+          <div class="amount"><div class="v">$0.00</div><span class="e"><span aria-hidden="true">●</span>Enter an amount greater than zero.</span></div>
+          <div class="rows">
+            <div><span>Date</span><span class="v">Sep 19, 2026</span></div>
+            <div><span>Account</span><span class="v">Visa <span class="mask">•••• 4821</span></span></div>
+            <div><span>Category</span><span class="v">Groceries ›</span></div>
+            <div><span>Payee</span><span class="v">Mercado Central</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="note" style="margin-top:12px">The amount is the hero of the sheet. “Save” stays dimmed until the entry is valid, and the reason is shown in words below the amount. The fields are one grouped list, not separate boxes.</p>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0">Sign in</h3>
+      <div class="login" role="img" aria-label="Sign-in screen mockup">
+        <svg viewBox="0 0 90 64" width="96" height="68" style="margin:0 auto"><use href="#lm" x="28" y="0" width="34" height="34" style="color:var(--ink);--fixc:var(--fix)"/><text x="45" y="56" text-anchor="middle" class="wm" font-family="-apple-system, Inter, sans-serif" font-weight="600" letter-spacing="-.3" font-size="16" fill="var(--ink)">Lodestar</text></svg>
+        <div style="text-align:center;font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.02em">Sign in to Lodestar</div>
+        <div class="fieldg">Email</div>
+        <span class="btn p" style="justify-content:center;padding:11px">Continue</span>
+        <div style="font-size:12.5px;color:var(--ink-2);text-align:center">Your data is private to your account.</div>
+      </div>
+      <p class="note" style="margin-top:12px">One centered white card on Stone with the compact lockup. There is one blue element, the Continue button, and the privacy line sits right below it.</p>
+    </div>
+  </div>
+
+  <h3>Transaction table</h3>
+  <div class="tw" style="border-radius:14px">
+    <table class="ledger" aria-label="Transaction table example">
+      <thead><tr><th>Date</th><th>Payee</th><th>Category</th><th>Account</th><th style="text-align:right">Amount</th></tr></thead>
+      <tbody>
+        <tr><td>Sep 19</td><td>Mercado Central</td><td><span class="cat"><i></i>Groceries</span></td><td>Visa <span class="mask">•••• 4821</span></td><td class="num">−$64.20</td></tr>
+        <tr class="sel"><td>Sep 18</td><td>Payroll · Acme Studio</td><td><span class="cat"><i></i>Income</span></td><td>Checking <span class="mask">•••• 0937</span></td><td class="num" style="font-weight:600">+$2,800.00</td></tr>
+        <tr><td>Sep 18</td><td>To Emergency fund</td><td><span class="cat" style="color:var(--ink-2)">⇄ Transfer</span></td><td>Checking → Savings</td><td class="num" style="color:var(--ink-2)">$500.00</td></tr>
+        <tr><td>Sep 17</td><td>City Power</td><td><span class="cat"><i></i>Utilities</span></td><td>Checking <span class="mask">•••• 0937</span></td><td class="num">−$88.40</td></tr>
+        <tr class="pend"><td>Sep 16</td><td>Café Lumen <span class="cap">Pending</span></td><td><span class="cat"><i></i>Dining out</span></td><td>Visa <span class="mask">•••• 4821</span></td><td class="num">−$12.75</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Categories carry neutral grey dots in lists. The eight chart colors appear only in category-breakdown charts, so the table stays monochrome and easy to scan.</p>
+
+  <h3>Every surface</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Surface</th><th>Hierarchy</th><th>Color</th><th>Type</th><th>Brand signature</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Sign in</td><td>Compact lockup → title → one field → Continue → privacy line</td><td>White card on Stone; blue only on the button</td><td>Title 2, Body</td><td>Compact lockup; privacy reassurance</td></tr>
+      <tr><td class="k">Desktop dashboard</td><td>Large title → key figures → chart, budgets and bills</td><td>Grey chart; blue for the tint, bracket and fix</td><td>Large title, Figure</td><td>Translucent sidebar; bracket on “Safe to spend”</td></tr>
+      <tr><td class="k">Mobile dashboard</td><td>Large title → net worth → safe to spend → needs attention</td><td>White groups on Stone, blue selected tab</td><td>Large title 30, Body 15</td><td>“＋” in the navigation bar; glass tab bar</td></tr>
+      <tr><td class="k">Transaction table</td><td>Filters → fixed header → rows → running total</td><td>Monochrome; blue tint on the selected row</td><td>Body tabular; mono card masks</td><td>Inset hairlines, true minus sign, transfer glyph</td></tr>
+      <tr><td class="k">Transaction entry</td><td>Type → large amount → grouped details → Save</td><td>Blue Cancel and Save; error in red text with an icon</td><td>44 px amount</td><td>iOS-style sheet; “Save and add another” on desktop</td></tr>
+      <tr><td class="k">Budget view</td><td>Planned / spent / left → categories sorted by pressure</td><td>Ink capsules; warning hatching past the limit</td><td>Tabular “$612 of $700”</td><td>Graduated rule; limit tick</td></tr>
+      <tr><td class="k">Cash-flow report</td><td>Period control → net figure → bars → category table</td><td>Ink in, grey out; blue “now” line</td><td>Footnote axis labels</td><td>Hover line with exact values; “Show as table”</td></tr>
+      <tr><td class="k">Net-worth report</td><td>Current value in a bracket → history line → assets and liabilities table</td><td>Ink line; blue fix on the latest point</td><td>Figure</td><td>The fix settles with a spring</td></tr>
+      <tr><td class="k">Settings</td><td>Inset grouped lists like iOS Settings; danger zone last</td><td>Monochrome; blue toggles; red only in the danger zone</td><td>Headline groups, Footnote help</td><td>Privacy and export at the top level</td></tr>
+      <tr><td class="k">Email notifications</td><td>Wordmark → one-line summary → key figure → one button → privacy footer</td><td>White on Stone, blue capsule button</td><td>System font stack, 16 px body</td><td>Figure in a bracket; never full account numbers</td></tr>
+      <tr><td class="k">App icon</td><td>Symbol only</td><td>Light: Stone-white tile, ink axes, blue fix. Dark and tinted variants.</td><td>n/a</td><td>Axes &amp; Fix, layered for Icon Composer</td></tr>
+      <tr><td class="k">Social profile image</td><td>Symbol centered at 60% of the circle</td><td>Stone-white ground, ink and blue</td><td>n/a</td><td>Recognizable at a 40 px avatar</td></tr>
+      <tr><td class="k">Open Graph (1200×630)</td><td>Lockup → large headline → a cropped product screenshot</td><td>Stone ground; the blue fix is the only color</td><td>Marketing display 64</td><td>Screenshot on a soft shadow</td></tr>
+      <tr><td class="k">Marketing page</td><td>“Know where you stand.” → product screenshot → three benefits → privacy → pricing</td><td>Alternating white and Stone bands, blue buttons</td><td>Display 64–80, Body 19</td><td>Huge type, lots of space, real product screens</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ 9 ============ -->
+<style>
+.say{display:grid;grid-template-columns:1fr 1fr;border-radius:14px;overflow:hidden;background:var(--surface)}
+.say > div{padding:10px 14px;border-bottom:1px solid var(--line);font-size:13.5px}
+.say > div:nth-child(odd){border-right:1px solid var(--line)}
+.say .h{font-size:12px;font-weight:600;color:var(--ink-3);background:var(--sunk)}
+.pills .no,.say .no{color:var(--ink-2);text-decoration:line-through;text-decoration-color:var(--err)}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
+.pills span{border:.5px solid var(--line-strong);border-radius:99px;padding:3px 8px;font-size:13px;background:var(--surface)}
+.copy{border-left:2px solid var(--line-strong);padding:2px 0 2px 12px;margin:6px 0 14px}
+.copy .ctx{font-family:var(--mono);font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.04em}
+@media (max-width:600px){.say{grid-template-columns:1fr}.say > div:nth-child(odd){border-right:0}}
+</style>
+<section class="s" id="s9">
+  <div class="s-head"><span class="s-num">09</span><h2>Voice &amp; language</h2><p>Lodestar sounds like a steady friend who is good with numbers: plain, specific, and never judging.</p></div>
+
+  <div class="cols">
+    <div>
+      <h3 style="margin-top:0">Brand voice</h3>
+      <p><strong>Steady, exact, candid, kind.</strong> We state what is true, show the number behind it, and suggest a next step without pressure. We sound the same on a good month and a hard one.</p>
+      <h3>Tone principles</h3>
+      <ul class="tight">
+        <li><b>Facts before feelings.</b> “Spending is $38 over plan,” not “Uh-oh!”</li>
+        <li><b>Neutral about choices.</b> Spending is never “bad.” Plans change, and we just show where things stand.</li>
+        <li><b>Specific over clever.</b> Name the account, the amount and the date.</li>
+        <li><b>One metaphor, used rarely.</b> Navigation language (“bearings,” “on course”) is for marketing moments, never for functional labels.</li>
+        <li><b>Private means quiet.</b> No growth-hacking nudges, streaks or social comparison.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Preferred vocabulary</h3>
+      <div class="pills"><span>where you stand</span><span>plan</span><span>on track</span><span>over plan by</span><span>left to spend</span><span>set aside</span><span>money in / money out</span><span>review</span><span>private</span><span>export</span></div>
+      <h3>Words and claims to avoid</h3>
+      <div class="pills"><span class="no">financial freedom</span><span class="no">get rich / build wealth</span><span class="no">guaranteed</span><span class="no">crush your debt</span><span class="no">bank-grade / military-grade security</span><span class="no">you overspent</span><span class="no">bad / failed / warning!</span><span class="no">to the moon</span><span class="no">hack your money</span><span class="no">AI-powered (unless it is true and meaningful)</span></div>
+      <p class="note">Avoid jargon unless the user brings it: say “money in / money out” rather than “inflows / outflows,” and “reconcile” only inside account tools.</p>
+    </div>
+  </div>
+
+  <h3>Button labels</h3>
+  <div class="say">
+    <div class="h">Use</div><div class="h">Instead of</div>
+    <div>Add transaction</div><div class="no">New entry</div>
+    <div>Record transfer</div><div class="no">Move money</div>
+    <div>Import CSV · Review 42 rows</div><div class="no">Upload · Process</div>
+    <div>Mark as paid</div><div class="no">Complete</div>
+    <div>Save transaction</div><div class="no">Submit</div>
+    <div>Export all data</div><div class="no">Download</div>
+    <div>Delete account and its 318 transactions</div><div class="no">Delete</div>
+  </div>
+
+  <div class="cols" style="margin-top:22px">
+    <div>
+      <h3 style="margin-top:0">Empty states</h3>
+      <div class="copy"><div class="ctx">Transactions</div>No transactions yet. Add one by hand, or import a CSV from your bank. You’ll review every row before anything is saved.</div>
+      <div class="copy"><div class="ctx">Budgets</div>A budget compares what you planned with what you spent. Start with one category you want to keep an eye on.</div>
+      <div class="copy"><div class="ctx">Goals</div>What are you working toward? Name it and pick a date, and we’ll show the monthly amount that gets you there.</div>
+      <div class="copy"><div class="ctx">Search, no results</div>No transactions match “Mercado” in September. Try another month or clear filters.</div>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Validation messages</h3>
+      <div class="copy"><div class="ctx">Amount</div>Enter an amount greater than zero.</div>
+      <div class="copy"><div class="ctx">Account</div>Choose which account this came from.</div>
+      <div class="copy"><div class="ctx">Future date</div>This date is in the future. Save it as a scheduled transaction?</div>
+      <div class="copy"><div class="ctx">CSV import</div>3 rows have no date. Fix them in the preview, or skip them and import the other 39.</div>
+      <div class="copy"><div class="ctx">Transfer</div>Pick two different accounts for a transfer.</div>
+    </div>
+  </div>
+
+  <div class="cols" style="margin-top:8px">
+    <div>
+      <h3 style="margin-top:0">Privacy reassurance <span class="tag t-appr">Needs approval</span></h3>
+      <div class="copy">Your Lodestar data is private to your account. We don’t sell your data or use it for advertising, and you can export or delete everything at any time.</div>
+      <p class="note">Every privacy claim must be true in the product and approved by legal and engineering before launch. Never promise more than the architecture delivers: for example, say “encrypted in transit and at rest” only if both are true.</p>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Welcome message</h3>
+      <div class="copy">Welcome to Lodestar. Let’s start with where you are today: add an account and its current balance. Budgets, bills and goals can come later, whenever you’re ready.</div>
+      <h3>Short product description</h3>
+      <div class="copy">Lodestar is a private tracker for your money. Track accounts, budgets, bills and goals in one calm, precise view that only you can see.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section class="s" id="s10">
+  <div class="s-head"><span class="s-num">10</span><h2>Final recommendation</h2><p>Every decision in one place, ready to hand to a designer.</p></div>
+
+  <div class="panel rec">
+    <dl class="spec">
+      <dt>Name</dt><dd><strong>Lodestar</strong>, subject to trademark and domain clearance. <span class="tag t-appr">Needs approval</span></dd>
+      <dt>Concept</dt><dd><strong>Bearing</strong> (the precision of a navigational instrument), expressed through an <strong>Apple-style interface</strong>: clarity, restraint, soft depth and one tint color.</dd>
+      <dt>Tagline</dt><dd><strong>Know where you stand.</strong></dd>
+      <dt>Logo</dt><dd><strong>Axes &amp; Fix</strong>: an L-shaped corner (your position, and the initial L) with one square in the open quadrant (the fixed point you steer by). It is built on a 16-unit grid, pixel-exact at 16 px, drawn in ink with an electric-blue fix, and it stays sharp inside a rounded interface.</dd>
+      <dt>Palette</dt><dd>Stone <span class="mono">#F5F4F1</span> · White <span class="mono">#FFFFFF</span> · Ink <span class="mono">#1C1A17</span> · Electric blue <span class="mono">#1F4BFF</span> (dark mode <span class="mono">#6F8BFF</span>) · Night <span class="mono">#12110F</span> · Stone neutral scale · Success <span class="mono">#1F7A35</span> · Warning <span class="mono">#C93400</span> · Error <span class="mono">#D70015</span> · 8 category chart colors used only in breakdowns.</dd>
+      <dt>Typography</dt><dd>The system font stack: SF Pro on Apple devices, Inter elsewhere. Tabular figures for every amount. <code>ui-monospace</code> only for references.</dd>
+    </dl>
+  </div>
+
+  <div class="cols" style="margin-top:20px">
+    <div class="panel">
+      <h3 style="margin-top:0">Five rules that make it recognizable</h3>
+      <ol class="tight">
+        <li><b>Monochrome first.</b> Stone, white and ink carry about 95% of every screen.</li>
+        <li><b>Blue means act or now.</b> It marks what you can tap or click, the fix, and the current position. Nothing else.</li>
+        <li><b>One bracket, one fix.</b> The corner bracket frames the one number that matters; the blue square marks where you are.</li>
+        <li><b>Soft interface, sharp mark.</b> The UI has rounded corners and glass navigation, while the logo stays crisp and square.</li>
+        <li><b>Numbers set like an instrument:</b> tabular, with true minus signs, aligned, and bigger than their labels.</li>
+      </ol>
+    </div>
+    <div class="panel">
+      <h3 style="margin-top:0">Five rules that protect consistency</h3>
+      <ol class="tight">
+        <li>Every color, size, radius and spring comes from tokens. No one-off hex values in product code.</li>
+        <li>Status colors appear only for real states, always with an icon and words, and never as chart series or decoration.</li>
+        <li>Glass is only for navigation (sidebar, toolbar, tab bar), never for content.</li>
+        <li>Charts are grey by default. Category colors are allowed only in breakdowns, in their fixed order and with labels.</li>
+        <li>Follow Apple’s interface conventions, but never copy Apple’s brand, icons or artwork. On the web, use SF only through the system font stack.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h3>Accessibility considerations</h3>
+  <ul class="tight">
+    <li>Target WCAG 2.2 AA. Text is at least 4.5:1 (every listed pair passes). Control borders and graphics are at least 3:1 (inputs use Stone 500 or darker). Focus rings are visible and use a translucent blue halo.</li>
+    <li>Nothing relies on color alone: signs, icons, labels, hatching and lightness carry gains, losses, overages and errors.</li>
+    <li>Glass surfaces keep text at least 4.5:1 over any content behind them. They become solid when the user turns on “Reduce transparency.”</li>
+    <li>Touch targets are at least 44 × 44 pt (Apple) and 24 × 24 px on desktop web (WCAG 2.5.8). Native apps support Dynamic Type; the web version supports 200% zoom and reflows at 320 px wide.</li>
+    <li>Respect Reduce Motion, dark mode and Increase Contrast. Dark mode uses its own checked colors, not an automatic inversion.</li>
+    <li>Screen readers announce amounts in full (“minus 64 dollars and 20 cents”) and card masks as “card ending 4821.”</li>
+  </ul>
+
+  <h3>Next steps to produce the actual assets</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Step</th><th>Owner</th><th>Output</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Clear the name <span class="tag t-appr">Needs approval</span></td><td>Legal / founder</td><td>Trademark search (classes 9, 36, 42), domain and handle availability, final go/no-go</td></tr>
+      <tr><td class="k">Draw the symbol</td><td>Brand designer</td><td>Vector master on the 16-unit grid; optical variants for 16 / 32 / 64+ px; favicon test in real browser tabs</td></tr>
+      <tr><td class="k">Custom wordmark</td><td>Brand / type designer</td><td>“Lodestar” redrawn from Inter Display SemiBold with the t and L-o refinements; lockup files (SVG, PDF, PNG)</td></tr>
+      <tr><td class="k">App icon set</td><td>Brand designer</td><td>Light, dark and tinted variants as separate layers for Icon Composer; PWA and Android versions; checked against the current Apple HIG</td></tr>
+      <tr><td class="k">Build tokens</td><td>Design system + engineering</td><td>Stone and blue color tokens (light and dark), type styles, radii, spacing, spring motion, glass material; automated contrast checks in CI</td></tr>
+      <tr><td class="k">Core components</td><td>Product design</td><td>Capsule button, segmented control, grouped list row, amount field, sheet, table, capsule tag, meter with graduated rule, chart primitives, empty state</td></tr>
+      <tr><td class="k">Key screens</td><td>Product design</td><td>High-fidelity sign-in, dashboard (desktop and mobile), transactions, entry sheet, budgets, reports and settings, all in light and dark</td></tr>
+      <tr><td class="k">Launch kit</td><td>Brand designer</td><td>Favicons, social avatar, Open Graph template, email template, one-page marketing site</td></tr>
+    </tbody>
+  </table></div>
+</section>
+</main>
+</div>
+
+</body>
+</html>
