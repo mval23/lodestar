@@ -84,3 +84,7 @@ Non-negotiables:
 - **Voice:** calm, specific, never shaming. No "financial freedom," "guaranteed," "get rich," "bank-grade security," or "workspace."
 - **Navigation:** desktop sidebar (Overview, Activity, Accounts, Budgets, Bills, Goals, Reports; Import & export and Settings at the bottom). Mobile tab bar (Overview, Activity, Budgets, Goals); Bills sits under Budgets, and Reports is reached from Overview.
 - Rejected directions (don't bring them back): spruce/brass palette, vivid multi-color palettes, the name Constella.
+
+## Development
+
+Setup, provisioning and the Phase 3 acceptance checklist are in `docs/phase-3/setup.md`. Before pushing, run `npm run typecheck`, `npm run lint`, `npm test` and `npm run schema:check`. App code lives in `src/`: `app/` (shell, routes, guards), `features/<area>/`, `lib/` (Supabase client, env, helpers) and `ui/` (token-based primitives). Styles come only from `brand/tokens.css` through `src/app/styles.css`.

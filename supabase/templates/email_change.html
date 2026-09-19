@@ -1,0 +1,32 @@
+<!doctype html>
+<!--
+  Supabase Auth email: email_change. Email clients don't support CSS variables or
+  external styles, so colors are inlined from brand/tokens.css (light theme).
+  The link goes to /auth/confirm, which exchanges token_hash in the browser.
+  Paste the same template into the hosted projects' Auth > Email Templates.
+-->
+<html lang="en">
+  <body style="margin:0;padding:0;background:#F5F4F1;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5F4F1;">
+      <tr>
+        <td align="center" style="padding:40px 20px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#FFFFFF;border-radius:16px;">
+            <tr>
+              <td style="padding:32px 28px;font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif;color:#1C1A17;font-size:15px;line-height:22px;">
+                <p style="margin:0 0 24px;font-size:17px;font-weight:600;">Lodestar</p>
+                <h1 style="margin:0 0 12px;font-size:22px;line-height:28px;font-weight:600;letter-spacing:-0.015em;">Confirm your new email</h1>
+                <p style="margin:0 0 24px;color:#5E5A53;">Open this link to use {{ .NewEmail }} for your Lodestar account.</p>
+                <p style="margin:0 0 24px;">
+                  <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=email_change"
+                     style="display:inline-block;background:#1F4BFF;color:#FFFFFF;font-weight:600;text-decoration:none;padding:12px 20px;border-radius:999px;">Confirm new email</a>
+                </p>
+                <p style="margin:0;color:#6E6961;font-size:13px;line-height:18px;">The link expires in one hour and works once. If you didn&rsquo;t ask for this, sign in and change your password.</p>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:16px 0 0;font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif;color:#6E6961;font-size:12px;line-height:16px;">Know where you stand.</p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
