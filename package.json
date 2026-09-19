@@ -1,0 +1,11 @@
+{
+  "name": "lodestar",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "schema:check": "node supabase/tests/check-schema.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.0"
+  }
+}
