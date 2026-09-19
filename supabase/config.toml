@@ -1,0 +1,118 @@
+# Supabase CLI configuration for LOCAL development only (`supabase start`).
+# Staging and production Auth settings are set in each project's dashboard to
+# the same values; see docs/phase-3/setup.md. Do not `supabase config push`
+# this file to a hosted project: site_url and redirect URLs here are localhost.
+
+project_id = "lodestar"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.seed]
+# Synthetic data only. Never real financial data.
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[studio]
+enabled = true
+port = 54323
+
+# Local email catcher: every auth email lands at http://127.0.0.1:54324
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+# Not used in the MVP.
+enabled = false
+
+[realtime]
+enabled = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = [
+  "http://localhost:5173/auth/confirm",
+  "http://127.0.0.1:5173/auth/confirm",
+  "http://localhost:4173/auth/confirm",
+]
+# Short-lived access tokens with rotating refresh tokens (proposal section 19).
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+# Keep in sync with MIN_PASSWORD_LENGTH in src/features/auth/schemas.ts.
+minimum_password_length = 10
+password_requirements = ""
+
+[auth.rate_limit]
+email_sent = 30
+sign_in_sign_ups = 30
+token_verifications = 30
+token_refresh = 150
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+# The app re-authenticates with the current password before changing it.
+secure_password_change = false
+max_frequency = "1m0s"
+otp_length = 6
+otp_expiry = 3600
+
+# Links use token_hash so they work on any device and are exchanged by
+# /auth/confirm in the browser (src/features/auth/ConfirmPage.tsx).
+[auth.email.template.confirmation]
+subject = "Confirm your email for Lodestar"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your Lodestar password"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new email for Lodestar"
+content_path = "./supabase/templates/email_change.html"
+
+# Custom SMTP is required on staging and production (CLAUDE.md). Locally,
+# Inbucket catches mail, so SMTP stays off. To try a real provider locally,
+# set enabled = true and export SUPABASE_AUTH_SMTP_PASS.
+# [auth.email.smtp]
+# enabled = true
+# host = "smtp.resend.com"
+# port = 465
+# user = "resend"
+# pass = "env(SUPABASE_AUTH_SMTP_PASS)"
+# admin_email = "no-reply@example.com"
+# sender_name = "Lodestar"
+
+[auth.sms]
+enable_signup = false
+enable_confirmations = false
+
+[auth.mfa]
+# TOTP MFA is a post-launch item (Phase 12).
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = false
+verify_enabled = false

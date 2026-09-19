@@ -1,0 +1,56 @@
+import { useState } from 'react';
+import { LogOut } from 'lucide-react';
+import { useSession } from '../../app/AuthProvider';
+import { db } from '../../lib/supabase';
+import { Button } from '../../ui/Button';
+import { Notice } from '../../ui/Notice';
+import { authErrorMessage, dataErrorMessage } from '../auth/errors';
+import { PasswordForm } from './PasswordForm';
+import { ProfileForm } from './ProfileForm';
+import { useProfile } from './queries';
+
+export function SettingsPage() {
+  const session = useSession();
+  const profile = useProfile();
+  const email = session.user.email ?? '';
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+
+  const signOut = async (scope: 'local' | 'global') => {
+    setSignOutError(null);
+    const { error } = await db().auth.signOut({ scope });
+    if (error) setSignOutError(authErrorMessage(error));
+  };
+
+  return (
+    <div className="page page-narrow">
+      <header className="page-head">
+        <h1 className="large-title">Settings</h1>
+      </header>
+
+      {profile.isPending && <p className="secondary">Loading your profile…</p>}
+      {profile.isError && <Notice tone="err">{dataErrorMessage(profile.error)}</Notice>}
+      {profile.data && <ProfileForm profile={profile.data} email={email} />}
+
+      <PasswordForm email={email} />
+
+      <section>
+        <h2 className="form-group-title">Sessions</h2>
+        <div className="group stack-tight">
+          <p className="callout secondary flush">
+            Signing out everywhere ends every session, including on your other devices.
+          </p>
+          <div className="actions">
+            <Button variant="secondary" onClick={() => signOut('local')}>
+              <LogOut strokeWidth={1.75} aria-hidden />
+              Sign out
+            </Button>
+            <Button variant="plain" onClick={() => signOut('global')}>
+              Sign out everywhere
+            </Button>
+          </div>
+        </div>
+      </section>
+      {signOutError && <Notice tone="err">{signOutError}</Notice>}
+    </div>
+  );
+}
