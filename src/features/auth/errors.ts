@@ -11,6 +11,7 @@ const BY_CODE: Record<string, string> = {
   over_email_send_rate_limit: 'Too many emails were sent to this address. Wait a few minutes, then try again.',
   over_request_rate_limit: 'Too many attempts. Wait a few minutes, then try again.',
   otp_expired: 'This link has expired or was already used. Request a new one.',
+  access_denied: 'This link has expired or was already used. Request a new one.',
   flow_state_expired: 'This link has expired. Request a new one.',
   flow_state_not_found: 'This link has expired. Request a new one.',
   bad_code_verifier: 'Open the link in the same browser you used to request it, or request a new one.',
