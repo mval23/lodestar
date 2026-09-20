@@ -1,5 +1,5 @@
 import { profileChanges, ProfileSchema } from './ProfileForm';
-import type { Profile } from './queries';
+import type { Profile } from '../../lib/profile';
 
 const profile: Profile = {
   id: '00000000-0000-4000-8000-000000000001',

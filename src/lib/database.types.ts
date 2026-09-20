@@ -43,6 +43,40 @@ export type Database = {
         };
         Relationships: [];
       };
+      accounts: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          type: Database['public']['Enums']['account_type'];
+          opening_balance_minor: number;
+          opening_date: string | null;
+          sort_order: number;
+          archived_at: string | null;
+          source_ref: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          type: Database['public']['Enums']['account_type'];
+          opening_balance_minor?: number;
+          opening_date?: string | null;
+          sort_order?: number;
+          archived_at?: string | null;
+          source_ref?: string | null;
+        };
+        Update: {
+          name?: string;
+          type?: Database['public']['Enums']['account_type'];
+          opening_balance_minor?: number;
+          opening_date?: string | null;
+          sort_order?: number;
+          archived_at?: string | null;
+        };
+        Relationships: [];
+      };
       transactions: {
         Row: {
           id: string;
@@ -74,9 +108,28 @@ export type Database = {
         Relationships: [];
       };
     };
-    Views: { [_ in never]: never };
+    Views: {
+      account_balances: {
+        Row: {
+          user_id: string;
+          account_id: string;
+          name: string;
+          type: Database['public']['Enums']['account_type'];
+          is_liability: boolean;
+          sort_order: number;
+          archived_at: string | null;
+          opening_balance_minor: number;
+          money_in_minor: number;
+          money_out_minor: number;
+          balance_minor: number;
+          cleared_balance_minor: number;
+        };
+        Relationships: [];
+      };
+    };
     Functions: { [_ in never]: never };
     Enums: {
+      account_type: 'checking' | 'savings' | 'credit_card' | 'cash' | 'investment' | 'loan' | 'other_asset';
       txn_kind: 'expense' | 'income' | 'transfer';
       txn_status: 'cleared' | 'pending';
       category_kind: 'expense' | 'income';

@@ -7,7 +7,7 @@ import { Notice } from '../../ui/Notice';
 import { authErrorMessage, dataErrorMessage } from '../auth/errors';
 import { PasswordForm } from './PasswordForm';
 import { ProfileForm } from './ProfileForm';
-import { useProfile } from './queries';
+import { useProfile } from '../../lib/profile';
 
 export function SettingsPage() {
   const session = useSession();

@@ -7,7 +7,7 @@ import { Button } from '../../ui/Button';
 import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
 import { dataErrorMessage } from '../auth/errors';
-import { useHasTransactions, useUpdateProfile, type Profile, type ProfileUpdate } from './queries';
+import { useHasTransactions, useUpdateProfile, type Profile, type ProfileUpdate } from '../../lib/profile';
 
 const WEEKDAYS = [
   [1, 'Monday'],
