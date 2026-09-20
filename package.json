@@ -14,12 +14,17 @@
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
     "db:gate": "psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/checks/rls_gate.sql",
-    "db:types": "supabase gen types typescript --local --schema public > src/lib/database.types.ts"
+    "db:types": "supabase gen types typescript --local --schema public > src/lib/database.types.ts",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "build:e2e": "vite build --mode e2e"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@electric-sql/pglite": "^0.3.0",
     "@eslint/js": "^10.0.1",
     "@notionhq/client": "^5.26.0",
+    "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",

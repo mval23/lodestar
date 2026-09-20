@@ -32,11 +32,17 @@ export function Sheet({
       ref={ref}
       className="sheet"
       aria-label={title}
+      // A picker inside this sheet is a dialog of its own. React carries its
+      // close and cancel events up to this handler, so without checking the
+      // target, choosing an account would close the whole sheet.
       onCancel={(event) => {
+        if (event.target !== ref.current) return;
         event.preventDefault();
         onClose();
       }}
-      onClose={onClose}
+      onClose={(event) => {
+        if (event.target === ref.current) onClose();
+      }}
       // A click on the backdrop lands on the dialog element itself.
       onClick={(event) => {
         if (event.target === ref.current) onClose();

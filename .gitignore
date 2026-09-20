@@ -3,6 +3,7 @@ dist/
 .env
 .env.*
 !.env.example
+!.env.e2e
 .vercel/
 supabase/.temp/
 supabase/.branches/
@@ -12,3 +13,8 @@ Thumbs.db
 
 # Notion migration working files: real financial data, and never committed.
 migration/
+
+# Playwright output
+/playwright-report/
+/test-results/
+/blob-report/
