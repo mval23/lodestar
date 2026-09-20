@@ -114,6 +114,21 @@ export type Database = {
         };
         Relationships: [];
       };
+      import_batches: {
+        Row: {
+          id: string;
+          user_id: string;
+          source: 'csv' | 'notion';
+          filename: string | null;
+          row_count: number;
+          status: 'imported' | 'reconciled';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { id?: string; source: 'csv' | 'notion'; filename?: string | null; row_count: number };
+        Update: { status?: 'imported' | 'reconciled' };
+        Relationships: [];
+      };
       transactions: {
         Row: {
           id: string;
@@ -195,6 +210,18 @@ export type Database = {
       };
     };
     Functions: {
+      import_transactions: {
+        Args: { p_batch: Json; p_rows: Json };
+        Returns: { batch_id: string; inserted_count: number; duplicate_count: number }[];
+      };
+      log_event: {
+        Args: {
+          p_event: 'export' | 'import' | 'bulk_delete' | 'account_delete_requested';
+          p_subject_id?: string | null;
+          p_row_count?: number | null;
+        };
+        Returns: undefined;
+      };
       merge_categories: {
         Args: { p_source_id: string; p_target_id: string };
         Returns: number;
