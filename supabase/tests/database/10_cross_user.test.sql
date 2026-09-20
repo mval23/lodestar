@@ -23,12 +23,6 @@ begin
   if uid is null then execute 'set local role anon'; else execute 'set local role authenticated'; end if;
 end $$;
 
-create function tests.stop_acting() returns void language plpgsql as $$
-begin
-  execute 'reset role';
-  perform set_config('request.jwt.claim.sub', '', true);
-end $$;
-
 -- Rows of `tbl` matching `cond` that this person can see.
 create function tests.visible(uid uuid, tbl text, cond text default 'true') returns int
 language plpgsql as $$
@@ -36,7 +30,8 @@ declare n int;
 begin
   perform tests.act_as(uid);
   execute format('select count(*) from public.%I where %s', tbl, cond) into n;
-  perform tests.stop_acting();
+  execute 'reset role';
+  perform set_config('request.jwt.claim.sub', '', true);
   return n;
 end $$;
 
@@ -48,7 +43,8 @@ begin
   perform tests.act_as(uid);
   execute stmt;
   get diagnostics n = row_count;
-  perform tests.stop_acting();
+  execute 'reset role';
+  perform set_config('request.jwt.claim.sub', '', true);
   return n;
 end $$;
 
@@ -64,7 +60,8 @@ begin
   exception when others then
     code := sqlstate;
   end;
-  perform tests.stop_acting();
+  execute 'reset role';
+  perform set_config('request.jwt.claim.sub', '', true);
   return code;
 end $$;
 

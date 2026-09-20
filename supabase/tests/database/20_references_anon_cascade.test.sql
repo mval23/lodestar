@@ -102,7 +102,7 @@ insert into refs values
    $$insert into public.budgets (category_id, month, amount_minor)
      values ('a0000004-0000-4000-8000-000000000004', date_trunc('month', current_date)::date, 1)$$),
   ('a goal backed by A''s account',
-   $$insert into public.goals (account_id, name) values ('a0000002-0000-4000-8000-000000000002', 'x')$$),
+   $$insert into public.goals (account_id, name) values ('a0000001-0000-4000-8000-000000000001', 'x')$$),
   ('a category inside A''s group',
    $$insert into public.categories (group_id, name, kind)
      values ('a0000003-0000-4000-8000-000000000003', 'x', 'expense')$$),
