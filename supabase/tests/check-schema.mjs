@@ -18,7 +18,7 @@ import path from 'node:path';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const migrationsDir = path.join(here, '..', 'migrations');
-const gateSql = await readFile(path.join(here, 'rls_gate.sql'), 'utf8');
+const gateSql = await readFile(path.join(here, '..', 'checks', 'rls_gate.sql'), 'utf8');
 
 const db = new PGlite({ extensions: { pg_trgm } });
 
@@ -196,7 +196,7 @@ if (results.some((r) => !r.ok)) {
 }
 
 // ===========================================================================
-group('RLS gate (supabase/tests/rls_gate.sql)');
+group('RLS gate (supabase/checks/rls_gate.sql)');
 
 await test('gate passes on the migrated schema', async () => {
   await db.exec(gateSql);

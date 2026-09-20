@@ -46,7 +46,7 @@ jobs:
       - name: Start Supabase and apply migrations
         run: supabase start -x studio,imgproxy,storage-api,realtime,edge-runtime,logflare,vector,supavisor
       - name: RLS gate
-        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/tests/rls_gate.sql
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/checks/rls_gate.sql
       - name: pgTAP suite (isolation matrix)
         run: supabase test db
       - uses: actions/setup-node@v4

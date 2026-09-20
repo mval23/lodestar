@@ -128,9 +128,9 @@ insert into public.goals (id, user_id, account_id, name, target_minor) values
   ('b0000009-0000-4000-8000-000000000009', 'bbbbbbbb-0000-4000-8000-00000000000b',
    'b0000002-0000-4000-8000-000000000002', 'B emergency fund', 50000);
 
-insert into public.audit_events (id, user_id, event, row_count) values
-  ('a000000a-0000-4000-8000-00000000000a', 'aaaaaaaa-0000-4000-8000-00000000000a', 'export', 3),
-  ('b000000a-0000-4000-8000-00000000000b', 'bbbbbbbb-0000-4000-8000-00000000000b', 'export', 1);
+insert into public.audit_events (id, user_id, event, row_count) overriding system value values
+  (901, 'aaaaaaaa-0000-4000-8000-00000000000a', 'export', 3),
+  (902, 'bbbbbbbb-0000-4000-8000-00000000000b', 'export', 1);
 
 -- The sign-up trigger already created both profiles.
 select is(
@@ -145,8 +145,8 @@ select is(
 create temporary table matrix (
   tbl        text primary key,
   owner_col  text not null,
-  a_row      uuid not null,
-  b_row      uuid not null,
+  a_row      text not null,   -- ids are literal text: audit_events uses a bigint
+  b_row      text not null,
   update_set text,            -- null when the table grants no UPDATE at all
   insert_sql text not null,
   writable   boolean not null default true
@@ -185,7 +185,7 @@ insert into matrix (tbl, owner_col, a_row, b_row, update_set, insert_sql, writab
   ('import_batches', 'user_id', 'a0000005-0000-4000-8000-000000000005', 'b0000005-0000-4000-8000-000000000005',
    $$status = 'reconciled'$$,
    $$insert into public.import_batches (user_id, source, row_count) values ('aaaaaaaa-0000-4000-8000-00000000000a', 'csv', 0)$$, true),
-  ('audit_events', 'user_id', 'a000000a-0000-4000-8000-00000000000a', 'b000000a-0000-4000-8000-00000000000b',
+  ('audit_events', 'user_id', '901', '902',
    null,
    $$insert into public.audit_events (user_id, event) values ('aaaaaaaa-0000-4000-8000-00000000000a', 'export')$$, false),
   ('profiles', 'id', 'aaaaaaaa-0000-4000-8000-00000000000a', 'bbbbbbbb-0000-4000-8000-00000000000b',

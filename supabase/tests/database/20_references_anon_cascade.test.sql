@@ -74,8 +74,8 @@ insert into public.goals (id, user_id, account_id, name) values
   ('a0000009-0000-4000-8000-000000000009', 'aaaaaaaa-0000-4000-8000-00000000000a',
    'a0000002-0000-4000-8000-000000000002', 'A emergency fund');
 
-insert into public.audit_events (id, user_id, event, row_count) values
-  ('a000000a-0000-4000-8000-00000000000a', 'aaaaaaaa-0000-4000-8000-00000000000a', 'export', 3);
+insert into public.audit_events (id, user_id, event, row_count) overriding system value values
+  (901, 'aaaaaaaa-0000-4000-8000-00000000000a', 'export', 3);
 
 -- ---------------------------------------------------------------------------
 -- References: B's own row may not point at anything of A's. A composite

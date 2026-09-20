@@ -5,7 +5,7 @@ Peer-review packet for the initial database schema. Phase 2 is done when this ER
 | | |
 |---|---|
 | Migration | `supabase/migrations/20260919000000_initial_schema.sql` |
-| RLS gate (CI) | `supabase/tests/rls_gate.sql` |
+| RLS gate (CI) | `supabase/checks/rls_gate.sql` |
 | Smoke harness | `supabase/tests/check-schema.mjs` (`npm install`, then `npm run schema:check`) |
 | Target | Supabase Postgres 17 |
 | Sources | `CLAUDE.md` (binding), approved proposal sections 15–17 |
@@ -213,7 +213,7 @@ All functions use `set search_path = ''` with fully qualified names. EXECUTE is 
 | Only two SECURITY DEFINER functions | code + CI gate rule 6 | `handle_new_user`, `log_event` |
 | RPCs are SECURITY INVOKER with `search_path = ''` | function definitions | all RPCs |
 | Views use `security_invoker` | view options + gate rule 5 | all seven views |
-| CI fails without RLS or four policies | gate | `supabase/tests/rls_gate.sql` |
+| CI fails without RLS or four policies | gate | `supabase/checks/rls_gate.sql` |
 | Money is `bigint` minor units | column types | every `*_minor` column |
 | One currency per user; USD or COP | FK to `currencies`; profile holds it, accounts don't | `profiles.currency` |
 | Currency changeable only with no transactions | trigger | `profiles_currency_lock` → `enforce_currency_lock()` |
