@@ -57,10 +57,18 @@ export function TransactionSheet({
   onClose,
   transaction,
   defaultAccountId,
+  defaultKind,
+  defaultToAccountId,
+  defaultDescription,
 }: {
   onClose: () => void;
   transaction?: Transaction;
   defaultAccountId?: string;
+  // Set when the sheet is opened for a particular purpose, such as adding
+  // money to a goal, which is a transfer into that goal's account.
+  defaultKind?: TxnKind;
+  defaultToAccountId?: string;
+  defaultDescription?: string;
 }) {
   const currency = useCurrency();
   const today = todayInZone();
@@ -72,7 +80,11 @@ export function TransactionSheet({
 
   const [values, setValues] = useState<Values>(() => {
     const base = initialValues(transaction, currency, today);
-    if (!transaction && defaultAccountId) base.from_account_id = defaultAccountId;
+    if (transaction) return base;
+    if (defaultKind) base.kind = defaultKind;
+    if (defaultAccountId) base.from_account_id = defaultAccountId;
+    if (defaultToAccountId) base.to_account_id = defaultToAccountId;
+    if (defaultDescription) base.description = defaultDescription;
     return base;
   });
   const [error, setError] = useState<string | null>(null);

@@ -7,6 +7,7 @@ import { SignInPage } from '../features/auth/SignInPage';
 import { SignUpPage } from '../features/auth/SignUpPage';
 import { AccountsPage } from '../features/accounts/AccountsPage';
 import { BudgetsPage } from '../features/budgets/BudgetsPage';
+import { GoalsPage } from '../features/goals/GoalsPage';
 import { ImportExportPage } from '../features/import-export/ImportExportPage';
 import { OverviewPage } from '../features/overview/OverviewPage';
 import { ActivityPage } from '../features/transactions/ActivityPage';
@@ -41,6 +42,7 @@ export const routes: RouteObject[] = [
               { path: '/accounts', element: <AccountsPage /> },
               { path: '/activity', element: <ActivityPage /> },
               { path: '/budgets', element: <BudgetsPage /> },
+              { path: '/goals', element: <GoalsPage /> },
               { path: '/import-export', element: <ImportExportPage /> },
               // Categories used to live on their own page; keep old links working.
               { path: '/categories', element: <Navigate to="/budgets" replace /> },

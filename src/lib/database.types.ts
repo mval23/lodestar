@@ -129,6 +129,44 @@ export type Database = {
         Update: { amount_minor?: number; month?: string; category_id?: string };
         Relationships: [];
       };
+      goals: {
+        Row: {
+          id: string;
+          user_id: string;
+          account_id: string;
+          name: string;
+          target_minor: number | null;
+          target_date: string | null;
+          monthly_plan_minor: number | null;
+          sort_order: number;
+          achieved_at: string | null;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          account_id: string;
+          name: string;
+          target_minor?: number | null;
+          target_date?: string | null;
+          monthly_plan_minor?: number | null;
+          sort_order?: number;
+          achieved_at?: string | null;
+          archived_at?: string | null;
+        };
+        Update: {
+          account_id?: string;
+          name?: string;
+          target_minor?: number | null;
+          target_date?: string | null;
+          monthly_plan_minor?: number | null;
+          sort_order?: number;
+          achieved_at?: string | null;
+          archived_at?: string | null;
+        };
+        Relationships: [];
+      };
       import_batches: {
         Row: {
           id: string;
@@ -205,6 +243,25 @@ export type Database = {
           planned_minor: number | null;
           spent_minor: number | null;
           left_minor: number | null;
+        };
+        Relationships: [];
+      };
+      goal_progress: {
+        Row: {
+          user_id: string | null;
+          goal_id: string | null;
+          account_id: string | null;
+          name: string | null;
+          target_minor: number | null;
+          target_date: string | null;
+          monthly_plan_minor: number | null;
+          sort_order: number | null;
+          achieved_at: string | null;
+          archived_at: string | null;
+          balance_minor: number | null;
+          remaining_minor: number | null;
+          this_month: string | null;
+          this_month_contributed_minor: number | null;
         };
         Relationships: [];
       };
