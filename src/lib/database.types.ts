@@ -182,6 +182,63 @@ export type Database = {
         Update: { status?: 'imported' | 'reconciled' };
         Relationships: [];
       };
+      recurring_items: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          label: Database['public']['Enums']['recurring_label'];
+          kind: Database['public']['Enums']['txn_kind'];
+          amount_minor: number;
+          amount_is_variable: boolean;
+          from_account_id: string | null;
+          to_account_id: string | null;
+          category_id: string | null;
+          category_kind: Database['public']['Enums']['category_kind'] | null;
+          cadence_unit: Database['public']['Enums']['cadence_unit'];
+          cadence_interval: number;
+          anchor_on: string;
+          next_due_on: string;
+          ends_on: string | null;
+          archived_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          label: Database['public']['Enums']['recurring_label'];
+          kind: Database['public']['Enums']['txn_kind'];
+          amount_minor: number;
+          amount_is_variable?: boolean;
+          from_account_id?: string | null;
+          to_account_id?: string | null;
+          category_id?: string | null;
+          cadence_unit: Database['public']['Enums']['cadence_unit'];
+          cadence_interval?: number;
+          anchor_on: string;
+          next_due_on: string;
+          ends_on?: string | null;
+          archived_at?: string | null;
+        };
+        Update: {
+          name?: string;
+          label?: Database['public']['Enums']['recurring_label'];
+          kind?: Database['public']['Enums']['txn_kind'];
+          amount_minor?: number;
+          amount_is_variable?: boolean;
+          from_account_id?: string | null;
+          to_account_id?: string | null;
+          category_id?: string | null;
+          cadence_unit?: Database['public']['Enums']['cadence_unit'];
+          cadence_interval?: number;
+          anchor_on?: string;
+          next_due_on?: string;
+          ends_on?: string | null;
+          archived_at?: string | null;
+        };
+        Relationships: [];
+      };
       transactions: {
         Row: {
           id: string;
@@ -312,6 +369,10 @@ export type Database = {
         };
         Returns: undefined;
       };
+      mark_bill_paid: {
+        Args: { p_item_id: string; p_paid_on?: string; p_amount_minor?: number };
+        Returns: { transaction_id: string; next_due_on: string }[];
+      };
       merge_categories: {
         Args: { p_source_id: string; p_target_id: string };
         Returns: number;
@@ -322,6 +383,8 @@ export type Database = {
       txn_kind: 'expense' | 'income' | 'transfer';
       txn_status: 'cleared' | 'pending';
       category_kind: 'expense' | 'income';
+      cadence_unit: 'week' | 'month' | 'year';
+      recurring_label: 'bill' | 'subscription' | 'income' | 'transfer';
     };
     CompositeTypes: { [_ in never]: never };
   };

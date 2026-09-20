@@ -6,6 +6,7 @@ import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { SignInPage } from '../features/auth/SignInPage';
 import { SignUpPage } from '../features/auth/SignUpPage';
 import { AccountsPage } from '../features/accounts/AccountsPage';
+import { BillsPage } from '../features/bills/BillsPage';
 import { BudgetsPage } from '../features/budgets/BudgetsPage';
 import { GoalsPage } from '../features/goals/GoalsPage';
 import { ImportExportPage } from '../features/import-export/ImportExportPage';
@@ -41,6 +42,7 @@ export const routes: RouteObject[] = [
               { path: '/', element: <OverviewPage /> },
               { path: '/accounts', element: <AccountsPage /> },
               { path: '/activity', element: <ActivityPage /> },
+              { path: '/bills', element: <BillsPage /> },
               { path: '/budgets', element: <BudgetsPage /> },
               { path: '/goals', element: <GoalsPage /> },
               { path: '/import-export', element: <ImportExportPage /> },
