@@ -23,7 +23,6 @@ const LATER: Record<string, string> = {
   '/bills': 'Bills and subscriptions arrive after accounts and transactions.',
   '/goals': 'Goals arrive after accounts and transactions.',
   '/reports': 'Cash-flow and net-worth reports arrive after budgets and goals.',
-  '/import-export': 'CSV import and export arrive with accounts and transactions.',
 };
 
 export const PLACEHOLDER_ROUTES = [...SIDEBAR_MAIN, ...SIDEBAR_FOOT]
