@@ -37,17 +37,33 @@ function multiOf(property) {
   return single ? [single] : [];
 }
 
+/**
+ * A database id is not a data source id. Notion's current API holds the rows
+ * in one or more data sources inside the database, and the query wants their
+ * ids, so they are looked up first. Older clients queried the database
+ * directly, which is kept as a fallback.
+ */
+async function dataSourceIdsFor(notion, databaseId) {
+  if (typeof notion.databases?.retrieve !== 'function') return [databaseId];
+  const database = await notion.databases.retrieve({ database_id: databaseId });
+  const sources = Array.isArray(database.data_sources) ? database.data_sources : [];
+  return sources.length > 0 ? sources.map((source) => source.id) : [databaseId];
+}
+
 /** Every page of a database, following Notion's cursor. */
 async function queryAll(notion, databaseId) {
   const pages = [];
-  let cursor;
-  do {
-    const response = typeof notion.dataSources?.query === 'function'
-      ? await notion.dataSources.query({ data_source_id: databaseId, start_cursor: cursor, page_size: 100 })
-      : await notion.databases.query({ database_id: databaseId, start_cursor: cursor, page_size: 100 });
-    pages.push(...response.results);
-    cursor = response.has_more ? response.next_cursor : undefined;
-  } while (cursor);
+  for (const dataSourceId of await dataSourceIdsFor(notion, databaseId)) {
+    let cursor;
+    do {
+      const response =
+        typeof notion.dataSources?.query === 'function'
+          ? await notion.dataSources.query({ data_source_id: dataSourceId, start_cursor: cursor, page_size: 100 })
+          : await notion.databases.query({ database_id: dataSourceId, start_cursor: cursor, page_size: 100 });
+      pages.push(...response.results);
+      cursor = response.has_more ? response.next_cursor : undefined;
+    } while (cursor);
+  }
   return pages;
 }
 
@@ -56,8 +72,10 @@ async function queryAll(notion, databaseId) {
  * rather than guessed, because Notion lets them be renamed and a wrong guess
  * would silently migrate nothing.
  */
-export async function extract({ token, accountsDb, categoriesDb, transactionsDb, properties }) {
-  const notion = new Client({ auth: token });
+export async function extract({ token, accountsDb, categoriesDb, transactionsDb, properties, client }) {
+  // The client is injectable so the shape of what comes back can be tested
+  // without a token and without touching anyone's Notion.
+  const notion = client ?? new Client({ auth: token });
   const p = {
     account_name: 'Name',
     account_type: 'Account Type',
