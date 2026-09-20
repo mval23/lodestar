@@ -59,7 +59,9 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./src/test/setup.ts'],
-      include: ['src/**/*.test.{ts,tsx}'],
+      // The Notion migration tooling lives outside src/: it is a one-time
+      // local script, not part of the app people download.
+      include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.mjs'],
     },
   };
 });
