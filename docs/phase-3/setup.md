@@ -49,6 +49,20 @@ Useful scripts: `npm test`, `npm run lint`, `npm run typecheck`, `npm run schema
 
 `npm run build && npm run preview` serves the production build with the production security headers, so CSP problems show up locally.
 
+## Environments as provisioned
+
+Public addresses only. Keys, tokens and database passwords live in the owner's password manager, in Supabase, and in the GitHub `staging` and `production` environments.
+
+| | Staging | Production |
+|---|---|---|
+| Site | `https://lodestar-git-dev-mari-s-org.vercel.app` (the `dev` branch alias) | `https://lodestar-mari-s-org.vercel.app` (the `main` branch) |
+| Vercel environment | Preview | Production |
+| Supabase project | `lodestar-staging` | `lodestar-prod` |
+| Data | Synthetic only | Owner's real data, once Pro |
+| Email | Resend shared test sender: delivers only to the owner's address, click tracking forced on | Needs a verified domain with tracking off |
+
+Vercel's preview toolbar injects `vercel.live`, which the CSP blocks. Turn the toolbar off (Vercel → Settings → Toolbar) instead of allowing a third-party script.
+
 ## Provisioning (owner)
 
 Do these once, in order. None of them involve committing a secret.
