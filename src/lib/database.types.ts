@@ -322,6 +322,26 @@ export type Database = {
         };
         Relationships: [];
       };
+      monthly_cash_flow: {
+        Row: {
+          user_id: string | null;
+          month: string | null;
+          money_in_minor: number | null;
+          money_out_minor: number | null;
+          net_minor: number | null;
+        };
+        Relationships: [];
+      };
+      net_worth_by_month: {
+        Row: {
+          user_id: string | null;
+          month: string | null;
+          assets_minor: number | null;
+          liabilities_minor: number | null;
+          net_worth_minor: number | null;
+        };
+        Relationships: [];
+      };
       category_usage: {
         Row: {
           user_id: string | null;

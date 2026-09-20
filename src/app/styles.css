@@ -1289,3 +1289,90 @@ a:hover {
   background: var(--surface);
   color: var(--ink);
 }
+
+/* ---------- Charts ---------- */
+.chart-card {
+  display: grid;
+  gap: var(--space-3);
+}
+.chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.chart-head .btn-plain {
+  min-height: 32px;
+  white-space: nowrap;
+}
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+/* Money in is ink, money out is grey: told apart by lightness, never by hue. */
+.bar-in {
+  fill: var(--in);
+}
+.bar-out {
+  fill: var(--out);
+}
+.line-net {
+  fill: none;
+  stroke: var(--in);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.line-dot {
+  fill: var(--in);
+}
+/* Blue marks "now", and nothing else. */
+.chart-now {
+  fill: var(--fix);
+}
+.chart-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.chart-zero {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.chart-tick text {
+  fill: var(--ink-3);
+  font-family: var(--font-sans);
+  font-size: 11px;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.swatch-in {
+  background: var(--in);
+}
+.swatch-out {
+  background: var(--out);
+}
+.swatch-now {
+  background: var(--fix);
+  border-radius: 0;
+}
