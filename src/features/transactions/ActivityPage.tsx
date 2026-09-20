@@ -49,6 +49,12 @@ function writeFilters(filters: Filters): URLSearchParams {
   return params;
 }
 
+// The header carries the sort state; the button inside it only acts.
+function sortState(filters: Filters, column: Filters['sort']): 'ascending' | 'descending' | 'none' {
+  if (filters.sort !== column) return 'none';
+  return filters.direction === 'asc' ? 'ascending' : 'descending';
+}
+
 const KIND_LABEL: Record<TxnKind, string> = { expense: 'Expense', income: 'Income', transfer: 'Transfer' };
 
 export function ActivityPage() {
@@ -186,13 +192,13 @@ export function ActivityPage() {
           <table className="ledger">
             <thead>
               <tr>
-                <th scope="col">
+                <th scope="col" aria-sort={sortState(filters, 'occurred_on')}>
                   <SortButton filters={filters} column="occurred_on" label="Date" onSort={setParams} />
                 </th>
                 <th scope="col">Description</th>
                 <th scope="col">Category</th>
                 <th scope="col">Account</th>
-                <th scope="col" className="num">
+                <th scope="col" className="num" aria-sort={sortState(filters, 'amount_minor')}>
                   <SortButton filters={filters} column="amount_minor" label="Amount" onSort={setParams} />
                 </th>
               </tr>
@@ -277,7 +283,6 @@ function SortButton({
     <button
       type="button"
       className="link-button"
-      aria-sort={active ? (filters.direction === 'asc' ? 'ascending' : 'descending') : undefined}
       onClick={() => onSort(writeFilters({ ...filters, sort: column, direction, page: 1 }), { replace: true })}
     >
       {label}

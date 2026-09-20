@@ -30,6 +30,31 @@ The inactive copy, *Finances Old*, *Personal Finance Tracker* and Maki Hub are o
 
 Every row is keyed by its Notion page id (`source_ref = notion:<page id>`), so **running the import twice inserts nothing the second time**.
 
+## The staging trial, run 20 Sep 2026
+
+The owner's real hub, imported into staging and reconciled:
+
+| | |
+|---|---|
+| Read from Notion | 1,688 transactions · 15 accounts · 17 categories |
+| Migrated | **1,684 transactions**, 15 accounts, 14 categories in 6 groups, 11 budgets, **7 goals** |
+| Needed a decision | **4**: one row with neither Source nor Destination (Notion's own Errors view), and three transfers from an account to itself |
+| Possible duplicates | 37 groups, 92 rows — imported as they are, since two identical purchases in a day are ordinary |
+| Reconciliation | **every account balance and every monthly total matched to the cent** |
+| Range | 30 Dec 2024 to 15 Sep 2026 |
+
+The three savings categories became goals on the funds they actually paid:
+Sinking Funds split across five, Emergency Fund and Long-Term Investments one
+each. No transfer carried a category.
+
+Two faults were found by running it, and fixed:
+
+1. Every savings budget was pooled and split across all goals, which would
+   have given the emergency fund a plan made partly of the sinking budget.
+   Each budget now stays with its own goals.
+2. The extract passed a database id where Notion's current API wants a **data
+   source** id, so it read nothing at all.
+
 ## Before you start
 
 1. In Notion, create an **internal integration** with **read** capability only. No insert, no update.

@@ -4,7 +4,7 @@ import {
   kindOf,
   notesFor,
   planMigration,
-  splitSavingsBudget,
+  assignGoalPlans,
   toCents,
 } from './transform.mjs';
 import { balancesFromPlan, compareBalances, compareMonthlyTotals, monthlyTotalsFromPlan } from './reconcile.mjs';
@@ -21,10 +21,13 @@ const ACCOUNTS = [
 const CATEGORIES = [
   { id: 'cat-groceries', name: 'Groceries', group: 'Essentials', budget: 400 },
   { id: 'cat-rent', name: 'Rent', group: 'Essentials', budget: 1200 },
-  { id: 'cat-sinking', name: 'Sinking Funds', group: 'Saving', budget: 300 },
+  // The real hub's shape: one savings category covering several funds, and
+  // others covering one each, every one with its own budget.
+  { id: 'cat-sinking', name: 'Sinking Funds', group: 'Savings', budget: 600 },
+  { id: 'cat-emergency', name: 'Emergency Fund', group: 'Savings', budget: 50 },
 ];
 
-const SAVINGS = ['Sinking Funds'];
+const SAVINGS = ['Sinking Funds', 'Emergency Fund'];
 
 function txn(over) {
   return { id: 'txn-1', description: 'Market', date: '2026-09-19', amount: 45.5, source_id: 'acc-chk', ...over };
@@ -110,16 +113,22 @@ describe('planMigration', () => {
     const result = plan([
       txn({ id: 't1', destination_id: 'acc-fund', category_id: 'cat-sinking' }),
       txn({ id: 't2', destination_id: 'acc-trip', category_id: 'cat-sinking' }),
+      txn({ id: 't3', destination_id: 'acc-card', category_id: 'cat-emergency' }),
     ]);
-    expect(result.goals.map((goal) => goal.account_notion_id).sort()).toEqual(['acc-fund', 'acc-trip']);
-    // The savings category itself does not become a spending category.
+    expect(result.goals.map((goal) => goal.account_notion_id).sort()).toEqual(['acc-card', 'acc-fund', 'acc-trip']);
+    // Each goal's plan comes from the budget of the category that funded it.
+    const emergency = result.goals.find((goal) => goal.account_notion_id === 'acc-card');
+    expect(emergency.monthly_plan_minor).toBe(5000);
+    expect(emergency.from_category).toBe('Emergency Fund');
+    // The savings categories themselves do not become spending categories.
     expect(result.categories.map((c) => c.notion_id)).not.toContain('cat-sinking');
+    expect(result.categories.map((c) => c.notion_id)).not.toContain('cat-emergency');
   });
 
   it('keeps every other category, with its group and budget', () => {
     const result = plan([]);
     expect(result.categories.map((c) => c.name).sort()).toEqual(['Groceries', 'Rent']);
-    expect(result.groups).toEqual(['Essentials', 'Saving']);
+    expect(result.groups).toEqual(['Essentials', 'Savings']);
     expect(result.budgets).toEqual([
       { category_notion_id: 'cat-groceries', amount_minor: 40000 },
       { category_notion_id: 'cat-rent', amount_minor: 120000 },
@@ -155,37 +164,72 @@ describe('planMigration', () => {
   });
 });
 
-describe('splitSavingsBudget', () => {
+describe('assignGoalPlans', () => {
+  const savingsCategories = [
+    { notion_id: 'cat-sinking', name: 'Sinking Funds', budget_minor: 60000 },
+    { notion_id: 'cat-emergency', name: 'Emergency Fund', budget_minor: 5000 },
+  ];
   const goals = [
     { account_notion_id: 'acc-fund', name: 'Rainy day fund' },
     { account_notion_id: 'acc-trip', name: 'Trip fund' },
+    { account_notion_id: 'acc-owed', name: 'Emergency pot' },
   ];
-
-  it('splits by each fund’s share of the last six months of contributions', () => {
-    const rows = [
-      { kind: 'transfer', to_account_notion_id: 'acc-fund', amount_minor: 30000, occurred_on: '2026-09-01' },
-      { kind: 'transfer', to_account_notion_id: 'acc-trip', amount_minor: 10000, occurred_on: '2026-09-01' },
-    ];
-    // 75% and 25% of a $300 budget.
-    expect(splitSavingsBudget(goals, rows, 30000).map((g) => g.monthly_plan_minor)).toEqual([22500, 7500]);
+  const contribution = (category, account, amount, date = '2026-09-01') => ({
+    category_notion_id: category,
+    account_notion_id: account,
+    amount_minor: amount,
+    occurred_on: date,
   });
 
-  it('ignores contributions older than the window', () => {
-    const rows = [
-      { kind: 'transfer', to_account_notion_id: 'acc-fund', amount_minor: 30000, occurred_on: '2026-09-01' },
-      { kind: 'transfer', to_account_notion_id: 'acc-trip', amount_minor: 90000, occurred_on: '2024-01-01' },
-    ];
-    expect(splitSavingsBudget(goals, rows, 30000).map((g) => g.monthly_plan_minor)).toEqual([30000, 0]);
+  it('keeps each savings budget with its own goals', () => {
+    // Sinking Funds paid two funds 75/25; Emergency Fund paid one.
+    const plans = assignGoalPlans(goals, savingsCategories, [
+      contribution('cat-sinking', 'acc-fund', 30000),
+      contribution('cat-sinking', 'acc-trip', 10000),
+      contribution('cat-emergency', 'acc-owed', 20000),
+    ]);
+    const byAccount = Object.fromEntries(plans.map((goal) => [goal.account_notion_id, goal.monthly_plan_minor]));
+    expect(byAccount['acc-fund']).toBe(45000);
+    expect(byAccount['acc-trip']).toBe(15000);
+    // The emergency budget is its own, never pooled with the sinking one.
+    expect(byAccount['acc-owed']).toBe(5000);
   });
 
-  it('splits evenly when there is nothing to measure', () => {
-    expect(splitSavingsBudget(goals, [], 30000).map((g) => g.monthly_plan_minor)).toEqual([15000, 15000]);
+  it('names the category that funded each goal', () => {
+    const plans = assignGoalPlans(goals, savingsCategories, [
+      contribution('cat-sinking', 'acc-fund', 30000),
+      contribution('cat-emergency', 'acc-owed', 20000),
+    ]);
+    expect(plans.find((g) => g.account_notion_id === 'acc-fund').from_category).toBe('Sinking Funds');
+    expect(plans.find((g) => g.account_notion_id === 'acc-owed').from_category).toBe('Emergency Fund');
   });
 
-  it('gives the remainder to the last goal, so the parts add back to the whole', () => {
-    const three = [...goals, { account_notion_id: 'acc-owed', name: 'Third' }];
-    const shares = splitSavingsBudget(three, [], 10000).map((g) => g.monthly_plan_minor);
-    expect(shares.reduce((a, b) => a + b, 0)).toBe(10000);
+  it('gives a fund to whichever category actually funded it, not a stray transfer', () => {
+    const plans = assignGoalPlans(goals, savingsCategories, [
+      contribution('cat-sinking', 'acc-fund', 90000),
+      contribution('cat-emergency', 'acc-fund', 1000),
+    ]);
+    expect(plans.find((g) => g.account_notion_id === 'acc-fund').from_category).toBe('Sinking Funds');
+  });
+
+  it('splits a category evenly when its recent contributions are all zero', () => {
+    const plans = assignGoalPlans(goals, savingsCategories, [
+      contribution('cat-sinking', 'acc-fund', 30000, '2020-01-01'),
+      contribution('cat-sinking', 'acc-trip', 10000, '2020-01-01'),
+    ]);
+    const shares = plans.filter((g) => g.from_category === 'Sinking Funds').map((g) => g.monthly_plan_minor);
+    expect(shares.reduce((a, b) => a + b, 0)).toBe(60000);
+  });
+
+  it('leaves a goal nothing planned when its category has no budget', () => {
+    const plans = assignGoalPlans(goals, [{ notion_id: 'cat-sinking', name: 'Sinking Funds', budget_minor: 0 }], [
+      contribution('cat-sinking', 'acc-fund', 30000),
+    ]);
+    expect(plans.find((g) => g.account_notion_id === 'acc-fund').monthly_plan_minor).toBeNull();
+  });
+
+  it('has nothing to plan without goals', () => {
+    expect(assignGoalPlans([], savingsCategories, [])).toEqual([]);
   });
 });
 

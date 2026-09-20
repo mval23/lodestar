@@ -138,6 +138,7 @@ export function Select({
         className="select-popup"
         aria-label={label}
         onCancel={(event) => {
+          if (event.target !== dialogRef.current) return;
           event.preventDefault();
           close();
         }}

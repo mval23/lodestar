@@ -10,7 +10,7 @@
 // Nothing here writes to Notion, ever. The working files hold real financial
 // data and are kept out of the repository by .gitignore.
 
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
 import path from 'node:path';
 import { extract } from './extract.mjs';
@@ -57,7 +57,16 @@ function ask(question, { silent = false } = {}) {
 }
 
 const readJson = async (file) => JSON.parse(await readFile(file, 'utf8'));
-const writeJson = (file, value) => writeFile(file, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+
+// The working folder is created on demand: it is gitignored, so a fresh clone
+// never has one, and losing an extract to a missing folder after reading
+// 1,688 rows would be a poor joke.
+async function writeOut(file, contents) {
+  await mkdir(DIR, { recursive: true });
+  await writeFile(file, contents, 'utf8');
+}
+
+const writeJson = (file, value) => writeOut(file, `${JSON.stringify(value, null, 2)}\n`);
 
 async function main() {
   const command = process.argv[2];
@@ -99,7 +108,7 @@ async function main() {
     });
 
     await writeJson(PLAN_FILE, plan);
-    await writeFile(REPORT_FILE, report, 'utf8');
+    await writeOut(REPORT_FILE, report);
     console.log(`${plan.transactions.length} transactions ready, ${plan.review.length} need a decision.`);
     console.log(`Plan: ${PLAN_FILE}`);
     console.log(`Read ${REPORT_FILE} before importing.`);
@@ -150,7 +159,7 @@ async function main() {
     );
     const monthly = compareMonthlyTotals(monthlyTotalsFromPlan(plan), await readMonthlyTotals(supabase));
     const report = reconciliationReport({ plan, balances, monthly });
-    await writeFile(REPORT_FILE, report, 'utf8');
+    await writeOut(REPORT_FILE, report);
 
     console.log(report.split('\n').slice(0, 12).join('\n'));
     console.log(`\nFull report: ${REPORT_FILE}`);
