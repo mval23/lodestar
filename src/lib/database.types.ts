@@ -166,28 +166,30 @@ export type Database = {
     Views: {
       category_usage: {
         Row: {
-          user_id: string;
-          category_id: string;
-          kind: Database['public']['Enums']['category_kind'];
+          user_id: string | null;
+          category_id: string | null;
+          kind: Database['public']['Enums']['category_kind'] | null;
           last_used_at: string | null;
-          use_count: number;
+          use_count: number | null;
         };
         Relationships: [];
       };
+      // Every column of a view is nullable in the generated types: Postgres
+      // cannot prove otherwise through a view. The queries normalize.
       account_balances: {
         Row: {
-          user_id: string;
-          account_id: string;
-          name: string;
-          type: Database['public']['Enums']['account_type'];
-          is_liability: boolean;
-          sort_order: number;
+          user_id: string | null;
+          account_id: string | null;
+          name: string | null;
+          type: Database['public']['Enums']['account_type'] | null;
+          is_liability: boolean | null;
+          sort_order: number | null;
           archived_at: string | null;
-          opening_balance_minor: number;
-          money_in_minor: number;
-          money_out_minor: number;
-          balance_minor: number;
-          cleared_balance_minor: number;
+          opening_balance_minor: number | null;
+          money_in_minor: number | null;
+          money_out_minor: number | null;
+          balance_minor: number | null;
+          cleared_balance_minor: number | null;
         };
         Relationships: [];
       };

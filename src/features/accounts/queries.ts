@@ -4,7 +4,44 @@ import type { Database } from '../../lib/database.types';
 
 export type AccountType = Database['public']['Enums']['account_type'];
 export type Account = Database['public']['Tables']['accounts']['Row'];
-export type AccountBalance = Database['public']['Views']['account_balances']['Row'];
+
+type AccountBalanceRow = Database['public']['Views']['account_balances']['Row'];
+
+// The view's columns are all nullable in the generated types, because Postgres
+// cannot prove otherwise through a view. Every one of them is in fact
+// non-null, so the rows are normalized once, here, and the rest of the app
+// works with a strict type instead of guarding on each read.
+export type AccountBalance = {
+  user_id: string;
+  account_id: string;
+  name: string;
+  type: AccountType;
+  is_liability: boolean;
+  sort_order: number;
+  archived_at: string | null;
+  opening_balance_minor: number;
+  money_in_minor: number;
+  money_out_minor: number;
+  balance_minor: number;
+  cleared_balance_minor: number;
+};
+
+export function normalizeBalance(row: AccountBalanceRow): AccountBalance {
+  return {
+    user_id: row.user_id ?? '',
+    account_id: row.account_id ?? '',
+    name: row.name ?? '',
+    type: row.type ?? 'other_asset',
+    is_liability: row.is_liability ?? false,
+    sort_order: row.sort_order ?? 0,
+    archived_at: row.archived_at,
+    opening_balance_minor: row.opening_balance_minor ?? 0,
+    money_in_minor: row.money_in_minor ?? 0,
+    money_out_minor: row.money_out_minor ?? 0,
+    balance_minor: row.balance_minor ?? 0,
+    cleared_balance_minor: row.cleared_balance_minor ?? 0,
+  };
+}
 export type AccountInsert = Database['public']['Tables']['accounts']['Insert'];
 export type AccountUpdate = Database['public']['Tables']['accounts']['Update'];
 
@@ -37,7 +74,7 @@ export function useAccounts() {
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
       if (error) throw error;
-      return data;
+      return data.map(normalizeBalance);
     },
   });
 }
