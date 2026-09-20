@@ -36,10 +36,10 @@ export function SettingsPage() {
         <h2 className="form-group-title">Your data</h2>
         <ul className="rows-list">
           <li>
-            <Link className="row-button" to="/categories">
+            <Link className="row-button" to="/budgets">
               <span className="row-label">
                 Categories
-                <small>Groups, archiving and merging</small>
+                <small>Kept with budgets, since a budget plans one category</small>
               </span>
             </Link>
           </li>

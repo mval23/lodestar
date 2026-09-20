@@ -20,7 +20,7 @@ import {
   type CategoryKind,
 } from './queries';
 
-export function CategoriesPage() {
+export function CategoryManager() {
   const categories = useCategories();
   const groups = useCategoryGroups();
   const usage = useCategoryUsage();
@@ -52,11 +52,13 @@ export function CategoriesPage() {
   };
 
   return (
-    <div className="page page-narrow">
+    <section className="stack">
       <header className="page-head">
         <div>
-          <h1 className="large-title">Categories</h1>
-          <p className="footnote flush">Expenses and income only. Saving is a transfer into a goal’s account.</p>
+          <h2 className="title-2">Categories</h2>
+          <p className="footnote flush">
+            A category is what money was for. A budget plans one category for one month.
+          </p>
         </div>
         <Button onClick={() => open()}>Add category</Button>
       </header>
@@ -116,7 +118,7 @@ export function CategoriesPage() {
           onClose={() => setSheetOpen(false)}
         />
       )}
-    </div>
+    </section>
   );
 }
 

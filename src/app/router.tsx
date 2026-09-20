@@ -1,4 +1,4 @@
-import { createBrowserRouter, type RouteObject } from 'react-router';
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { CheckEmailPage } from '../features/auth/CheckEmailPage';
 import { ConfirmPage } from '../features/auth/ConfirmPage';
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
@@ -6,7 +6,7 @@ import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { SignInPage } from '../features/auth/SignInPage';
 import { SignUpPage } from '../features/auth/SignUpPage';
 import { AccountsPage } from '../features/accounts/AccountsPage';
-import { CategoriesPage } from '../features/categories/CategoriesPage';
+import { BudgetsPage } from '../features/budgets/BudgetsPage';
 import { OverviewPage } from '../features/overview/OverviewPage';
 import { ActivityPage } from '../features/transactions/ActivityPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
@@ -39,7 +39,9 @@ export const routes: RouteObject[] = [
               { path: '/', element: <OverviewPage /> },
               { path: '/accounts', element: <AccountsPage /> },
               { path: '/activity', element: <ActivityPage /> },
-              { path: '/categories', element: <CategoriesPage /> },
+              { path: '/budgets', element: <BudgetsPage /> },
+              // Categories used to live on their own page; keep old links working.
+              { path: '/categories', element: <Navigate to="/budgets" replace /> },
               { path: '/settings', element: <SettingsPage /> },
               ...PLACEHOLDER_ROUTES.map((r) => ({
                 path: r.path,
