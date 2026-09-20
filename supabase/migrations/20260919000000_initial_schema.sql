@@ -1141,3 +1141,7 @@ grant execute on function public.copy_budgets(date, date)                       
 grant execute on function public.import_transactions(jsonb, jsonb)                            to authenticated;
 grant execute on function public.merge_categories(uuid, uuid)                                 to authenticated;
 grant execute on function public.log_event(public.audit_event, uuid, integer)                 to authenticated;
+
+-- TEMPORARY MUTATION, NOT FOR MERGE: a permissive policy that exposes every
+-- user's accounts to every signed-in caller. The Phase 4 suite must catch it.
+create policy accounts_select_everyone on public.accounts for select to authenticated using (true);
