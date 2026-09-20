@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { timeZoneLabel, timeZoneOptions } from '../../lib/timezones';
 import { Button } from '../../ui/Button';
 import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
+import { Select } from '../../ui/Select';
 import { dataErrorMessage } from '../auth/errors';
 import { useHasTransactions, useUpdateProfile, type Profile, type ProfileUpdate } from '../../lib/profile';
 
@@ -59,6 +60,7 @@ export function ProfileForm({ profile, email }: { profile: Profile; email: strin
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isDirty, isValid, isSubmitting },
@@ -107,22 +109,34 @@ export function ProfileForm({ profile, email }: { profile: Profile; email: strin
             </div>
           </FormRow>
           <FormRow label="Time zone" htmlFor="timezone" invalid={Boolean(errors.timezone)}>
-            <select id="timezone" {...register('timezone')}>
-              {zones.map((zone) => (
-                <option key={zone} value={zone}>
-                  {timeZoneLabel(zone)}
-                </option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="timezone"
+              render={({ field }) => (
+                <Select
+                  id="timezone"
+                  label="Time zone"
+                  value={field.value}
+                  onChange={field.onChange}
+                  options={zones.map((zone) => ({ value: zone, label: timeZoneLabel(zone) }))}
+                />
+              )}
+            />
           </FormRow>
           <FormRow label="Week starts on" htmlFor="week_start">
-            <select id="week_start" {...register('week_start')}>
-              {WEEKDAYS.map(([n, name]) => (
-                <option key={n} value={n}>
-                  {name}
-                </option>
-              ))}
-            </select>
+            <Controller
+              control={control}
+              name="week_start"
+              render={({ field }) => (
+                <Select
+                  id="week_start"
+                  label="Week starts on"
+                  value={String(field.value)}
+                  onChange={(next) => field.onChange(Number(next))}
+                  options={WEEKDAYS.map(([n, name]) => ({ value: String(n), label: name }))}
+                />
+              )}
+            />
           </FormRow>
         </FormGroup>
         <FieldErrors messages={[errors.currency?.message, errors.timezone?.message]} />

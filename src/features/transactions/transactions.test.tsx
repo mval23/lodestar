@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
+import { pick } from '../../test/select';
 import { directionProblem, sanitizeSearch } from './queries';
 import { TransactionSheet } from './TransactionSheet';
 
@@ -87,8 +88,8 @@ describe('TransactionSheet', () => {
   it('saves an expense as a positive amount leaving one account', async () => {
     renderSheet();
     await userEvent.type(screen.getByLabelText('Amount'), '45.50');
-    await userEvent.selectOptions(screen.getByLabelText('Account'), 'chk');
-    await userEvent.selectOptions(screen.getByLabelText('Category'), 'groceries');
+    await pick('Account', 'Everyday checking');
+    await pick('Category', 'Groceries');
     await userEvent.type(screen.getByLabelText('Description'), 'Market');
     await userEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
 
@@ -108,19 +109,20 @@ describe('TransactionSheet', () => {
   it('offers income categories for income, not expense ones', async () => {
     renderSheet();
     await userEvent.click(screen.getByRole('radio', { name: 'Income' }));
-    const picker = screen.getByLabelText('Category');
-    expect(picker).toHaveTextContent('Salary');
-    expect(picker).not.toHaveTextContent('Groceries');
+    await userEvent.click(screen.getByRole('button', { name: /^Category,/ }));
+    const list = await screen.findByRole('listbox', { name: 'Category' });
+    expect(within(list).getByRole('option', { name: 'Salary' })).toBeInTheDocument();
+    expect(within(list).queryByRole('option', { name: 'Groceries' })).not.toBeInTheDocument();
   });
 
   it('records a transfer between two accounts and never files it under a category', async () => {
     renderSheet();
     await userEvent.click(screen.getByRole('radio', { name: 'Transfer' }));
-    expect(screen.queryByLabelText('Category')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Category,/ })).not.toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText('Amount'), '500');
-    await userEvent.selectOptions(screen.getByLabelText('From'), 'chk');
-    await userEvent.selectOptions(screen.getByLabelText('To'), 'sav');
+    await pick('From', 'Everyday checking');
+    await pick('To', 'Emergency fund');
     await userEvent.type(screen.getByLabelText('Description'), 'To fund');
     await userEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
 
@@ -139,9 +141,8 @@ describe('TransactionSheet', () => {
     renderSheet();
     await userEvent.click(screen.getByRole('radio', { name: 'Transfer' }));
     await userEvent.type(screen.getByLabelText('Amount'), '500');
-    await userEvent.type(screen.getByLabelText('Description'), 'Round trip');
-    await userEvent.selectOptions(screen.getByLabelText('From'), 'chk');
-    await userEvent.selectOptions(screen.getByLabelText('To'), 'chk');
+    await pick('From', 'Everyday checking');
+    await pick('To', 'Everyday checking');
 
     expect(await screen.findByText('Choose two different accounts.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
@@ -151,11 +152,28 @@ describe('TransactionSheet', () => {
   it('marks a transaction as pending when asked', async () => {
     renderSheet();
     await userEvent.type(screen.getByLabelText('Amount'), '30');
-    await userEvent.selectOptions(screen.getByLabelText('Account'), 'chk');
-    await userEvent.type(screen.getByLabelText('Description'), 'Bakery');
+    await pick('Account', 'Everyday checking');
     await userEvent.click(screen.getByLabelText('Pending'));
     await userEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ status: 'pending' }));
+  });
+
+  it('names an unnamed expense after its category, then its kind', async () => {
+    renderSheet();
+    await userEvent.type(screen.getByLabelText('Amount'), '12');
+    await pick('Account', 'Everyday checking');
+    await pick('Category', 'Groceries');
+    expect(screen.getByLabelText('Description')).toHaveAttribute('placeholder', 'Groceries');
+    await userEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ description: 'Groceries' }));
+  });
+
+  it('falls back to the kind when there is no category either', async () => {
+    renderSheet();
+    await userEvent.type(screen.getByLabelText('Amount'), '12');
+    await pick('Account', 'Everyday checking');
+    await userEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ description: 'Expense' }));
   });
 
   it('refuses an amount that would need rounding', async () => {

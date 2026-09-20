@@ -4,6 +4,7 @@ import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
+import { Select } from '../../ui/Select';
 import { Sheet } from '../../ui/Sheet';
 import { dataErrorMessage } from '../auth/errors';
 import {
@@ -201,14 +202,17 @@ function CategorySheet({
             </div>
           </FormRow>
           <FormRow label="Group" htmlFor="category-group">
-            <select id="category-group" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-              <option value="">Ungrouped</option>
-              {(groups.data ?? []).map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
+            <Select
+              id="category-group"
+              label="Group"
+              placeholder="Ungrouped"
+              value={groupId}
+              onChange={setGroupId}
+              options={[
+                { value: '', label: 'Ungrouped' },
+                ...(groups.data ?? []).map((group) => ({ value: group.id, label: group.name })),
+              ]}
+            />
           </FormRow>
           <FormRow label="New group" htmlFor="category-new-group">
             <input
@@ -255,14 +259,14 @@ function CategorySheet({
                 deleted.
               </label>
               <div className="actions">
-                <select id="merge-into" value={mergeInto} onChange={(e) => setMergeInto(e.target.value)}>
-                  <option value="">Choose a category</option>
-                  {mergeTargets.map((target) => (
-                    <option key={target.id} value={target.id}>
-                      {target.name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  id="merge-into"
+                  label="Category to merge into"
+                  placeholder="Choose a category"
+                  value={mergeInto}
+                  onChange={setMergeInto}
+                  options={mergeTargets.map((target) => ({ value: target.id, label: target.name }))}
+                />
                 <Button
                   variant="secondary"
                   dimmed={!mergeInto}

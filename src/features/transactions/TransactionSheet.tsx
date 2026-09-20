@@ -5,6 +5,7 @@ import { todayInZone } from '../../lib/dates';
 import { Button } from '../../ui/Button';
 import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
+import { Select } from '../../ui/Select';
 import { Sheet } from '../../ui/Sheet';
 import { dataErrorMessage } from '../auth/errors';
 import { useAccounts } from '../accounts/queries';
@@ -98,11 +99,14 @@ export function TransactionSheet({
   });
   const futureWarning = values.occurred_on > today;
 
-  const reason = !parsed.ok
-    ? parsed.message
-    : !description
-      ? 'Give it a description, so you can find it later.'
-      : direction;
+  // The database needs a description, but you shouldn't have to type one.
+  // Left blank, the category names it, then the kind. The placeholder shows
+  // exactly what will be saved, so nothing is filled in behind your back.
+  const categoryName = pickable.find((c) => c.id === values.category_id)?.name;
+  const fallbackDescription = categoryName ?? KINDS.find((k) => k.value === values.kind)!.label;
+  const finalDescription = description || fallbackDescription;
+
+  const reason = !parsed.ok ? parsed.message : direction;
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -117,7 +121,7 @@ export function TransactionSheet({
       // A transfer never carries a category: money moving between your own
       // accounts is not spending.
       category_id: isTransfer ? null : values.category_id || null,
-      description,
+      description: finalDescription,
       notes: values.notes.trim() === '' ? null : values.notes.trim(),
       status: values.pending ? ('pending' as const) : ('cleared' as const),
     };
@@ -165,62 +169,67 @@ export function TransactionSheet({
           />
         </div>
 
+        {/* Order follows how people think: what it was, what kind of spending
+            it is, which account it touched, when, and anything extra. */}
         <FormGroup>
+          <FormRow label="Description" htmlFor="txn-description">
+            <input
+              id="txn-description"
+              value={values.description}
+              maxLength={140}
+              placeholder={fallbackDescription}
+              onChange={(e) => set('description', e.target.value)}
+            />
+          </FormRow>
+
+          {!isTransfer && (
+            <FormRow label="Category" htmlFor="txn-category">
+              <Select
+                id="txn-category"
+                label="Category"
+                placeholder="No category"
+                emptyText="No categories yet. Add them in Settings."
+                value={values.category_id}
+                onChange={(next) => set('category_id', next)}
+                options={[{ value: '', label: 'No category' }, ...pickable.map((c) => ({ value: c.id, label: c.name }))]}
+              />
+            </FormRow>
+          )}
+
+          {values.kind !== 'income' && (
+            <FormRow label={isTransfer ? 'From' : 'Account'} htmlFor="txn-from">
+              <Select
+                id="txn-from"
+                label={isTransfer ? 'From' : 'Account'}
+                placeholder="Choose an account"
+                emptyText="Add an account first, in Accounts."
+                value={values.from_account_id}
+                onChange={(next) => set('from_account_id', next)}
+                options={open.map((a) => ({ value: a.account_id, label: a.name }))}
+              />
+            </FormRow>
+          )}
+
+          {values.kind !== 'expense' && (
+            <FormRow label={isTransfer ? 'To' : 'Account'} htmlFor="txn-to">
+              <Select
+                id="txn-to"
+                label={isTransfer ? 'To' : 'Account'}
+                placeholder="Choose an account"
+                emptyText="Add an account first, in Accounts."
+                value={values.to_account_id}
+                onChange={(next) => set('to_account_id', next)}
+                options={open.map((a) => ({ value: a.account_id, label: a.name }))}
+              />
+            </FormRow>
+          )}
+
           <FormRow label="Date" htmlFor="txn-date">
             <input
               id="txn-date"
               type="date"
               value={values.occurred_on}
               onChange={(e) => set('occurred_on', e.target.value)}
-            />
-          </FormRow>
-
-          {values.kind !== 'income' && (
-            <FormRow label={isTransfer ? 'From' : 'Account'} htmlFor="txn-from">
-              <select id="txn-from" value={values.from_account_id} onChange={(e) => set('from_account_id', e.target.value)}>
-                <option value="">Choose an account</option>
-                {open.map((a) => (
-                  <option key={a.account_id} value={a.account_id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </FormRow>
-          )}
-
-          {values.kind !== 'expense' && (
-            <FormRow label={isTransfer ? 'To' : 'Account'} htmlFor="txn-to">
-              <select id="txn-to" value={values.to_account_id} onChange={(e) => set('to_account_id', e.target.value)}>
-                <option value="">Choose an account</option>
-                {open.map((a) => (
-                  <option key={a.account_id} value={a.account_id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            </FormRow>
-          )}
-
-          {!isTransfer && (
-            <FormRow label="Category" htmlFor="txn-category">
-              <select id="txn-category" value={values.category_id} onChange={(e) => set('category_id', e.target.value)}>
-                <option value="">No category</option>
-                {pickable.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </FormRow>
-          )}
-
-          <FormRow label="Description" htmlFor="txn-description">
-            <input
-              id="txn-description"
-              value={values.description}
-              maxLength={140}
-              placeholder={isTransfer ? 'To savings' : 'Market'}
-              onChange={(e) => set('description', e.target.value)}
             />
           </FormRow>
 
@@ -238,13 +247,19 @@ export function TransactionSheet({
             <input
               id="txn-pending"
               type="checkbox"
+              role="switch"
               className="toggle"
+              aria-describedby="txn-pending-hint"
               checked={values.pending}
               onChange={(e) => set('pending', e.target.checked)}
             />
           </FormRow>
         </FormGroup>
 
+        <p id="txn-pending-hint" className="form-hint">
+          Pending means your bank hasn’t settled it yet. It still counts in the balance; accounts also show a cleared
+          balance that leaves pending amounts out.
+        </p>
         {isTransfer && (
           <p className="form-hint">
             A transfer moves money between your own accounts, so it carries no category and never counts as spending.
