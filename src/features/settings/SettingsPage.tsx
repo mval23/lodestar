@@ -6,6 +6,7 @@ import { db } from '../../lib/supabase';
 import { Button } from '../../ui/Button';
 import { Notice } from '../../ui/Notice';
 import { authErrorMessage, dataErrorMessage } from '../auth/errors';
+import { DeleteAccountPanel } from './DeleteAccountPanel';
 import { PasswordForm } from './PasswordForm';
 import { ProfileForm } from './ProfileForm';
 import { useProfile } from '../../lib/profile';
@@ -66,6 +67,8 @@ export function SettingsPage() {
         </div>
       </section>
       {signOutError && <Notice tone="err">{signOutError}</Notice>}
+
+      <DeleteAccountPanel email={email} />
     </div>
   );
 }

@@ -39,7 +39,14 @@ enabled = false
 enabled = false
 
 [edge_runtime]
-enabled = false
+# delete-account is the only Edge Function; it needs the runtime to be
+# servable locally. CI starts Supabase with -x edge-runtime and never calls it.
+enabled = true
+
+[functions.delete-account]
+# The function verifies the caller's token itself, and insists it is fresh, so
+# the platform must let the browser's CORS preflight through unauthenticated.
+verify_jwt = false
 
 [analytics]
 enabled = false

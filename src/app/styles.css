@@ -160,6 +160,11 @@ a:hover {
 .btn-block {
   width: 100%;
 }
+/* The one button that takes something away for good. Not an accent: a warning. */
+.btn-destructive {
+  background: var(--err-soft);
+  color: var(--err);
+}
 .btn[aria-disabled='true'],
 .btn:disabled {
   opacity: 0.45;

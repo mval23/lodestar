@@ -116,3 +116,12 @@ jobs:
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
           supabase db push
+
+      # delete-account is the only Edge Function. Deploying it here keeps it
+      # in step with the schema instead of drifting behind a manual command.
+      - name: Deploy the delete-account function
+        if: steps.cfg.outputs.ready == 'true'
+        # --no-verify-jwt says the same thing as config.toml, explicitly: the
+        # function checks the token itself, and the browser's CORS preflight
+        # carries none. Leaving it on would break deletion from the browser.
+        run: supabase functions deploy delete-account --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
