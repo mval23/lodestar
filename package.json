@@ -13,7 +13,7 @@
     "schema:check": "node supabase/tests/check-schema.mjs",
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
-    "db:gate": "psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/rls_gate.sql",
+    "db:gate": "psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/checks/rls_gate.sql",
     "db:types": "supabase gen types typescript --local --schema public > src/lib/database.types.ts"
   },
   "devDependencies": {
