@@ -114,8 +114,12 @@ export function planMigration({ accounts, categories, transactions, savingsCateg
 
   const review = [];
   const rows = [];
-  // Goals: one per fund account that savings actually flowed into.
+  // Goals: one per fund account that savings actually flowed into. Which
+  // savings category sent the money matters, because each category carries its
+  // own budget: Sinking Funds may cover several funds while Emergency Fund
+  // covers one.
   const goalAccounts = new Map();
+  const contributions = [];
 
   for (const txn of transactions) {
     const flag = (reason) => review.push({ notion_id: txn.id, description: txn.description ?? '', date: txn.date ?? '', reason });
@@ -160,7 +164,13 @@ export function planMigration({ accounts, categories, transactions, savingsCateg
     // A savings transfer is a contribution: the category named the fund, and
     // in Lodestar the destination account's goal says that instead.
     if (kind === 'transfer' && category?.is_savings && to) {
-      goalAccounts.set(to.notion_id, { account_notion_id: to.notion_id, name: to.name, from_category: category.name });
+      goalAccounts.set(to.notion_id, { account_notion_id: to.notion_id, name: to.name });
+      contributions.push({
+        category_notion_id: category.notion_id,
+        account_notion_id: to.notion_id,
+        amount_minor: amount,
+        occurred_on: txn.date,
+      });
     }
 
     rows.push({
@@ -183,11 +193,8 @@ export function planMigration({ accounts, categories, transactions, savingsCateg
   // Lodestar: its budget moves to the goals, and the category itself is not
   // migrated.
   const keptCategories = plannedCategories.filter((category) => !category.is_savings);
-  const savingsBudget = plannedCategories
-    .filter((category) => category.is_savings)
-    .reduce((total, category) => total + (category.budget_minor ?? 0), 0);
-
-  const goals = [...goalAccounts.values()].map((goal) => ({ ...goal, monthly_plan_minor: null }));
+  const savingsCategories = plannedCategories.filter((category) => category.is_savings);
+  const goals = assignGoalPlans([...goalAccounts.values()], savingsCategories, contributions);
 
   return {
     accounts: plannedAccounts,
@@ -196,7 +203,7 @@ export function planMigration({ accounts, categories, transactions, savingsCateg
     budgets: keptCategories
       .filter((category) => (category.budget_minor ?? 0) > 0)
       .map((category) => ({ category_notion_id: category.notion_id, amount_minor: category.budget_minor })),
-    goals: splitSavingsBudget(goals, rows, savingsBudget),
+    goals,
     transactions: rows,
     review,
     duplicates: findDuplicates(rows),
@@ -204,38 +211,69 @@ export function planMigration({ accounts, categories, transactions, savingsCateg
 }
 
 /**
- * The Sinking Funds budget is one number in Notion covering several funds.
- * It is split across the goals by each fund's share of the last six months of
- * contributions, which is the owner's own rule. With no contributions to
- * measure, it is split evenly rather than guessed.
+ * Each savings category carries its own budget, and each goal belongs to the
+ * category that actually funded it. A category covering several funds — the
+ * Sinking Funds case — has its budget split between them by each fund's share
+ * of the last six months of contributions, which is the owner's own rule. The
+ * last goal in a split takes the remainder, so the parts add back to the whole
+ * rather than losing a cent to rounding.
  */
-export function splitSavingsBudget(goals, transactions, totalBudgetMinor, monthsBack = 6) {
-  if (goals.length === 0 || !totalBudgetMinor) return goals;
+export function assignGoalPlans(goals, savingsCategories, contributions, monthsBack = 6) {
+  if (goals.length === 0) return [];
 
-  const cutoff = sixMonthsBefore(latestDate(transactions), monthsBack);
-  const contributed = new Map(goals.map((goal) => [goal.account_notion_id, 0]));
-  for (const row of transactions) {
-    if (row.kind !== 'transfer' || !row.to_account_notion_id) continue;
-    if (!contributed.has(row.to_account_notion_id)) continue;
-    if (row.occurred_on < cutoff) continue;
-    contributed.set(row.to_account_notion_id, contributed.get(row.to_account_notion_id) + row.amount_minor);
+  const cutoff = sixMonthsBefore(latestDate(contributions), monthsBack);
+  const recent = contributions.filter((row) => row.occurred_on >= cutoff);
+
+  // Which category funded each goal: the one that put the most into it, so a
+  // fund that once received a stray transfer is not reassigned by it.
+  const totalsByPair = new Map();
+  for (const row of recent) {
+    const key = `${row.category_notion_id}|${row.account_notion_id}`;
+    totalsByPair.set(key, (totalsByPair.get(key) ?? 0) + row.amount_minor);
+  }
+  const allTimeByPair = new Map();
+  for (const row of contributions) {
+    const key = `${row.category_notion_id}|${row.account_notion_id}`;
+    allTimeByPair.set(key, (allTimeByPair.get(key) ?? 0) + row.amount_minor);
   }
 
-  const total = [...contributed.values()].reduce((sum, value) => sum + value, 0);
-  let assigned = 0;
-  const shared = goals.map((goal, index) => {
-    const isLast = index === goals.length - 1;
-    // The last goal takes the remainder, so the parts add back to the whole
-    // exactly rather than losing a cent to rounding.
-    const share = isLast
-      ? totalBudgetMinor - assigned
-      : total > 0
-        ? Math.round((contributed.get(goal.account_notion_id) / total) * totalBudgetMinor)
-        : Math.round(totalBudgetMinor / goals.length);
-    assigned += share;
-    return { ...goal, monthly_plan_minor: share };
-  });
-  return shared;
+  const ownerOf = new Map();
+  for (const goal of goals) {
+    let best = null;
+    for (const category of savingsCategories) {
+      const key = `${category.notion_id}|${goal.account_notion_id}`;
+      const amount = allTimeByPair.get(key) ?? 0;
+      if (amount > 0 && (!best || amount > best.amount)) best = { category, amount };
+    }
+    if (best) ownerOf.set(goal.account_notion_id, best.category);
+  }
+
+  const planned = new Map();
+  for (const category of savingsCategories) {
+    const mine = goals.filter((goal) => ownerOf.get(goal.account_notion_id)?.notion_id === category.notion_id);
+    const budget = category.budget_minor ?? 0;
+    if (mine.length === 0 || budget <= 0) continue;
+
+    const shares = mine.map((goal) => totalsByPair.get(`${category.notion_id}|${goal.account_notion_id}`) ?? 0);
+    const total = shares.reduce((sum, value) => sum + value, 0);
+    let assigned = 0;
+    mine.forEach((goal, index) => {
+      const isLast = index === mine.length - 1;
+      const share = isLast
+        ? budget - assigned
+        : total > 0
+          ? Math.round((shares[index] / total) * budget)
+          : Math.round(budget / mine.length);
+      assigned += share;
+      planned.set(goal.account_notion_id, share);
+    });
+  }
+
+  return goals.map((goal) => ({
+    ...goal,
+    from_category: ownerOf.get(goal.account_notion_id)?.name ?? null,
+    monthly_plan_minor: planned.get(goal.account_notion_id) ?? null,
+  }));
 }
 
 function latestDate(rows) {
