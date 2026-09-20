@@ -5,7 +5,14 @@ import type { Database } from '../../lib/database.types';
 export type CategoryKind = Database['public']['Enums']['category_kind'];
 export type Category = Database['public']['Tables']['categories']['Row'];
 export type CategoryGroup = Database['public']['Tables']['category_groups']['Row'];
-export type CategoryUsage = Database['public']['Views']['category_usage']['Row'];
+// Normalized from the view, whose columns are all nullable in the generated
+// types even though none of them are null in practice.
+export type CategoryUsage = {
+  category_id: string;
+  kind: CategoryKind;
+  last_used_at: string | null;
+  use_count: number;
+};
 
 export const categoriesKey = ['categories'] as const;
 export const categoryGroupsKey = ['category_groups'] as const;
@@ -49,7 +56,12 @@ export function useCategoryUsage() {
     queryFn: async (): Promise<CategoryUsage[]> => {
       const { data, error } = await db().from('category_usage').select('*');
       if (error) throw error;
-      return data;
+      return data.map((row) => ({
+        category_id: row.category_id ?? '',
+        kind: row.kind ?? 'expense',
+        last_used_at: row.last_used_at,
+        use_count: row.use_count ?? 0,
+      }));
     },
   });
 }
