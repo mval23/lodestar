@@ -5,10 +5,12 @@ import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { SignInPage } from '../features/auth/SignInPage';
 import { SignUpPage } from '../features/auth/SignUpPage';
+import { AccountsPage } from '../features/accounts/AccountsPage';
+import { OverviewPage } from '../features/overview/OverviewPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { AppLayout } from './AppLayout';
 import { ForwardStrayAuthLink, RedirectIfSignedIn, RequireAuth } from './guards';
-import { NotFoundPage, OverviewPage, PlaceholderPage, PLACEHOLDER_ROUTES } from './pages';
+import { NotFoundPage, PlaceholderPage, PLACEHOLDER_ROUTES } from './pages';
 
 // Exported separately so tests can mount the real tree in a memory router.
 export const routes: RouteObject[] = [
@@ -33,6 +35,7 @@ export const routes: RouteObject[] = [
             element: <AppLayout />,
             children: [
               { path: '/', element: <OverviewPage /> },
+              { path: '/accounts', element: <AccountsPage /> },
               { path: '/settings', element: <SettingsPage /> },
               ...PLACEHOLDER_ROUTES.map((r) => ({
                 path: r.path,

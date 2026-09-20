@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { db } from '../../lib/supabase';
-import type { Database } from '../../lib/database.types';
+import { db } from './supabase';
+import { isCurrency, type Currency } from './money';
+import type { Database } from './database.types';
 
 export type Profile = Database['public']['Tables']['profiles']['Row'];
 export type ProfileUpdate = Pick<Profile, 'display_name' | 'currency' | 'timezone' | 'week_start'>;
@@ -43,4 +44,11 @@ export function useUpdateProfile() {
     },
     onSuccess: (profile) => queryClient.setQueryData(profileKey, profile),
   });
+}
+
+// The one currency every amount in this account is denominated in.
+export function useCurrency(): Currency {
+  const profile = useProfile();
+  const code = profile.data?.currency;
+  return code && isCurrency(code) ? code : 'USD';
 }

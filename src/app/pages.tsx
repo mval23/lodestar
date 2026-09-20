@@ -1,7 +1,6 @@
-import { Link, useLocation } from 'react-router';
+import { Link } from 'react-router';
 import { Compass, type LucideIcon } from 'lucide-react';
 import { EmptyState } from '../ui/EmptyState';
-import { Notice } from '../ui/Notice';
 import { SIDEBAR_FOOT, SIDEBAR_MAIN } from './nav';
 
 // Screens that later phases fill in. Each keeps its place in the navigation
@@ -14,30 +13,6 @@ export function PlaceholderPage({ title, icon, children }: { title: string; icon
       </header>
       <EmptyState icon={icon} title="Not built yet">
         {children}
-      </EmptyState>
-    </div>
-  );
-}
-
-export function OverviewPage() {
-  const notice = (useLocation().state as { notice?: string } | null)?.notice;
-  const icon = SIDEBAR_MAIN[0]!.icon;
-  return (
-    <div className="page">
-      <header className="page-head">
-        <h1 className="large-title">Overview</h1>
-      </header>
-      {notice && <Notice tone="ok">{notice}</Notice>}
-      <EmptyState
-        icon={icon}
-        title="Welcome to Lodestar"
-        action={
-          <Link className="btn btn-primary" to="/settings">
-            Review your settings
-          </Link>
-        }
-      >
-        Accounts, balances and budgets arrive in the next build. For now, check your currency and time zone.
       </EmptyState>
     </div>
   );

@@ -1,7 +1,14 @@
 // Calm, specific copy for Supabase Auth and Data API errors. Raw server
 // messages are never shown: they can be vague or leak details.
 
-type ErrorLike = { code?: unknown; status?: unknown; name?: unknown; message?: unknown } | null | undefined;
+// Callers pass whatever a rejected promise gave them, so this takes unknown
+// and reads the few fields Supabase and PostgREST actually set.
+type ErrorShape = { code?: unknown; status?: unknown; name?: unknown; message?: unknown };
+type ErrorLike = unknown;
+
+function fields(error: ErrorLike): ErrorShape {
+  return typeof error === 'object' && error !== null ? (error as ErrorShape) : {};
+}
 
 const BY_CODE: Record<string, string> = {
   invalid_credentials: 'That email and password don’t match an account.',
@@ -26,8 +33,9 @@ const BY_CODE: Record<string, string> = {
 export const NETWORK_MESSAGE = 'Lodestar can’t be reached. Check your connection and try again.';
 export const GENERIC_MESSAGE = 'Something went wrong. Try again in a moment.';
 
-export function authErrorMessage(error: ErrorLike): string {
-  if (!error) return GENERIC_MESSAGE;
+export function authErrorMessage(raw: ErrorLike): string {
+  if (!raw) return GENERIC_MESSAGE;
+  const error = fields(raw);
   const code = typeof error.code === 'string' ? error.code : undefined;
   if (code && BY_CODE[code]) return BY_CODE[code];
   if (error.name === 'AuthRetryableFetchError' || error.name === 'TypeError' || error.status === 0) {
@@ -43,8 +51,9 @@ export function authErrorMessage(error: ErrorLike): string {
 // get the generic copy like everything else.
 const TRIGGER_CODES = new Set(['23514', '22023']);
 
-export function dataErrorMessage(error: ErrorLike): string {
-  if (!error) return GENERIC_MESSAGE;
+export function dataErrorMessage(raw: ErrorLike): string {
+  if (!raw) return GENERIC_MESSAGE;
+  const error = fields(raw);
   const code = typeof error.code === 'string' ? error.code : undefined;
   const message = typeof error.message === 'string' ? error.message : '';
   if (code && TRIGGER_CODES.has(code) && message.length < 200 && !message.includes('violates')) {
