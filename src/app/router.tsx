@@ -6,7 +6,9 @@ import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { SignInPage } from '../features/auth/SignInPage';
 import { SignUpPage } from '../features/auth/SignUpPage';
 import { AccountsPage } from '../features/accounts/AccountsPage';
+import { CategoriesPage } from '../features/categories/CategoriesPage';
 import { OverviewPage } from '../features/overview/OverviewPage';
+import { ActivityPage } from '../features/transactions/ActivityPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { AppLayout } from './AppLayout';
 import { ForwardStrayAuthLink, RedirectIfSignedIn, RequireAuth } from './guards';
@@ -36,6 +38,8 @@ export const routes: RouteObject[] = [
             children: [
               { path: '/', element: <OverviewPage /> },
               { path: '/accounts', element: <AccountsPage /> },
+              { path: '/activity', element: <ActivityPage /> },
+              { path: '/categories', element: <CategoriesPage /> },
               { path: '/settings', element: <SettingsPage /> },
               ...PLACEHOLDER_ROUTES.map((r) => ({
                 path: r.path,

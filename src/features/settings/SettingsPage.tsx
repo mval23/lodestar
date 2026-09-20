@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { LogOut } from 'lucide-react';
 import { useSession } from '../../app/AuthProvider';
 import { db } from '../../lib/supabase';
@@ -30,6 +31,20 @@ export function SettingsPage() {
       {profile.isPending && <p className="secondary">Loading your profile…</p>}
       {profile.isError && <Notice tone="err">{dataErrorMessage(profile.error)}</Notice>}
       {profile.data && <ProfileForm profile={profile.data} email={email} />}
+
+      <section>
+        <h2 className="form-group-title">Your data</h2>
+        <ul className="rows-list">
+          <li>
+            <Link className="row-button" to="/categories">
+              <span className="row-label">
+                Categories
+                <small>Groups, archiving and merging</small>
+              </span>
+            </Link>
+          </li>
+        </ul>
+      </section>
 
       <PasswordForm email={email} />
 
