@@ -51,7 +51,7 @@ export function ExportPanel() {
 
       // Audited by name and count only.
       const total = files.reduce((sum, file) => sum + Math.max(0, file.rows.length - 1), 0);
-      await db().rpc('log_event', { p_event: 'export', p_subject_id: null, p_row_count: total });
+      await db().rpc('log_event', { p_event: 'export', p_row_count: total });
 
       setPassword('');
       setDone(`${total} rows exported as ${files.length} CSV files.`);
