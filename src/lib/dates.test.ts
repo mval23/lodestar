@@ -1,4 +1,4 @@
-import { formatDate, formatDateShort, monthStartInZone, todayInZone } from './dates';
+import { addMonths, formatDate, formatDateShort, formatMonth, monthStartInZone, monthStartOf, todayInZone } from './dates';
 
 describe('todayInZone', () => {
   it('reads today in the given zone, not the browser default', () => {
@@ -31,5 +31,27 @@ describe('formatDate', () => {
 
   it('returns the input unchanged when it cannot be read', () => {
     expect(formatDate('not-a-date')).toBe('not-a-date');
+  });
+});
+
+describe('addMonths', () => {
+  it('moves whole months and rolls the year', () => {
+    expect(addMonths('2026-09-01', 1)).toBe('2026-10-01');
+    expect(addMonths('2026-12-01', 1)).toBe('2027-01-01');
+    expect(addMonths('2026-01-01', -1)).toBe('2025-12-01');
+    expect(addMonths('2026-09-01', 0)).toBe('2026-09-01');
+  });
+
+  it('never lands on a day other than the first, which budgets require', () => {
+    for (let delta = -24; delta <= 24; delta += 1) {
+      expect(addMonths('2026-03-01', delta)).toMatch(/-01$/);
+    }
+  });
+});
+
+describe('formatMonth and monthStartOf', () => {
+  it('names a month and finds the month a date belongs to', () => {
+    expect(formatMonth('2026-09-01')).toBe('September 2026');
+    expect(monthStartOf('2026-09-19')).toBe('2026-09-01');
   });
 });

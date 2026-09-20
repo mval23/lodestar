@@ -34,3 +34,23 @@ export function formatDateShort(isoDate: string): string {
     return isoDate;
   }
 }
+
+// Budgets are keyed by the first of the month, so every month helper returns
+// that day. Arithmetic is done in UTC on a plain date: no zone can shift it.
+export function addMonths(monthStart: string, delta: number): string {
+  const [year, month] = monthStart.split('-').map(Number);
+  const date = new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1 + delta, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-01`;
+}
+
+export function formatMonth(monthStart: string): string {
+  try {
+    return format(parseISO(monthStart), 'MMMM yyyy');
+  } catch {
+    return monthStart;
+  }
+}
+
+export function monthStartOf(isoDate: string): string {
+  return `${isoDate.slice(0, 7)}-01`;
+}
