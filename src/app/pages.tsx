@@ -19,7 +19,6 @@ export function PlaceholderPage({ title, icon, children }: { title: string; icon
 }
 
 const LATER: Record<string, string> = {
-  '/activity': 'Every transaction, with search, filters and sorting, arrives with accounts.',
   '/accounts': 'Accounts and their balances arrive in the next build.',
   '/budgets': 'Monthly budgets arrive after accounts and transactions.',
   '/bills': 'Bills and subscriptions arrive after accounts and transactions.',

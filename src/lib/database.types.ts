@@ -1,4 +1,4 @@
-// Hand-written subset of the generated types, covering what Phase 3 uses.
+// Hand-written subset of the generated types, covering what the app uses today.
 // Regenerate the full file with `npm run db:types` (needs `supabase start`).
 // CI regenerates it from the migrations and type-checks the app against it.
 
@@ -77,6 +77,43 @@ export type Database = {
         };
         Relationships: [];
       };
+      category_groups: {
+        Row: { id: string; user_id: string; name: string; sort_order: number; created_at: string; updated_at: string };
+        Insert: { id?: string; name: string; sort_order?: number };
+        Update: { name?: string; sort_order?: number };
+        Relationships: [];
+      };
+      categories: {
+        Row: {
+          id: string;
+          user_id: string;
+          group_id: string | null;
+          name: string;
+          kind: Database['public']['Enums']['category_kind'];
+          sort_order: number;
+          archived_at: string | null;
+          source_ref: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          group_id?: string | null;
+          name: string;
+          kind: Database['public']['Enums']['category_kind'];
+          sort_order?: number;
+          archived_at?: string | null;
+          source_ref?: string | null;
+        };
+        Update: {
+          group_id?: string | null;
+          name?: string;
+          kind?: Database['public']['Enums']['category_kind'];
+          sort_order?: number;
+          archived_at?: string | null;
+        };
+        Relationships: [];
+      };
       transactions: {
         Row: {
           id: string;
@@ -102,13 +139,41 @@ export type Database = {
           kind: Database['public']['Enums']['txn_kind'];
           occurred_on: string;
           amount_minor: number;
+          from_account_id?: string | null;
+          to_account_id?: string | null;
+          category_id?: string | null;
           description: string;
+          notes?: string | null;
+          status?: Database['public']['Enums']['txn_status'];
+          recurring_item_id?: string | null;
+          import_batch_id?: string | null;
+          source_ref?: string | null;
         };
-        Update: { status?: Database['public']['Enums']['txn_status'] };
+        Update: {
+          kind?: Database['public']['Enums']['txn_kind'];
+          occurred_on?: string;
+          amount_minor?: number;
+          from_account_id?: string | null;
+          to_account_id?: string | null;
+          category_id?: string | null;
+          description?: string;
+          notes?: string | null;
+          status?: Database['public']['Enums']['txn_status'];
+        };
         Relationships: [];
       };
     };
     Views: {
+      category_usage: {
+        Row: {
+          user_id: string;
+          category_id: string;
+          kind: Database['public']['Enums']['category_kind'];
+          last_used_at: string | null;
+          use_count: number;
+        };
+        Relationships: [];
+      };
       account_balances: {
         Row: {
           user_id: string;
@@ -127,7 +192,12 @@ export type Database = {
         Relationships: [];
       };
     };
-    Functions: { [_ in never]: never };
+    Functions: {
+      merge_categories: {
+        Args: { p_source_id: string; p_target_id: string };
+        Returns: number;
+      };
+    };
     Enums: {
       account_type: 'checking' | 'savings' | 'credit_card' | 'cash' | 'investment' | 'loan' | 'other_asset';
       txn_kind: 'expense' | 'income' | 'transfer';
