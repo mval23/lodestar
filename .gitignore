@@ -9,3 +9,6 @@ supabase/.branches/
 *.log
 .DS_Store
 Thumbs.db
+
+# Notion migration working files: real financial data, and never committed.
+migration/
