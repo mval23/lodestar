@@ -6,9 +6,11 @@ import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { SignInPage } from '../features/auth/SignInPage';
 import { SignUpPage } from '../features/auth/SignUpPage';
 import { AccountsPage } from '../features/accounts/AccountsPage';
+import { BillsPage } from '../features/bills/BillsPage';
 import { BudgetsPage } from '../features/budgets/BudgetsPage';
 import { GoalsPage } from '../features/goals/GoalsPage';
 import { ImportExportPage } from '../features/import-export/ImportExportPage';
+import { ReportsPage } from '../features/reports/ReportsPage';
 import { OverviewPage } from '../features/overview/OverviewPage';
 import { ActivityPage } from '../features/transactions/ActivityPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
@@ -41,9 +43,11 @@ export const routes: RouteObject[] = [
               { path: '/', element: <OverviewPage /> },
               { path: '/accounts', element: <AccountsPage /> },
               { path: '/activity', element: <ActivityPage /> },
+              { path: '/bills', element: <BillsPage /> },
               { path: '/budgets', element: <BudgetsPage /> },
               { path: '/goals', element: <GoalsPage /> },
               { path: '/import-export', element: <ImportExportPage /> },
+              { path: '/reports', element: <ReportsPage /> },
               // Categories used to live on their own page; keep old links working.
               { path: '/categories', element: <Navigate to="/budgets" replace /> },
               { path: '/settings', element: <SettingsPage /> },

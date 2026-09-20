@@ -20,8 +20,6 @@ export function PlaceholderPage({ title, icon, children }: { title: string; icon
 
 const LATER: Record<string, string> = {
   '/accounts': 'Accounts and their balances arrive in the next build.',
-  '/bills': 'Bills and subscriptions arrive after accounts and transactions.',
-  '/reports': 'Cash-flow and net-worth reports arrive after budgets and goals.',
 };
 
 export const PLACEHOLDER_ROUTES = [...SIDEBAR_MAIN, ...SIDEBAR_FOOT]
