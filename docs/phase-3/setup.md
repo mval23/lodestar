@@ -22,7 +22,11 @@ The code for this phase is in the repository. What remains is provisioning: a fe
 
 ### How email links work
 
-Every Auth email links to `<RedirectTo>?token_hash=…&type=…`, where `RedirectTo` is `<app origin>/auth/confirm`. The page exchanges the token in the browser with `verifyOtp`, so a link opened on another device still works. Recovery links then go to `/reset-password`. If the app's origin isn't on the project's redirect allow list, Supabase falls back to the bare Site URL. The app forwards `/?token_hash=…` to `/auth/confirm`, so the link still works, but add every origin to the allow list anyway.
+Every Auth email links to `<RedirectTo>?token_hash=…&type=…`, where `RedirectTo` is `<app origin>/auth/confirm`. The page exchanges the token there with `verifyOtp`, and recovery links then go to `/reset-password`.
+
+**The link must be opened in the browser that asked for it.** The client uses the PKCE flow, so Supabase issues a `pkce_…` token that can only be completed with a code verifier held in that browser's storage. Opening it elsewhere fails with "Open the link in the same browser you used to request it." The alternative, the implicit flow, would work anywhere but puts tokens in the URL fragment, where browser history and referrers can leak them. PKCE is the deliberate choice; the copy explains the restriction.
+
+If the app's origin isn't on the project's redirect allow list, Supabase falls back to the bare Site URL. The app forwards `/?token_hash=…` to `/auth/confirm`, so the link still works, but add every origin to the allow list anyway. `/auth/confirm` also accepts the `?code=…` of a project still on Supabase's default templates, and the `?error=…` redirect of a dead link.
 
 ## Local development
 
@@ -91,7 +95,7 @@ Supabase's built-in email is for testing only. Use a transactional provider such
 3. In Supabase, go to **Authentication → Emails → SMTP Settings**, turn on custom SMTP, and enter the host, port, user and password. Set the sender name to `Lodestar` and use an address like `no-reply@<domain>`.
 4. Raise the Auth email rate limit (Authentication → Rate Limits) from the built-in default to something like 30 per hour.
 
-Until a domain is ready, staging can use the provider's shared test sender. It can only mail your own address.
+Until a domain is ready, staging can use the provider's shared test sender, with two limits: it only delivers to the address the provider account is registered to, and its click tracking cannot be turned off, so every auth link is rewritten to a tracking domain (`awstrack.me` for Resend). That is tolerable for synthetic staging data. **Production needs a verified domain**, with click and open tracking off, so that one-time sign-in tokens never travel through a third party.
 
 Custom SMTP also unlocks the email templates. Go back to **Authentication → Emails → Templates** and paste the three from `supabase/templates/` into Confirm signup, Reset password and Change email address, using the subjects in `supabase/config.toml`. Switch the body editor to **Source** before pasting, and leave the `{{ .RedirectTo }}` and `{{ .TokenHash }}` placeholders untouched.
 
@@ -129,12 +133,14 @@ Use a synthetic email address that you control, and no real financial data.
 - [ ] Response headers include `Content-Security-Policy`, `Strict-Transport-Security` and `X-Frame-Options: DENY` (check with `curl -I`).
 - [ ] **Register:** sign up, and the confirmation email arrives from your custom sender (not Supabase's).
 - [ ] **Confirm:** the link opens `/auth/confirm` and lands on Overview. Opening the same link again shows "expired or already used".
-- [ ] **Cross-device:** a confirmation link opened in a different browser also works.
+- [ ] **Another browser:** the same link opened in a different browser says "Open the link in the same browser you used to request it", rather than failing silently.
+- [ ] **Two users** need two deliverable addresses, so this waits for a verified sending domain.
 - [ ] **Sign in / out:** wrong password shows calm copy. Sign out returns to sign in, and a protected URL goes back to sign in with `?next=`.
 - [ ] **Reset password:** "Forgot password?" sends mail, the link leads to "Choose a new password", and the new password works while the old one doesn't.
 - [ ] **Profile:** change name, time zone and week start, then reload and see them persisted. Currency switches USD ↔ COP while there are no transactions.
 - [ ] **Change password** in Settings asks for the current password, and rejects a wrong one.
 - [ ] **Isolation smoke:** with two synthetic users, user B's profile never appears for user A. The formal matrix is Phase 4.
+- [ ] **No CSP violations in the console.** Vercel's preview toolbar injects `vercel.live`, which the policy blocks; turn the toolbar off for previews (Vercel → Settings → Toolbar) rather than allowing a third-party script.
 
 ## Known gaps and follow-ups
 
