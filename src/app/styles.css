@@ -1216,3 +1216,19 @@ a:hover {
 .prog.over > i {
   background: repeating-linear-gradient(45deg, var(--ink) 0 3px, var(--ink-3) 3px 6px);
 }
+
+/* ---------- Goals ---------- */
+.goal-card {
+  display: grid;
+  gap: var(--space-2);
+}
+.goal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.goal-head .fig {
+  font-size: 24px;
+  line-height: 30px;
+}
