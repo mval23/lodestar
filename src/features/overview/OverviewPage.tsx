@@ -1,22 +1,33 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { LayoutGrid } from 'lucide-react';
 import { useCurrency, useProfile, useUpdateProfile } from '../../lib/profile';
 import { CURRENCIES, type Currency } from '../../lib/money';
+import { monthStartInZone, todayInZone } from '../../lib/dates';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
-import { EmptyState } from '../../ui/EmptyState';
 import { Notice } from '../../ui/Notice';
 import { AccountSheet } from '../accounts/AccountSheet';
 import { accountTypeLabel, netWorthOf, useAccounts } from '../accounts/queries';
+import { describeDue, dueStateOf, useBills } from '../bills/queries';
+import { totalsOf, useBudgets } from '../budgets/queries';
+import { useGoals } from '../goals/queries';
+import { useCashFlow } from '../reports/queries';
+import { TransactionSheet } from '../transactions/TransactionSheet';
 
+// Where you stand, in one screen: what you have, what this month has done,
+// what is due, and what you are saving towards. Everything here is a link to
+// the page that explains it.
 export function OverviewPage() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const currency = useCurrency();
+  const profile = useProfile();
   const accounts = useAccounts();
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [accountSheet, setAccountSheet] = useState(false);
+  const [txnSheet, setTxnSheet] = useState(false);
 
-  const rows = (accounts.data ?? []).filter((a) => !a.archived_at);
+  const today = todayInZone(profile.data?.timezone);
+  const thisMonth = monthStartInZone(profile.data?.timezone);
+  const open = (accounts.data ?? []).filter((a) => !a.archived_at);
   const worth = netWorthOf(accounts.data ?? []);
   const firstRun = accounts.isSuccess && (accounts.data ?? []).length === 0;
 
@@ -24,13 +35,17 @@ export function OverviewPage() {
     <div className="page">
       <header className="page-head">
         <h1 className="large-title">Overview</h1>
-        {!firstRun && rows.length > 0 && <Button onClick={() => setSheetOpen(true)}>Add account</Button>}
+        {!firstRun && (
+          <div className="actions">
+            <Button onClick={() => setTxnSheet(true)}>Add transaction</Button>
+          </div>
+        )}
       </header>
 
       {notice && <Notice tone="ok">{notice}</Notice>}
 
       {firstRun ? (
-        <FirstRun onAddAccount={() => setSheetOpen(true)} />
+        <FirstRun onAddAccount={() => setAccountSheet(true)} />
       ) : (
         <>
           <section className="group figure-group">
@@ -40,14 +55,29 @@ export function OverviewPage() {
                 <Amount minor={worth.net} currency={currency} />
               </span>
             </p>
-            <p className="footnote flush">Everything you own, less what you owe.</p>
+            <p className="footnote flush">
+              <Amount minor={worth.assets} currency={currency} /> in assets
+              {worth.liabilities !== 0 && (
+                <>
+                  {' · '}
+                  <Amount minor={-worth.liabilities} currency={currency} /> owed
+                </>
+              )}
+            </p>
           </section>
 
-          {rows.length > 0 && (
+          <div className="overview-grid">
+            <ThisMonth month={thisMonth} currency={currency} />
+            <BudgetSummary month={thisMonth} currency={currency} />
+            <DueSoon today={today} currency={currency} />
+            <GoalsSummary currency={currency} />
+          </div>
+
+          {open.length > 0 && (
             <section>
               <h2 className="form-group-title">Accounts</h2>
               <ul className="rows-list">
-                {rows.slice(0, 6).map((row) => (
+                {open.slice(0, 5).map((row) => (
                   <li key={row.account_id}>
                     <Link className="row-button" to="/accounts">
                       <span className="row-label">
@@ -59,22 +89,147 @@ export function OverviewPage() {
                   </li>
                 ))}
               </ul>
-              {rows.length > 6 && (
+              {open.length > 5 && (
                 <p className="form-hint">
-                  <Link to="/accounts">See all {rows.length} accounts</Link>
+                  <Link to="/accounts">See all {open.length} accounts</Link>
                 </p>
               )}
             </section>
           )}
-
-          <EmptyState icon={LayoutGrid} title="Transactions are next">
-            Adding income, expenses and transfers arrives in the next build. Accounts and balances work now.
-          </EmptyState>
         </>
       )}
 
-      {sheetOpen && <AccountSheet onClose={() => setSheetOpen(false)} />}
+      {accountSheet && <AccountSheet onClose={() => setAccountSheet(false)} />}
+      {txnSheet && <TransactionSheet onClose={() => setTxnSheet(false)} />}
     </div>
+  );
+}
+
+function Card({
+  title,
+  to,
+  linkText,
+  children,
+}: {
+  title: string;
+  to: string;
+  linkText: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="group overview-card">
+      <header className="chart-head">
+        <h2 className="caption">{title}</h2>
+        <Link className="footnote" to={to}>
+          {linkText}
+        </Link>
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function ThisMonth({ month, currency }: { month: string; currency: Currency }) {
+  const cashFlow = useCashFlow(2);
+  const current = (cashFlow.data ?? []).find((row) => row.month === month);
+
+  return (
+    <Card title="This month" to="/reports" linkText="Reports">
+      {current ? (
+        <>
+          <p className="card-figure flush">
+            <Amount minor={current.net_minor} currency={currency} signed />
+          </p>
+          <p className="footnote flush">
+            <Amount minor={current.money_in_minor} currency={currency} /> in ·{' '}
+            <Amount minor={current.money_out_minor} currency={currency} /> out
+          </p>
+        </>
+      ) : (
+        <p className="footnote flush">Nothing recorded this month yet.</p>
+      )}
+    </Card>
+  );
+}
+
+function BudgetSummary({ month, currency }: { month: string; currency: Currency }) {
+  const budgets = useBudgets(month);
+  const rows = budgets.data ?? [];
+  const totals = totalsOf(rows);
+  const over = rows.filter((row) => row.left_minor < 0);
+
+  return (
+    <Card title="Budgets" to="/budgets" linkText="Budgets">
+      {rows.length === 0 ? (
+        <p className="footnote flush">No plan for this month yet.</p>
+      ) : (
+        <>
+          <p className="card-figure flush">
+            <Amount minor={totals.left} currency={currency} />
+          </p>
+          <p className="footnote flush">
+            left of <Amount minor={totals.planned} currency={currency} /> planned
+            {over.length > 0 && ` · ${over.length} over plan`}
+          </p>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function DueSoon({ today, currency }: { today: string; currency: Currency }) {
+  const bills = useBills();
+  const due = (bills.data ?? [])
+    .filter((bill) => !bill.archived_at && dueStateOf(bill.next_due_on, today) !== 'later')
+    .slice(0, 3);
+
+  return (
+    <Card title="Due now" to="/bills" linkText="Bills">
+      {due.length === 0 ? (
+        <p className="footnote flush">Nothing due in the next week.</p>
+      ) : (
+        <ul className="mini-list">
+          {due.map((bill) => (
+            <li key={bill.id}>
+              <span className="row-label">
+                {bill.name}
+                <small>{describeDue(bill.next_due_on, today)}</small>
+              </span>
+              <Amount minor={bill.amount_minor} currency={currency} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+function GoalsSummary({ currency }: { currency: Currency }) {
+  const goals = useGoals();
+  const rows = (goals.data ?? []).filter((goal) => !goal.archived_at).slice(0, 3);
+
+  return (
+    <Card title="Goals" to="/goals" linkText="Goals">
+      {rows.length === 0 ? (
+        <p className="footnote flush">No goals yet.</p>
+      ) : (
+        <ul className="mini-list">
+          {rows.map((goal) => (
+            <li key={goal.goal_id}>
+              <span className="row-label">
+                {goal.name}
+                <small>
+                  {goal.target_minor === null
+                    ? 'No target'
+                    : `${Math.min(100, Math.round((goal.balance_minor / goal.target_minor) * 100))}% saved`}
+                </small>
+              </span>
+              <Amount minor={goal.balance_minor} currency={currency} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }
 
