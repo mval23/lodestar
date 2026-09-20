@@ -1145,3 +1145,74 @@ a:hover {
   margin-top: var(--space-3);
   cursor: pointer;
 }
+
+/* ---------- Budgets ---------- */
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.month-nav .btn {
+  padding: 8px;
+  min-height: 36px;
+}
+.month-nav .btn svg {
+  width: 18px;
+  height: 18px;
+}
+.budget-row {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+.rows-list > li.budget-row + li.budget-row {
+  border-top: 1px solid var(--line);
+}
+.budget-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.budget-amount input {
+  font: inherit;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  width: 120px;
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink);
+}
+.budget-amount input:hover {
+  border-color: var(--line);
+}
+.budget-amount input:focus {
+  outline: none;
+  border-color: var(--line-strong);
+  background: var(--ground);
+}
+.budget-amount input::placeholder {
+  color: var(--ink-3);
+}
+
+/* The graduated rule: fine ticks under the bar, hatched when over plan. */
+.prog {
+  position: relative;
+  height: 8px;
+  background: var(--sunk);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.prog > i {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  border-radius: var(--radius-pill);
+}
+.prog.over > i {
+  background: repeating-linear-gradient(45deg, var(--ink) 0 3px, var(--ink-3) 3px 6px);
+}

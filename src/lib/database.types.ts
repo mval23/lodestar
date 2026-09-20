@@ -114,6 +114,21 @@ export type Database = {
         };
         Relationships: [];
       };
+      budgets: {
+        Row: {
+          id: string;
+          user_id: string;
+          category_id: string;
+          category_kind: 'expense';
+          month: string;
+          amount_minor: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: { id?: string; category_id: string; month: string; amount_minor: number };
+        Update: { amount_minor?: number; month?: string; category_id?: string };
+        Relationships: [];
+      };
       import_batches: {
         Row: {
           id: string;
@@ -179,6 +194,20 @@ export type Database = {
       };
     };
     Views: {
+      budget_progress: {
+        Row: {
+          user_id: string | null;
+          budget_id: string | null;
+          category_id: string | null;
+          category_name: string | null;
+          group_id: string | null;
+          month: string | null;
+          planned_minor: number | null;
+          spent_minor: number | null;
+          left_minor: number | null;
+        };
+        Relationships: [];
+      };
       category_usage: {
         Row: {
           user_id: string | null;
@@ -210,6 +239,10 @@ export type Database = {
       };
     };
     Functions: {
+      copy_budgets: {
+        Args: { p_from_month: string; p_to_month: string };
+        Returns: number;
+      };
       import_transactions: {
         Args: { p_batch: Json; p_rows: Json };
         Returns: { batch_id: string; inserted_count: number; duplicate_count: number }[];
