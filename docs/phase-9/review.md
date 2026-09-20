@@ -9,10 +9,10 @@ Reviewed 20 Sep 2026, against `main` plus the Phase 9 branch.
 
 | Suite | What it covers | Count |
 |---|---|---|
-| Unit and component (`npm test`) | money, dates, CSV rules, auth copy, the Notion transform, every feature's logic and forms | 212 |
+| Unit and component (`npm test`) | money, dates, CSV rules, auth copy, the Notion transform, the deletion guard, every feature's logic and forms | 246 |
 | Database (`supabase test db`) | RLS, the cross-user matrix for all ten tables, composite keys, `anon`, the cascade | 112 |
 | Schema smoke (`npm run schema:check`) | the migration applied to PGlite, constraints, views, RPCs | 140 |
-| End to end (`npm run e2e`) | real browser, production build, production headers, desktop and phone | 72 |
+| End to end (`npm run e2e`) | real browser, production build, production headers, desktop and phone | 80 |
 
 The end-to-end suite stubs Supabase at the network boundary. That is deliberate: the database's own behaviour is covered against a **real** Postgres by pgTAP, where it can be tested honestly, and the browser tests then cover what the app does with the answers. What neither covers is the seam between them on a live project — see finding 5.
 
@@ -22,6 +22,11 @@ Two faults that every other check had missed:
 
 1. **Choosing an account closed the whole sheet.** A picker is a `<dialog>` inside the sheet's `<dialog>`, and React carries the inner `close` event to the outer handler. Unit tests missed it because jsdom's dialog is a shim; manual checks missed it because nobody had picked an option *inside* a sheet in a real browser. Each dialog now answers only for itself.
 2. **`aria-sort` sat on the sort button** rather than the column header — a critical axe violation, and wrong for anyone reading the table with a screen reader.
+
+Adding the deletion tests turned up a third, in the harness itself: the stub
+treated a `HEAD` count request as a write, and did not expose `content-range`
+across origins. Any count read through it would have come back as zero, and
+the first thing to depend on one was the confirmation phrase.
 
 ## Accessibility
 
@@ -57,7 +62,7 @@ Checked by hand as well, because automation catches roughly half of what matters
 
 | # | Severity | Finding |
 |---|---|---|
-| 1 | **High** | **Account deletion is not built.** `CLAUDE.md` puts "delete account" in the MVP and names `delete-account` as the only Edge Function; there is no `supabase/functions` directory. A person cannot delete their own account or their data. This must ship before anyone's real data lives in production. |
+| 1 | ~~High~~ **Fixed** | **Account deletion was not built.** Built on 20 Sep 2026: Settings asks for the password and the phrase typed out, and the `delete-account` Edge Function verifies both again on its own side before cascading every row. See [account-deletion.md](account-deletion.md). |
 | 2 | **High** | **Staging now holds real financial data.** The Phase 8 trial imported the owner's actual ledger into a Free-tier project with no backups, and preview deployments are unprotected. Either delete that data from staging, or treat staging as production-grade. |
 | 3 | Medium | **Production is on the Free tier**: no backups, and the project pauses when idle. Phase 10 moves it to Pro; nothing real should be stored until then. |
 | 4 | Medium | **Leaked-password protection is off** (a Pro feature) and **MFA is not enabled** (planned for Phase 12). Both are defences a finance app should want. |
@@ -66,7 +71,7 @@ Checked by hand as well, because automation catches roughly half of what matters
 | 7 | Low | **The privacy copy has not been through legal**, and the brand file still marks it as needing approval. It must not appear in the product until it has. |
 | 8 | Low | **Initial JavaScript is ~212 KB gzipped** against a 200 KB budget. Not a security issue; noted so it is not forgotten. |
 
-Findings 1 and 2 are the two that block launch.
+Finding 2 is the one still blocking launch. Finding 1 is fixed.
 
 ## Privacy copy, for approval
 
@@ -82,7 +87,7 @@ Not in the product yet. Proposed wording, which needs legal sign-off before it a
 
 ## Before launch
 
-- [ ] Build account deletion, with the `delete-account` Edge Function (finding 1).
+- [x] Build account deletion, with the `delete-account` Edge Function (finding 1). Done 20 Sep 2026.
 - [ ] Clear the owner's real data out of staging, or accept staging as production-grade (finding 2).
 - [ ] Move production to Supabase Pro, and run a restore drill (finding 3, and Phase 10).
 - [ ] Turn on leaked-password protection once on Pro (finding 4).

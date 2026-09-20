@@ -90,6 +90,25 @@ test.describe('the sheets', () => {
   });
 });
 
+test.describe('leaving', () => {
+  test('the sign-off page has no violations', async ({ page }) => {
+    await stubSupabase(page);
+    await page.goto('/account-deleted');
+    const results = await scan(page);
+    expect(results.violations).toEqual([]);
+  });
+
+  test('the delete panel has no violations once it knows the count', async ({ page }) => {
+    await signIn(page);
+    await stubSupabase(page, { tables: withData() });
+    await page.goto('/settings');
+    // Scanning before the count arrives would miss the fields entirely.
+    await expect(page.getByLabel('Confirmation', { exact: true })).toBeVisible();
+    const results = await scan(page);
+    expect(results.violations).toEqual([]);
+  });
+});
+
 test.describe('by keyboard alone', () => {
   test('a picker opens, moves and chooses without a mouse', async ({ page }) => {
     await signIn(page);

@@ -104,10 +104,23 @@ function jwt(payload: object): string {
   return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode(payload)}.synthetic-signature`;
 }
 
-export async function signIn(page: Page) {
-  const expiresAt = Math.floor(Date.now() / 1000) + 3600;
-  const session = {
-    access_token: jwt({ sub: USER_ID, exp: expiresAt, role: 'authenticated', aud: 'authenticated', email: EMAIL }),
+// One signed-in session: it seeds storage, and it is what a successful
+// sign-in at /auth/v1/token hands back.
+function session() {
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = now + 3600;
+  return {
+    // amr is how the real thing records an authentication, and what the
+    // delete-account function reads to insist a password was proved just now.
+    access_token: jwt({
+      sub: USER_ID,
+      iat: now,
+      exp: expiresAt,
+      role: 'authenticated',
+      aud: 'authenticated',
+      email: EMAIL,
+      amr: [{ method: 'password', timestamp: now }],
+    }),
     refresh_token: 'synthetic-refresh',
     token_type: 'bearer',
     expires_in: 3600,
@@ -122,14 +135,23 @@ export async function signIn(page: Page) {
       created_at: '2026-01-01T00:00:00Z',
     },
   };
+}
+
+export async function signIn(page: Page) {
   // The key supabase-js derives from the project host.
   await page.addInitScript(
     ([key, value]) => window.localStorage.setItem(key as string, value as string),
-    ['sb-e2e-test-auth-token', JSON.stringify(session)],
+    ['sb-e2e-test-auth-token', JSON.stringify(session())],
   );
 }
 
-type Options = { tables?: Tables; onWrite?: (table: string, body: unknown) => void };
+type Options = {
+  tables?: Tables;
+  onWrite?: (table: string, body: unknown) => void;
+  // Set it, and a sign-in with this password succeeds: what
+  // re-authentication before an export or a deletion needs.
+  password?: string;
+};
 
 export async function stubSupabase(page: Page, options: Options = {}) {
   const tables = options.tables ?? emptyTables();
@@ -143,11 +165,20 @@ export async function stubSupabase(page: Page, options: Options = {}) {
 
     if (url.pathname.startsWith('/auth/v1')) {
       if (url.pathname.endsWith('/token')) {
+        const body = request.postDataJSON?.() as { password?: string } | undefined;
+        if (options.password !== undefined && body?.password === options.password) return json(session());
         // The shape GoTrue actually returns, so the app's mapping from
         // error_code to plain words is exercised rather than bypassed.
         return json({ code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' }, 400);
       }
       return json({});
+    }
+
+    // Edge Functions. delete-account is the only one there is.
+    if (url.pathname.startsWith('/functions/v1/')) {
+      const name = url.pathname.replace('/functions/v1/', '');
+      options.onWrite?.(`function:${name}`, request.postDataJSON?.());
+      return json({ ok: true });
     }
 
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
@@ -163,7 +194,8 @@ export async function stubSupabase(page: Page, options: Options = {}) {
     const table = url.pathname.replace('/rest/v1/', '') as keyof Tables;
     const rows = tables[table];
 
-    if (method !== 'GET') {
+    // HEAD is how PostgREST is asked for a count, so it reads, not writes.
+    if (method !== 'GET' && method !== 'HEAD') {
       options.onWrite?.(table, request.postDataJSON?.());
       const body = request.postDataJSON?.();
       const row = Array.isArray(body) ? body[0] : body;
@@ -173,13 +205,19 @@ export async function stubSupabase(page: Page, options: Options = {}) {
     if (table === 'profiles') return json(rows ?? {});
     const list = Array.isArray(rows) ? rows : [];
     // PostgREST answers a HEAD count request with a Content-Range header.
+    // The stub is on another origin, as the real project is, so the header
+    // has to be exposed or the browser hides it and every count reads zero.
+    const range = (to: number) => ({
+      'content-range': `0-${to}/${list.length}`,
+      'access-control-expose-headers': 'content-range',
+    });
     if (request.method() === 'HEAD') {
-      return route.fulfill({ status: 200, headers: { 'content-range': `0-0/${list.length}` }, body: '' });
+      return route.fulfill({ status: 200, headers: range(0), body: '' });
     }
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      headers: { 'content-range': `0-${Math.max(0, list.length - 1)}/${list.length}` },
+      headers: range(Math.max(0, list.length - 1)),
       body: JSON.stringify(list),
     });
   });

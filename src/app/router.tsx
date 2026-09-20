@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
+import { AccountDeletedPage } from '../features/auth/AccountDeletedPage';
 import { CheckEmailPage } from '../features/auth/CheckEmailPage';
 import { ConfirmPage } from '../features/auth/ConfirmPage';
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
@@ -26,6 +27,8 @@ export const routes: RouteObject[] = [
       { path: '/auth/confirm', element: <ConfirmPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },
       { path: '/check-email', element: <CheckEmailPage /> },
+      // Public, and reached at the moment the account stops existing.
+      { path: '/account-deleted', element: <AccountDeletedPage /> },
       {
         element: <RedirectIfSignedIn />,
         children: [

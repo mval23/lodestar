@@ -246,3 +246,51 @@ test.describe('the shell', () => {
     await expect(page.getByText('This page doesn’t exist')).toBeVisible();
   });
 });
+
+test.describe('leaving', () => {
+  test('deleting the account takes a password and the words, then says goodbye', async ({ page }) => {
+    const calls: string[] = [];
+    await signIn(page);
+    await stubSupabase(page, {
+      tables: withData(),
+      password: 'synthetic-password',
+      onWrite: (table) => calls.push(table),
+    });
+    await page.goto('/settings');
+
+    const button = page.getByRole('button', { name: 'Delete account' });
+    await expect(button).toBeVisible();
+    await expect(button).toHaveAttribute('aria-disabled', 'true');
+
+    // The phrase names the two transactions in the fixture, so it cannot be
+    // typed from memory or clicked through by accident.
+    await page.getByLabel('Confirmation', { exact: true }).fill('Delete account and its 3 transactions');
+    await page.getByLabel('Password', { exact: true }).fill('synthetic-password');
+    await expect(button).toHaveAttribute('aria-disabled', 'true');
+
+    await page.getByLabel('Confirmation', { exact: true }).fill('Delete account and its 2 transactions');
+    await expect(button).not.toHaveAttribute('aria-disabled', 'true');
+
+    await button.click();
+    await expect(page.getByRole('heading', { name: 'Your account is deleted' })).toBeVisible();
+    expect(calls).toContain('function:delete-account');
+  });
+
+  test('a wrong password deletes nothing', async ({ page }) => {
+    const calls: string[] = [];
+    await signIn(page);
+    await stubSupabase(page, {
+      tables: withData(),
+      password: 'synthetic-password',
+      onWrite: (table) => calls.push(table),
+    });
+    await page.goto('/settings');
+
+    await page.getByLabel('Confirmation', { exact: true }).fill('Delete account and its 2 transactions');
+    await page.getByLabel('Password', { exact: true }).fill('not-the-password');
+    await page.getByRole('button', { name: 'Delete account' }).click();
+
+    await expect(page.getByText('That password isn’t right.')).toBeVisible();
+    expect(calls).not.toContain('function:delete-account');
+  });
+});

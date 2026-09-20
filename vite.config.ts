@@ -61,7 +61,9 @@ export default defineConfig(({ mode }) => {
       setupFiles: ['./src/test/setup.ts'],
       // The Notion migration tooling lives outside src/: it is a one-time
       // local script, not part of the app people download.
-      include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.mjs'],
+      // The delete-account guard is the other thing outside src/ that has to
+      // be right, so its tests run here too.
+      include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.mjs', 'supabase/functions/**/*.test.ts'],
     },
   };
 });
