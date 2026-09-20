@@ -4,6 +4,7 @@ import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
+import { Select } from '../../ui/Select';
 import { Sheet } from '../../ui/Sheet';
 import { dataErrorMessage } from '../auth/errors';
 import {
@@ -19,7 +20,7 @@ import {
   type CategoryKind,
 } from './queries';
 
-export function CategoriesPage() {
+export function CategoryManager() {
   const categories = useCategories();
   const groups = useCategoryGroups();
   const usage = useCategoryUsage();
@@ -51,11 +52,13 @@ export function CategoriesPage() {
   };
 
   return (
-    <div className="page page-narrow">
+    <section className="stack">
       <header className="page-head">
         <div>
-          <h1 className="large-title">Categories</h1>
-          <p className="footnote flush">Expenses and income only. Saving is a transfer into a goal’s account.</p>
+          <h2 className="title-2">Categories</h2>
+          <p className="footnote flush">
+            A category is what money was for. A budget plans one category for one month.
+          </p>
         </div>
         <Button onClick={() => open()}>Add category</Button>
       </header>
@@ -115,7 +118,7 @@ export function CategoriesPage() {
           onClose={() => setSheetOpen(false)}
         />
       )}
-    </div>
+    </section>
   );
 }
 
@@ -201,14 +204,17 @@ function CategorySheet({
             </div>
           </FormRow>
           <FormRow label="Group" htmlFor="category-group">
-            <select id="category-group" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-              <option value="">Ungrouped</option>
-              {(groups.data ?? []).map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
+            <Select
+              id="category-group"
+              label="Group"
+              placeholder="Ungrouped"
+              value={groupId}
+              onChange={setGroupId}
+              options={[
+                { value: '', label: 'Ungrouped' },
+                ...(groups.data ?? []).map((group) => ({ value: group.id, label: group.name })),
+              ]}
+            />
           </FormRow>
           <FormRow label="New group" htmlFor="category-new-group">
             <input
@@ -255,14 +261,14 @@ function CategorySheet({
                 deleted.
               </label>
               <div className="actions">
-                <select id="merge-into" value={mergeInto} onChange={(e) => setMergeInto(e.target.value)}>
-                  <option value="">Choose a category</option>
-                  {mergeTargets.map((target) => (
-                    <option key={target.id} value={target.id}>
-                      {target.name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  id="merge-into"
+                  label="Category to merge into"
+                  placeholder="Choose a category"
+                  value={mergeInto}
+                  onChange={setMergeInto}
+                  options={mergeTargets.map((target) => ({ value: target.id, label: target.name }))}
+                />
                 <Button
                   variant="secondary"
                   dimmed={!mergeInto}

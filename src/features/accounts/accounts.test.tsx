@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
+import { pick } from '../../test/select';
 import { AccountsPage } from './AccountsPage';
 import { AccountSheet } from './AccountSheet';
 import { netWorthOf, type AccountBalance } from './queries';
@@ -137,7 +138,7 @@ describe('AccountSheet', () => {
   it('keeps what you owe on a card as a negative balance', async () => {
     render(<AccountSheet onClose={vi.fn()} />);
     await userEvent.type(screen.getByLabelText('Name'), 'Blue card');
-    await userEvent.selectOptions(screen.getByLabelText('Type'), 'credit_card');
+    await pick('Account type', 'Credit card');
     await userEvent.type(screen.getByLabelText('Amount owed'), '310');
     await userEvent.click(screen.getByRole('button', { name: 'Add account' }));
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ opening_balance_minor: -31000 }));

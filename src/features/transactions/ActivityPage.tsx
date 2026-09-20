@@ -7,6 +7,7 @@ import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { Notice } from '../../ui/Notice';
+import { Select } from '../../ui/Select';
 import { dataErrorMessage } from '../auth/errors';
 import { useAccounts } from '../accounts/queries';
 import { useCategories } from '../categories/queries';
@@ -105,37 +106,45 @@ export function ActivityPage() {
           defaultValue={filters.search}
           onChange={(e) => update({ search: e.target.value })}
         />
-        <select aria-label="Kind" value={filters.kind} onChange={(e) => update({ kind: e.target.value as Filters['kind'] })}>
-          <option value="all">All kinds</option>
-          <option value="expense">Expenses</option>
-          <option value="income">Income</option>
-          <option value="transfer">Transfers</option>
-        </select>
-        <select aria-label="Account" value={filters.accountId} onChange={(e) => update({ accountId: e.target.value })}>
-          <option value="all">All accounts</option>
-          {(accounts.data ?? []).map((a) => (
-            <option key={a.account_id} value={a.account_id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-        <select aria-label="Category" value={filters.categoryId} onChange={(e) => update({ categoryId: e.target.value })}>
-          <option value="all">All categories</option>
-          {(categories.data ?? []).map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Status"
+        <Select
+          label="Kind"
+          value={filters.kind}
+          onChange={(next) => update({ kind: next as Filters['kind'] })}
+          options={[
+            { value: 'all', label: 'All kinds' },
+            { value: 'expense', label: 'Expenses' },
+            { value: 'income', label: 'Income' },
+            { value: 'transfer', label: 'Transfers' },
+          ]}
+        />
+        <Select
+          label="Account"
+          value={filters.accountId}
+          onChange={(next) => update({ accountId: next })}
+          options={[
+            { value: 'all', label: 'All accounts' },
+            ...(accounts.data ?? []).map((a) => ({ value: a.account_id, label: a.name })),
+          ]}
+        />
+        <Select
+          label="Category"
+          value={filters.categoryId}
+          onChange={(next) => update({ categoryId: next })}
+          options={[
+            { value: 'all', label: 'All categories' },
+            ...(categories.data ?? []).map((c) => ({ value: c.id, label: c.name })),
+          ]}
+        />
+        <Select
+          label="Status"
           value={filters.status}
-          onChange={(e) => update({ status: e.target.value as Filters['status'] })}
-        >
-          <option value="all">Cleared and pending</option>
-          <option value="cleared">Cleared</option>
-          <option value="pending">Pending</option>
-        </select>
+          onChange={(next) => update({ status: next as Filters['status'] })}
+          options={[
+            { value: 'all', label: 'Cleared and pending' },
+            { value: 'cleared', label: 'Cleared' },
+            { value: 'pending', label: 'Pending' },
+          ]}
+        />
         <input
           type="date"
           aria-label="From date"

@@ -4,6 +4,7 @@ import { parseMoney, toAmountInput, type Currency } from '../../lib/money';
 import { Button } from '../../ui/Button';
 import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
+import { Select } from '../../ui/Select';
 import { Sheet } from '../../ui/Sheet';
 import { dataErrorMessage } from '../auth/errors';
 import {
@@ -96,13 +97,13 @@ export function AccountSheet({
             />
           </FormRow>
           <FormRow label="Type" htmlFor="account-type">
-            <select id="account-type" value={values.type} onChange={(e) => set('type', e.target.value as AccountType)}>
-              {ACCOUNT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+            <Select
+              id="account-type"
+              label="Account type"
+              value={values.type}
+              onChange={(next) => set('type', next as AccountType)}
+              options={ACCOUNT_TYPES.map((t) => ({ value: t.value, label: t.label, hint: t.hint }))}
+            />
           </FormRow>
           <FormRow label={isLiability ? 'Amount owed' : 'Balance today'} htmlFor="account-amount" invalid={!parsed.ok}>
             <input
