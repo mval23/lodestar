@@ -81,7 +81,7 @@ Under **Authentication → URL Configuration**:
 | Site URL | The staging Vercel URL (see step 4) | `https://<production domain>` |
 | Redirect URLs | `https://<staging url>/auth/confirm`, `https://*-<vercel-team-slug>.vercel.app/auth/confirm` (previews) | `https://<production domain>/auth/confirm` only |
 
-Under **Authentication → Emails → Templates**, paste the three templates from `supabase/templates/` (Confirm signup, Reset password, Change email address), using the subjects in `supabase/config.toml`.
+Email templates come after SMTP: Supabase locks a template's subject and body until the project has custom SMTP (step 3).
 
 ### 3. Custom SMTP (each project)
 
@@ -92,6 +92,8 @@ Supabase's built-in email is for testing only. Use a transactional provider such
 4. Raise the Auth email rate limit (Authentication → Rate Limits) from the built-in default to something like 30 per hour.
 
 Until a domain is ready, staging can use the provider's shared test sender. It can only mail your own address.
+
+Custom SMTP also unlocks the email templates. Go back to **Authentication → Emails → Templates** and paste the three from `supabase/templates/` into Confirm signup, Reset password and Change email address, using the subjects in `supabase/config.toml`. Switch the body editor to **Source** before pasting, and leave the `{{ .RedirectTo }}` and `{{ .TokenHash }}` placeholders untouched.
 
 ### 4. Vercel
 
