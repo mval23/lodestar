@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, type RouteObject } from 'react-router';
 import { CheckEmailPage } from '../features/auth/CheckEmailPage';
 import { ConfirmPage } from '../features/auth/ConfirmPage';
 import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
@@ -10,7 +10,8 @@ import { AppLayout } from './AppLayout';
 import { ForwardStrayAuthLink, RedirectIfSignedIn, RequireAuth } from './guards';
 import { NotFoundPage, OverviewPage, PlaceholderPage, PLACEHOLDER_ROUTES } from './pages';
 
-export const router = createBrowserRouter([
+// Exported separately so tests can mount the real tree in a memory router.
+export const routes: RouteObject[] = [
   {
     element: <ForwardStrayAuthLink />,
     children: [
@@ -48,4 +49,6 @@ export const router = createBrowserRouter([
       },
     ],
   },
-]);
+];
+
+export const router = createBrowserRouter(routes);

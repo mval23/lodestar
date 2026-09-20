@@ -38,11 +38,15 @@ export function RedirectIfSignedIn() {
 // If a redirect URL isn't on the Supabase allow list, Auth falls back to the
 // bare Site URL, so an emailed link can arrive at "/?token_hash=…". Forward
 // it to the real handler instead of losing the token.
+export const CONFIRM_PATH = '/auth/confirm';
+
 export function ForwardStrayAuthLink() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
-  if (params.has('token_hash') && params.has('type')) {
-    return <Navigate to={`/auth/confirm${location.search}`} replace />;
+  // Never forward the handler to itself: that loops until the router gives
+  // up and renders nothing, which is what a real emailed link would hit.
+  if (location.pathname !== CONFIRM_PATH && params.has('token_hash') && params.has('type')) {
+    return <Navigate to={`${CONFIRM_PATH}${location.search}`} replace />;
   }
   return <Outlet />;
 }
