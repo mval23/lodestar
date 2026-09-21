@@ -19,7 +19,7 @@ export function Wordmark({ size = 22 }: { size?: number }) {
   return (
     <span className="wordmark">
       <LogoSymbol size={size} />
-      Lodestar
+      <span className="wordmark-text">Lodestar</span>
     </span>
   );
 }
