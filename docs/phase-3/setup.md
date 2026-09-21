@@ -140,7 +140,7 @@ there is. Its keys are injected by the platform, so there is nothing to set;
 the optional `APP_ORIGINS` secret and the rest are in
 [docs/phase-9/account-deletion.md](../phase-9/account-deletion.md).
 
-Once this is in place, merging to `main` applies migrations to staging. Production migrations run only from **Actions → Migrate production**, after approval. The initial schema migration reaches staging on the first merge after the secrets exist. Run the production workflow once to create the production schema.
+Once this is in place, merging to `main` applies migrations to staging. Production then migrates too, but only after the owner approves it in the `production` environment (docs/phase-10/production.md). The initial schema migration reaches staging on the first merge after the secrets exist. Run the production workflow once to create the production schema.
 
 ## Acceptance checklist (on staging)
 
