@@ -145,7 +145,12 @@ export function useDeleteAccount() {
   });
 }
 
-export type NetWorth = { assets: number; liabilities: number; net: number };
+// `liabilities` keeps the sign the balances carry, so it sums straight into
+// net worth. `owed` is the same figure the way a person says it out loud: a
+// positive number when you owe, and negative when a card is paid past zero.
+// Screens read `owed`; nothing negates `liabilities` at a call site, because
+// doing that in two places is how the two screens came to disagree.
+export type NetWorth = { assets: number; liabilities: number; owed: number; net: number };
 
 export function netWorthOf(accounts: AccountBalance[]): NetWorth {
   let assets = 0;
@@ -157,7 +162,7 @@ export function netWorthOf(accounts: AccountBalance[]): NetWorth {
     if (account.is_liability) liabilities += account.balance_minor;
     else assets += account.balance_minor;
   }
-  return { assets, liabilities, net: assets + liabilities };
+  return { assets, liabilities, owed: -liabilities, net: assets + liabilities };
 }
 
 // ---------------------------------------------------------------------------

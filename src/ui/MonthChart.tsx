@@ -7,6 +7,7 @@ import { describeMoney, type Currency } from '../lib/money';
 import { formatMonth } from '../lib/dates';
 import { Amount } from './Amount';
 import { ChartFrame, ChartLegend } from './Chart';
+import { lineDomain } from './chartDomain';
 
 // Two month-by-month charts for the detail pages. Money in is ink, money out
 // is grey, and blue marks only the current month. Each one carries its table,
@@ -189,9 +190,9 @@ export function MonthLine({
   aheadLabel?: string;
 }) {
   const all = [...rows, ...ahead];
-  const values = [...all.map((p) => p.value), target ?? 0, 0];
-  const low = Math.min(...values);
-  const high = Math.max(1, ...values);
+  // The target is part of the picture, so the range always reaches it.
+  const values = [...all.map((p) => p.value), ...(target !== undefined && target !== null ? [target] : [])];
+  const { low, high, showZero } = lineDomain(values);
   const months = scalePoint({ domain: all.map((p) => p.month), range: [0, INNER_W], padding: 0.3 });
   const amounts = scaleLinear({ domain: [low, high], range: [INNER_H, 0], nice: true });
   const points = (list: LinePoint[]) => list.map((p) => `${months(p.month) ?? 0},${amounts(p.value)}`).join(' ');
@@ -226,7 +227,7 @@ export function MonthLine({
             const y = amounts(low + (high - low) * step);
             return <line key={step} className="chart-grid" x1={0} x2={INNER_W} y1={y} y2={y} />;
           })}
-          {low < 0 && <line className="chart-zero" x1={0} x2={INNER_W} y1={amounts(0)} y2={amounts(0)} />}
+          {showZero && <line className="chart-zero" x1={0} x2={INNER_W} y1={amounts(0)} y2={amounts(0)} />}
           {target !== undefined && target !== null && (
             <line className="chart-target" x1={0} x2={INNER_W} y1={amounts(target)} y2={amounts(target)} />
           )}

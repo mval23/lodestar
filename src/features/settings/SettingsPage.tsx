@@ -24,7 +24,7 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="page page-narrow">
+    <div className="page page-form">
       <header className="page-head">
         <h1 className="large-title">Settings</h1>
       </header>
@@ -37,10 +37,18 @@ export function SettingsPage() {
         <h2 className="form-group-title">Your data</h2>
         <ul className="rows-list">
           <li>
-            <Link className="row-button" to="/budgets">
+            <Link className="row-button" to="/categories">
               <span className="row-label">
                 Categories
-                <small>Kept with budgets, since a budget plans one category</small>
+                <small>Rename, group, merge or archive what money was for</small>
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link className="row-button" to="/import-export">
+              <span className="row-label">
+                Import &amp; export
+                <small>Bring in a CSV from your bank, or export everything</small>
               </span>
             </Link>
           </li>

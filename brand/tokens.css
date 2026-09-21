@@ -33,12 +33,17 @@
   --glass: rgba(245, 244, 241, .72);
   --glass-filter: saturate(180%) blur(20px);
   --shadow-float: 0 1px 2px rgba(28, 26, 23, .05), 0 8px 24px rgba(28, 26, 23, .07);
+  /* a control that sits a hair above its track: segmented thumb, toggle knob */
+  --shadow-raised: 0 1px 2px rgba(28, 26, 23, .16);
+  /* the dimmed page behind a sheet or a bottom-sheet picker */
+  --scrim: rgba(28, 26, 23, .32);
 
   /* type */
   --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   /* radius */
+  --radius-xs: 2px;   /* hairline marks only: bracket ends, legend swatches */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -64,6 +69,8 @@
     --c1: #5C7BFF; --c2: #D9744A; --c3: #12997F; --c4: #BD72BA; --c5: #7E9E35; --c6: #3A94CC; --c7: #B08620; --c8: #C96170;
     --glass: rgba(18, 17, 15, .72);
     --shadow-float: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
+    --shadow-raised: 0 1px 2px rgba(0, 0, 0, .5);
+    --scrim: rgba(0, 0, 0, .55);
   }
 }
 
@@ -76,4 +83,6 @@
   --c1: #5C7BFF; --c2: #D9744A; --c3: #12997F; --c4: #BD72BA; --c5: #7E9E35; --c6: #3A94CC; --c7: #B08620; --c8: #C96170;
   --glass: rgba(18, 17, 15, .72);
   --shadow-float: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, .5);
+  --scrim: rgba(0, 0, 0, .55);
 }

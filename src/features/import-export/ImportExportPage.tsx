@@ -9,7 +9,7 @@ export function ImportExportPage() {
   const batches = useImportBatches();
 
   return (
-    <div className="page page-narrow">
+    <div className="page page-form">
       <header className="page-head">
         <h1 className="large-title">Import &amp; export</h1>
       </header>

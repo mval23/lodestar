@@ -76,7 +76,13 @@ function BudgetLine({ month, category }: { month: string; category: Category }) 
   const spentRow = (spentByMonth.data ?? []).find((m) => m.month === month);
   // With no plan there is no budget row, so spent comes from the category's own total.
   const spent = line?.spent_minor ?? spentRow?.total_minor ?? 0;
-  const [planText, setPlanText] = useState(line ? toAmountInput(line.planned_minor, currency) : '');
+  // The budgets query settles after this component mounts, so the plan cannot
+  // be captured in state at mount: it would freeze at "" and an empty field
+  // means "remove the plan". `draft` is null until the person types, and the
+  // field falls through to whatever the server last said.
+  const [draft, setDraft] = useState<string | null>(null);
+  const planOnServer = line ? toAmountInput(line.planned_minor, currency) : '';
+  const planText = draft ?? planOnServer;
   const [error, setError] = useState<string | null>(null);
   const group = (groups.data ?? []).find((g) => g.id === category.group_id)?.name;
 
@@ -97,6 +103,13 @@ function BudgetLine({ month, category }: { month: string; category: Category }) 
 
   const save = async () => {
     setError(null);
+    // An empty field removes the plan, so saving before the month's plans have
+    // arrived could remove one this page hasn't shown yet. `data` is undefined
+    // until the first read lands, which is exactly that window.
+    if (budgets.data === undefined) {
+      setError('Still reading this month’s plan. Try again in a moment.');
+      return;
+    }
     const text = planText.trim();
     if (text === '') {
       await setBudget
@@ -157,7 +170,7 @@ function BudgetLine({ month, category }: { month: string; category: Category }) 
       </FigureRow>
 
       {line && (
-        <div className={`prog${line.left_minor < 0 ? ' over' : ''}`} role="presentation">
+        <div className={`prog spend${line.left_minor < 0 ? ' over' : ''}`} role="presentation">
           <i
             style={{
               width: `${line.planned_minor > 0 ? Math.min(100, Math.round((spent / line.planned_minor) * 100)) : 100}%`,
@@ -203,9 +216,9 @@ function BudgetLine({ month, category }: { month: string; category: Category }) 
           inputMode="decimal"
           placeholder="No plan"
           value={planText}
-          onChange={(e) => setPlanText(e.target.value)}
+          onChange={(e) => setDraft(e.target.value)}
         />
-        <Button type="submit" busy={setBudget.isPending}>
+        <Button type="submit" dimmed={budgets.data === undefined} busy={setBudget.isPending}>
           Save plan
         </Button>
         <p className="footnote flush">Leave it empty to remove the plan. It applies to {formatMonth(month)} only.</p>

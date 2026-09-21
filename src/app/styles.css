@@ -298,7 +298,7 @@ a:hover {
   display: inline-flex;
   justify-self: end;
   background: var(--sunk);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   padding: 2px;
   gap: 2px;
 }
@@ -307,7 +307,7 @@ a:hover {
   font-size: 13px;
   line-height: 18px;
   padding: 6px 14px;
-  border-radius: 7px;
+  border-radius: calc(var(--radius-sm) - 2px);
   cursor: pointer;
   min-height: 32px;
   display: flex;
@@ -323,7 +323,7 @@ a:hover {
 .segmented label:has(input:checked) {
   background: var(--surface);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-raised);
 }
 .segmented label:has(input:focus-visible) {
   outline: 3px solid color-mix(in srgb, var(--blue) 50%, transparent);
@@ -470,11 +470,18 @@ a:hover {
   padding: var(--space-8) var(--space-8) var(--space-16);
 }
 .page {
-  max-width: 1040px;
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
   display: grid;
   gap: var(--space-6);
 }
-.page-narrow {
+/* One content width for every page. Width is capped where reading needs it,
+   not per page: a form page keeps its sections to a comfortable measure, and
+   every list, table and dashboard uses the full frame. The page's sheets are
+   dialogs in the top layer and keep their own width. Capping sections rather
+   than the page keeps every title at the same x. */
+.page-form > :not(dialog) {
   max-width: 640px;
 }
 .page-head {
@@ -543,8 +550,8 @@ a:hover {
     align-items: center;
     gap: 2px;
     min-height: 44px;
-    font-size: 11px;
-    line-height: 13px;
+    font-size: 12px;
+    line-height: 14px;
     font-weight: 500;
     color: var(--ink-3);
   }
@@ -654,7 +661,7 @@ a:hover {
   width: 10px;
   height: 10px;
   border: 2px solid var(--blue);
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
 }
 .bracket::before {
   left: 0;
@@ -736,7 +743,7 @@ a:hover {
   overflow: hidden;
 }
 .sheet::backdrop {
-  background: rgba(28, 26, 23, 0.32);
+  background: var(--scrim);
 }
 .sheet-bar {
   display: grid;
@@ -836,7 +843,7 @@ a:hover {
   height: 22px;
   border-radius: 50%;
   background: var(--surface);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-raised);
   transition: transform var(--dur-fast) var(--ease-spring);
 }
 .toggle:checked {
@@ -878,10 +885,30 @@ a:hover {
 }
 
 /* ---------- Ledger table ---------- */
+/* No overflow on a wide screen, on purpose. `overflow-x: auto` makes this a
+   scroll container on both axes, and a sticky header then anchors to a box
+   that never scrolls vertically: the header leaves with the page. Without it
+   the header sticks to the viewport, which is where a fifty-row table needs
+   it. The table fits at this width, so nothing is lost; the phone keeps the
+   horizontal scroller below. */
 .table-wrap {
   background: var(--surface);
   border-radius: var(--radius-lg);
-  overflow-x: auto;
+}
+/* The wrapper can no longer clip, so the table rounds its own outer corners. */
+.ledger tr:first-child th:first-child,
+.ledger tr:first-child td:first-child {
+  border-top-left-radius: var(--radius-lg);
+}
+.ledger tr:first-child th:last-child,
+.ledger tr:first-child td:last-child {
+  border-top-right-radius: var(--radius-lg);
+}
+.ledger tbody tr:last-child td:first-child {
+  border-bottom-left-radius: var(--radius-lg);
+}
+.ledger tbody tr:last-child td:last-child {
+  border-bottom-right-radius: var(--radius-lg);
 }
 .ledger {
   width: 100%;
@@ -898,6 +925,7 @@ a:hover {
 .ledger thead th {
   position: sticky;
   top: 0;
+  z-index: 1;
   background: var(--surface);
   font-size: 12px;
   font-weight: 600;
@@ -935,7 +963,8 @@ a:hover {
 .chip {
   display: inline-block;
   margin-left: var(--space-2);
-  font-size: 10.5px;
+  font-size: 12px;
+  line-height: 16px;
   font-weight: 600;
   padding: 1px 8px;
   border-radius: var(--radius-pill);
@@ -950,6 +979,13 @@ a:hover {
 }
 
 @media (max-width: 767px) {
+  /* A narrow screen can run out of width, so the scroller comes back here.
+     It makes the wrapper a scroll container again, which leaves the sticky
+     header inert — an acceptable trade at a width where the header is one
+     line of three short columns. */
+  .table-wrap {
+    overflow-x: auto;
+  }
   .ledger th:nth-child(3),
   .ledger td:nth-child(3),
   .ledger th:nth-child(4),
@@ -1103,7 +1139,7 @@ a:hover {
     padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
   }
   .select-popup::backdrop {
-    background: rgba(28, 26, 23, 0.32);
+    background: var(--scrim);
   }
 }
 
@@ -1214,6 +1250,12 @@ a:hover {
   height: 100%;
   background: var(--ink);
   border-radius: var(--radius-pill);
+}
+/* Spending is money out, so a budget's bar is the money-out grey, the same
+   as every share-of-total bar. Goals keep ink: saving is money in. Over plan
+   still switches to the ink hatch, which now stands out from grey. */
+.prog.spend > i {
+  background: var(--out);
 }
 .prog.over > i {
   background: repeating-linear-gradient(45deg, var(--ink) 0 3px, var(--ink-3) 3px 6px);
@@ -1346,7 +1388,7 @@ a:hover {
 .chart-tick text {
   fill: var(--ink-3);
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: 12px;
 }
 .chart-legend {
   display: flex;
@@ -1365,7 +1407,7 @@ a:hover {
 .swatch {
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   display: inline-block;
 }
 .swatch-in {
@@ -1380,10 +1422,23 @@ a:hover {
 }
 
 /* ---------- Overview ---------- */
-.overview-grid {
+/* The picture on the left, what may need you on the right. The right column
+   needs room for a name and an amount side by side, so the split waits for
+   a frame wide enough to give it that. */
+.overview-layout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: var(--space-4);
+  align-items: start;
+}
+.overview-side {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+}
+@media (min-width: 1180px) {
+  .overview-layout {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
 }
 .overview-card {
   display: grid;
@@ -1663,6 +1718,14 @@ a:hover {
   color: var(--ink-2);
 }
 
+/* These two sit inside a container that already clips, so they must not
+   round their own corners on top of it. */
+.ledger.activity-table th,
+.ledger.activity-table td,
+.ledger.compact th,
+.ledger.compact td {
+  border-radius: 0;
+}
 .ledger.compact th,
 .ledger.compact td {
   padding: 8px var(--space-2);
@@ -1729,7 +1792,7 @@ a:hover {
 .swatch-line {
   height: 3px;
   width: 14px;
-  border-radius: 1px;
+  border-radius: var(--radius-xs);
 }
 
 @media (max-width: 767px) {
@@ -1751,4 +1814,334 @@ a:hover {
   .kind-tab {
     padding-inline: var(--space-3);
   }
+}
+
+/* ---------- Phase 1 additions ---------- */
+
+/* Shown only where the tab bar is: the sidebar already offers these. */
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+/* A row that leads somewhere: a quiet icon, the label, and a chevron. */
+.row-icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--ink-3);
+}
+.row-chevron {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--ink-3);
+}
+.row-grow {
+  flex: 1;
+}
+
+/* An Overview card's title is its link. */
+.card-title-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 24px;
+  color: var(--ink-2);
+}
+.card-title-link:hover {
+  color: var(--blue);
+  text-decoration: none;
+}
+.card-title-link svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* The action in a sheet's bar sits opposite Cancel and matches its height. */
+.btn-compact {
+  min-height: 36px;
+  padding: 6px 16px;
+}
+
+/* The From and To pair wraps as one unit. */
+.filter-dates {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+/* A date filter with its name on screen. */
+.filter-date {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* A picker standing on its own, outside a form row or the filter bar. */
+.control-select .select-trigger {
+  width: auto;
+  min-width: 140px;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--ink);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+
+/* A ledger row that opens its transaction. The description is the real
+   button; the row only widens the target for a pointer. */
+.row-open {
+  cursor: pointer;
+}
+.row-open-button {
+  display: block;
+  width: 100%;
+  min-height: 24px;
+  white-space: normal;
+}
+.row-open:hover .row-open-button {
+  color: var(--blue);
+}
+.nowrap {
+  white-space: nowrap;
+}
+
+/* ---------- Phase 2: layout ---------- */
+
+/* Where you stand: the trend and this month sit inside the net worth group,
+   under the figure, each set off by a hairline. */
+.stand-trend {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.sparkline {
+  position: relative;
+  height: 48px;
+  margin-right: var(--space-1);
+}
+.sparkline svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.sparkline-line {
+  fill: none;
+  stroke: var(--in);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* The fix: blue marks "now", and it stays square. */
+.sparkline-now {
+  position: absolute;
+  right: calc(-1 * var(--space-1));
+  width: 8px;
+  height: 8px;
+  background: var(--fix);
+  transform: translateY(-50%);
+}
+.stand-month {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+.stand-month-figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+}
+
+/* A card's title and, when it has one, its total on the same line. */
+.card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.card-total {
+  font-weight: 600;
+}
+
+/* Accounts on the Overview: assets beside cards and loans, each totalled. */
+.account-columns {
+  display: grid;
+  gap: var(--space-4);
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .account-columns {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+}
+.group-subtotal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 var(--space-4) var(--space-2);
+}
+.group-subtotal .form-group-title {
+  margin: 0;
+}
+/* 44 px rows, the table height, for a list that is read rather than worked. */
+.row-button.row-compact {
+  min-height: 44px;
+  padding-block: var(--space-2);
+}
+
+/* Goals on the Overview: a short card each, side by side. */
+.goal-strip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.goal-chip {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+}
+.goal-chip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Categories: each group is a short list, so groups sit side by side. */
+.group-columns {
+  display: grid;
+  gap: var(--space-5) var(--space-4);
+  align-items: start;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+/* Budgets: a group's name and what it has spent of its plan. */
+.budget-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+}
+.budget-group-head .form-group-title {
+  margin: 0;
+}
+/* On a wide screen a budget line is one line: the category, its bar, what
+   it has spent and what is left, and the plan to edit. The head's two items
+   join the row's grid rather than sitting in a row of their own. */
+@media (min-width: 900px) {
+  .budget-row {
+    grid-template-columns: minmax(140px, 1fr) minmax(160px, 2fr) minmax(220px, 1.3fr) 128px;
+    grid-template-areas: 'name bar note plan';
+    align-items: center;
+    column-gap: var(--space-5);
+    min-height: 56px;
+  }
+  .budget-row > .budget-head {
+    display: contents;
+  }
+  .budget-row .row-label {
+    grid-area: name;
+  }
+  .budget-row .budget-amount {
+    grid-area: plan;
+    justify-self: end;
+  }
+  .budget-row > .prog {
+    grid-area: bar;
+  }
+  .budget-row > .footnote {
+    grid-area: note;
+  }
+}
+
+/* Goals page: two across once each card can keep its line lengths. */
+.goal-grid {
+  display: grid;
+  gap: var(--space-4);
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .goal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* A reached goal: a real state, so the success colour, with an icon and words. */
+.goal-reached {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--ok);
+  font-weight: 600;
+}
+.goal-reached svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* The row already draws its separator; its link must not draw a second. */
+.rows-list > li.bill-row + li.bill-row .row-button {
+  border-top: 0;
+}
+/* Bills due this week: once there is room, marking one paid sits on the same
+   line as the bill. The action column has one fixed width, wide enough for
+   the amount-and-date form a varying bill asks for, so the amounts to its
+   left line up from row to row. */
+@media (min-width: 1180px) {
+  .rows-list > li.bill-row {
+    grid-template-columns: minmax(0, 1fr) 420px;
+    align-items: center;
+    padding-bottom: 0;
+  }
+  .rows-list > li.bill-row .bill-aside {
+    padding-inline: 0 var(--space-4);
+  }
+  .rows-list > li.bill-row .bill-aside .actions,
+  .rows-list > li.bill-row .bill-confirm {
+    justify-content: flex-end;
+  }
+}
+
+/* ---------- Overview: the month's plan leads ---------- */
+.overview-plan .card-head {
+  margin-bottom: var(--space-2);
+}
+/* Each planned category against its plan, two across in the large block. */
+.plan-list {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4) var(--space-6);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.plan-list li {
+  display: grid;
+  gap: var(--space-2);
+}
+.plan-list-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 14px;
+  line-height: 19px;
+}
+/* Net worth's line on the side card: the direction only. */
+.sparkline.sparkline-small {
+  height: 32px;
 }

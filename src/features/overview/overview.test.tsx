@@ -4,6 +4,7 @@ import { OverviewPage } from './OverviewPage';
 
 const useAccounts = vi.fn();
 const useCashFlow = vi.fn();
+const useNetWorth = vi.fn();
 const useBudgets = vi.fn();
 const useBills = vi.fn();
 const useGoals = vi.fn();
@@ -14,7 +15,7 @@ vi.mock('../accounts/queries', async (importOriginal) => {
 });
 vi.mock('../reports/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../reports/queries')>();
-  return { ...actual, useCashFlow: () => useCashFlow() };
+  return { ...actual, useCashFlow: () => useCashFlow(), useNetWorth: () => useNetWorth() };
 });
 vi.mock('../budgets/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../budgets/queries')>();
@@ -48,6 +49,7 @@ function show() {
 beforeEach(() => {
   useAccounts.mockReturnValue({ data: [], isSuccess: true, isPending: false, isError: false });
   useCashFlow.mockReturnValue({ data: [] });
+  useNetWorth.mockReturnValue({ data: [] });
   useBudgets.mockReturnValue({ data: [] });
   useBills.mockReturnValue({ data: [] });
   useGoals.mockReturnValue({ data: [] });
@@ -101,6 +103,9 @@ describe('OverviewPage', () => {
     expect(screen.getByText(/in assets/)).toBeInTheDocument();
     expect(screen.getByText(/owed/)).toBeInTheDocument();
     expect(screen.getByText('Everyday checking')).toBeInTheDocument();
+    // Assets and liabilities are listed apart, each side totalled.
+    expect(screen.getByRole('heading', { name: 'Assets' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Cards and loans' })).toBeInTheDocument();
   });
 
   it('says plainly when each card has nothing to show', () => {
@@ -128,7 +133,8 @@ describe('OverviewPage', () => {
     expect(screen.getByText('Nothing recorded this month yet.')).toBeInTheDocument();
     expect(screen.getByText('No plan for this month yet.')).toBeInTheDocument();
     expect(screen.getByText('Nothing due in the next week.')).toBeInTheDocument();
-    expect(screen.getByText('No goals yet.')).toBeInTheDocument();
+    // With no goals there is nothing to show, so the strip stays away.
+    expect(screen.queryByRole('heading', { name: 'Goals' })).not.toBeInTheDocument();
   });
 
   it('summarises the month, the budget, what is due and what is saved', () => {
@@ -189,8 +195,48 @@ describe('OverviewPage', () => {
     show();
 
     expect(screen.getAllByText('+$1,500.00').length).toBeGreaterThan(0); // the month's net
-    expect(screen.getByText(/1 over plan/)).toBeInTheDocument();
+    expect(screen.getByText(/Over plan by/)).toBeInTheDocument();
+    // The category past its plan is named, and leads to its budget line.
+    expect(screen.getByRole('link', { name: 'Groceries' })).toBeInTheDocument();
     expect(screen.getByText('Due today')).toBeInTheDocument();
-    expect(screen.getByText('50% saved')).toBeInTheDocument();
+    expect(screen.getByText(/50% saved/)).toBeInTheDocument();
+  });
+
+  const checking = {
+    account_id: 'a',
+    name: 'Everyday checking',
+    type: 'checking',
+    is_liability: false,
+    archived_at: null,
+    balance_minor: 100000,
+    user_id: 'u1',
+    sort_order: 0,
+    opening_balance_minor: 100000,
+    money_in_minor: 0,
+    money_out_minor: 0,
+  };
+
+  // The page used to render its whole dashboard from an empty list while the
+  // accounts loaded, so the first thing it said was $0.00.
+  it('says nothing about net worth until the accounts have arrived', () => {
+    useAccounts.mockReturnValue({ data: undefined, isSuccess: false, isPending: true, isError: false });
+    show();
+    expect(screen.getByText('Working out where you stand…')).toBeInTheDocument();
+    expect(screen.queryByText('Net worth')).not.toBeInTheDocument();
+    expect(screen.queryByText('$0.00')).not.toBeInTheDocument();
+  });
+
+  it('shows which way net worth has moved, in words as well as a line', () => {
+    useAccounts.mockReturnValue({ data: [checking], isSuccess: true, isPending: false, isError: false });
+    useNetWorth.mockReturnValue({
+      data: [
+        { month: '2026-08-01', assets_minor: 90000, liabilities_minor: 0, net_worth_minor: 90000 },
+        { month: THIS_MONTH, assets_minor: 100000, liabilities_minor: 0, net_worth_minor: 100000 },
+      ],
+    });
+    show();
+    expect(screen.getByRole('img', { name: /Net worth over the last 2 months/ })).toBeInTheDocument();
+    expect(screen.getByText(/over 2 months/)).toBeInTheDocument();
+    expect(screen.getAllByText('+$100.00').length).toBeGreaterThan(0);
   });
 });

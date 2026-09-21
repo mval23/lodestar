@@ -141,13 +141,24 @@ export function ActivityPage() {
             ...(categories.data ?? []).map((c) => ({ value: c.id, label: c.name })),
           ]}
         />
-        <input
-          type="date"
-          aria-label="From date"
-          value={filters.from}
-          onChange={(e) => update({ from: e.target.value })}
-        />
-        <input type="date" aria-label="To date" value={filters.to} onChange={(e) => update({ to: e.target.value })} />
+        {/* A bare date field shows only "mm/dd/yyyy": the two need their names
+            on screen, not just in the accessibility tree. They wrap as one
+            range, so "To" never ends up alone on a line. */}
+        <span className="filter-dates">
+          <label className="filter-date">
+            <span className="caption">From</span>
+            <input
+              type="date"
+              aria-label="From date"
+              value={filters.from}
+              onChange={(e) => update({ from: e.target.value })}
+            />
+          </label>
+          <label className="filter-date">
+            <span className="caption">To</span>
+            <input type="date" aria-label="To date" value={filters.to} onChange={(e) => update({ to: e.target.value })} />
+          </label>
+        </span>
         {filtered && (
           <Button variant="plain" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
             Clear filters
@@ -196,13 +207,24 @@ export function ActivityPage() {
             <tbody>
               {rows.map((row) => {
                 return (
-                  <tr key={row.id}>
+                  // The whole row opens the transaction. The description is the
+                  // real control, so a keyboard or screen reader reaches it by
+                  // name; the row just widens the target for a pointer. Clicks
+                  // on the category and account links keep their own meaning.
+                  <tr
+                    key={row.id}
+                    className="row-open"
+                    onClick={(event) => {
+                      if ((event.target as HTMLElement).closest('a, button')) return;
+                      openSheet(row);
+                    }}
+                  >
+                    <td className="nowrap">{formatDate(row.occurred_on)}</td>
                     <td>
-                      <button type="button" className="link-button" onClick={() => openSheet(row)}>
-                        {formatDate(row.occurred_on)}
+                      <button type="button" className="link-button row-open-button" onClick={() => openSheet(row)}>
+                        {row.description}
                       </button>
                     </td>
-                    <td>{row.description}</td>
                     <td className="secondary">
                       {row.category_id && categoryName.has(row.category_id) ? (
                         <Link to={categoryPath(row.category_id)}>{categoryName.get(row.category_id)}</Link>

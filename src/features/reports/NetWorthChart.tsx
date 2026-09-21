@@ -6,14 +6,16 @@ import type { Currency } from '../../lib/money';
 import { formatMonth } from '../../lib/dates';
 import { Amount } from '../../ui/Amount';
 import { ChartFrame, ChartLegend } from '../../ui/Chart';
+import { lineDomain } from '../../ui/chartDomain';
 import type { NetWorthMonth } from './queries';
 
 const WIDTH = 720;
 const HEIGHT = 240;
 const MARGIN = { top: 12, right: 8, bottom: 28, left: 8 };
 
-// One ink line for net worth, with a zero rule so a negative stretch reads as
-// below the line rather than as a colour. The blue square marks now.
+// One ink line for net worth, framed on its own movement. A zero rule appears
+// only when the line crosses zero, so a negative stretch reads as below the
+// line rather than as a colour. The blue square marks now.
 export function NetWorthChart({
   rows,
   currency,
@@ -28,9 +30,8 @@ export function NetWorthChart({
 
   const months = scalePoint({ domain: rows.map((row) => row.month), range: [0, innerWidth], padding: 0.5 });
   const values = rows.map((row) => row.net_worth_minor);
-  const low = Math.min(0, ...values);
-  const high = Math.max(0, ...values);
-  const amounts = scaleLinear({ domain: [low, high === low ? low + 1 : high], range: [innerHeight, 0], nice: true });
+  const { low, high, showZero } = lineDomain(values);
+  const amounts = scaleLinear({ domain: [low, high], range: [innerHeight, 0], nice: true });
   const latest = rows[rows.length - 1];
 
   return (
@@ -54,7 +55,7 @@ export function NetWorthChart({
         aria-label={`Net worth over the last ${rows.length} months. The table view has the exact figures.`}
       >
         <Group left={MARGIN.left} top={MARGIN.top}>
-          <line className="chart-zero" x1={0} x2={innerWidth} y1={amounts(0)} y2={amounts(0)} />
+          {showZero && <line className="chart-zero" x1={0} x2={innerWidth} y1={amounts(0)} y2={amounts(0)} />}
 
           <LinePath
             className="line-net"

@@ -57,12 +57,12 @@ describe('netWorthOf', () => {
       balance({ account_id: 'c', type: 'credit_card', is_liability: true, balance_minor: -31000 }),
       balance({ account_id: 'd', balance_minor: 999, archived_at: '2026-01-01T00:00:00Z' }),
     ]);
-    expect(worth).toEqual({ assets: 335450, liabilities: -31000, net: 304450 });
+    expect(worth).toEqual({ assets: 335450, liabilities: -31000, owed: 31000, net: 304450 });
   });
 
   it('keeps an overpaid card on the liability side', () => {
     const worth = netWorthOf([balance({ type: 'credit_card', is_liability: true, balance_minor: 2500 })]);
-    expect(worth).toEqual({ assets: 0, liabilities: 2500, net: 2500 });
+    expect(worth).toEqual({ assets: 0, liabilities: 2500, owed: -2500, net: 2500 });
   });
 });
 
@@ -93,6 +93,39 @@ describe('AccountsPage', () => {
     expect(screen.getAllByText('$2,544.50').length).toBeGreaterThan(0);
     expect(screen.getByText('Credit card')).toBeInTheDocument();
     expect(screen.getByText('Checking')).toBeInTheDocument();
+  });
+
+  // The two screens that show net worth drew it separately, and one of them
+  // negated the liabilities while the other did not: "−$310.00 owed".
+  it('states what is owed without a minus sign', () => {
+    useAccounts.mockReturnValue({
+      data: [
+        balance({ account_id: 'a', balance_minor: 285450 }),
+        balance({ account_id: 'c', type: 'credit_card', is_liability: true, balance_minor: -31000 }),
+      ],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+    });
+    render(<MemoryRouter><AccountsPage /></MemoryRouter>);
+
+    const footnote = screen.getByText(/in assets/);
+    expect(footnote.textContent).toContain('owed');
+    expect(footnote.textContent).not.toContain(`${MINUS}$310.00`);
+  });
+
+  it('calls a card paid past zero credit, not a negative debt', () => {
+    useAccounts.mockReturnValue({
+      data: [balance({ account_id: 'c', type: 'credit_card', is_liability: true, balance_minor: 2500 })],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+    });
+    render(<MemoryRouter><AccountsPage /></MemoryRouter>);
+
+    const footnote = screen.getByText(/in assets/);
+    expect(footnote.textContent).toContain('in credit');
+    expect(footnote.textContent).not.toContain('owed');
   });
 
   it('keeps archived accounts out of the main list', () => {

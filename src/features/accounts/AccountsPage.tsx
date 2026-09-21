@@ -9,16 +9,10 @@ import { EmptyState } from '../../ui/EmptyState';
 import { Notice } from '../../ui/Notice';
 import { dataErrorMessage } from '../auth/errors';
 import { AccountSheet } from './AccountSheet';
-import {
-  accountTypeLabel,
-  netWorthOf,
-  useAccounts,
-  type Account,
-  type AccountBalance,
-} from './queries';
+import { NetWorthGroup } from './NetWorthGroup';
+import { accountTypeLabel, useAccounts, type Account, type AccountBalance } from './queries';
 
 export function AccountsPage() {
-  const currency = useCurrency();
   const accounts = useAccounts();
   const [editing, setEditing] = useState<Account | undefined>();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -26,7 +20,6 @@ export function AccountsPage() {
   const rows = accounts.data ?? [];
   const open = rows.filter((a) => !a.archived_at);
   const archived = rows.filter((a) => a.archived_at);
-  const worth = netWorthOf(rows);
 
   const openSheet = (account?: Account) => {
     setEditing(account);
@@ -63,24 +56,7 @@ export function AccountsPage() {
 
       {open.length > 0 && (
         <>
-          <section className="group figure-group">
-            <h2 className="caption">Net worth</h2>
-            <p className="fig flush">
-              <span className="bracket">
-                <Amount minor={worth.net} currency={currency} />
-              </span>
-            </p>
-            <p className="footnote flush">
-              <Amount minor={worth.assets} currency={currency} /> in assets
-              {worth.liabilities !== 0 && (
-                <>
-                  {' · '}
-                  <Amount minor={worth.liabilities} currency={currency} /> owed
-                </>
-              )}
-            </p>
-          </section>
-
+          <NetWorthGroup accounts={rows} />
           <AccountList rows={open} />
         </>
       )}

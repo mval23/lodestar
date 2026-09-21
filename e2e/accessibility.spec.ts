@@ -13,6 +13,7 @@ const PAGES = [
   ['/activity', 'Activity'],
   ['/accounts', 'Accounts'],
   ['/budgets', 'Budgets'],
+  ['/categories', 'Categories'],
   ['/bills', 'Bills'],
   ['/goals', 'Goals'],
   ['/reports', 'Reports'],

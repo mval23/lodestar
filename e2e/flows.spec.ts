@@ -130,7 +130,9 @@ test.describe('the money', () => {
     await stubSupabase(page, { tables: withData() });
     await page.goto('/budgets');
 
-    await expect(page.getByText(/Over plan by/)).toBeVisible();
+    // The month's figure and the category's row both say it in words.
+    await expect(page.getByRole('heading', { name: 'Over plan by' })).toBeVisible();
+    await expect(page.getByText(/spent · Over plan by/)).toBeVisible();
     await expect(page.getByText('$55.50').first()).toBeVisible();
   });
 
