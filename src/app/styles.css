@@ -2145,3 +2145,77 @@ a:hover {
 .sparkline.sparkline-small {
   height: 32px;
 }
+
+/* ---------- Charts: real size, amounts, readout ---------- */
+/* The plot holds the SVG, drawn at its true width, and the readout above it.
+   A vertical swipe still scrolls the page; a sideways one moves the readout. */
+.chart-plot {
+  position: relative;
+}
+.chart-plot .chart {
+  touch-action: pan-y;
+}
+/* Amounts on the trailing side, the size and colour of the month labels. */
+.chart-axis-label {
+  fill: var(--ink-3);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+/* The month under the pointer: a thin ink rule, never blue ("now" is blue). */
+.chart-hover-rule {
+  stroke: var(--ink-3);
+  stroke-width: 1;
+}
+/* In a bar chart, the month under the pointer is a light column behind its bars. */
+.chart-hover-band {
+  fill: var(--sunk);
+}
+.chart-hover-dot {
+  fill: var(--surface);
+  stroke: var(--in);
+  stroke-width: 2;
+}
+/* A floating layer, so it takes the floating shadow. */
+.chart-readout {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
+  pointer-events: none;
+  font-size: 13px;
+  line-height: 18px;
+}
+.chart-readout p {
+  margin: 0;
+}
+.chart-readout-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+.chart-readout-line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--ink-2);
+}
+.chart-readout-line .num {
+  color: var(--ink);
+}
+.chart-readout-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* The phone ledger's amount: never wraps, and never shrinks the row's label to nothing. */
+.phone-amount {
+  flex: none;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

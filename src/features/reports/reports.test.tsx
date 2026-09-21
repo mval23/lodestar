@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { ReportsPage } from './ReportsPage';
@@ -101,6 +101,36 @@ describe('ReportsPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Show as chart' }));
     expect(screen.getByRole('img', { name: /Money in and out/ })).toBeInTheDocument();
+  });
+
+  // A chart used to show only a shape; reading an amount meant switching to
+  // the table. Now it labels its amounts, and pointing at a month shows that
+  // month's exact figures. The readout repeats the table, so it is hidden
+  // from screen readers, who have the table itself.
+  it('labels its amounts, and shows the exact figures for the month under the pointer', () => {
+    useCashFlow.mockReturnValue({
+      data: [flow('2026-08-01', 250000, 100000)],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+    });
+    const { container } = render(<MemoryRouter><ReportsPage /></MemoryRouter>);
+
+    const chart = screen.getByRole('img', { name: /Money in and out/ });
+    expect(within(chart).getByText('$2.5K')).toBeInTheDocument();
+    expect(container.querySelector('.chart-readout')).toBeNull();
+
+    fireEvent.pointerMove(chart, { clientX: 10, clientY: 10 });
+    const readout = container.querySelector('.chart-readout');
+    expect(readout).not.toBeNull();
+    expect(readout).toHaveAttribute('aria-hidden', 'true');
+    expect(readout).toHaveTextContent('August 2026');
+    expect(readout).toHaveTextContent('$2,500.00');
+    expect(readout).toHaveTextContent('$1,000.00');
+    expect(readout).toHaveTextContent('+$1,500.00');
+
+    fireEvent.pointerLeave(chart);
+    expect(container.querySelector('.chart-readout')).toBeNull();
   });
 
   it('draws net worth with its own table, including a negative stretch', async () => {

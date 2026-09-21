@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { ArrowLeftRight } from 'lucide-react';
-import { useCurrency } from '../../lib/profile';
-import { formatDate } from '../../lib/dates';
+import { useCurrency, useProfile } from '../../lib/profile';
+import { formatDate, formatDateShort, todayInZone } from '../../lib/dates';
+import { PHONE, useMediaQuery } from '../../lib/media';
 import { accountPath, categoryPath } from '../../lib/routes';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
@@ -57,11 +58,18 @@ function sortState(filters: Filters, column: Filters['sort']): 'ascending' | 'de
 
 const KIND_LABEL: Record<TxnKind, string> = { expense: 'Expense', income: 'Income', transfer: 'Transfer' };
 
+const PHONE_PAGE_SIZE = 25;
+
 export function ActivityPage() {
   const currency = useCurrency();
   const [params, setParams] = useSearchParams();
   const filters = useMemo(() => readFilters(params), [params]);
-  const page = useTransactions(filters);
+  const profile = useProfile();
+  // A phone reads a list, not a table, and a shorter page of it: fifty rows
+  // put the page buttons some seven thousand pixels down.
+  const phone = useMediaQuery(PHONE);
+  const pageSize = phone ? PHONE_PAGE_SIZE : PAGE_SIZE;
+  const page = useTransactions(filters, pageSize);
   const accounts = useAccounts();
   const categories = useCategories();
   const [editing, setEditing] = useState<Transaction | undefined>();
@@ -82,7 +90,7 @@ export function ActivityPage() {
 
   const rows = page.data?.rows ?? [];
   const total = page.data?.total ?? 0;
-  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const lastPage = Math.max(1, Math.ceil(total / pageSize));
   const filtered = writeFilters({ ...filters, page: 1 }).toString() !== '';
 
   const openSheet = (transaction?: Transaction) => {
@@ -188,7 +196,18 @@ export function ActivityPage() {
         </EmptyState>
       )}
 
-      {rows.length > 0 && (
+      {rows.length > 0 && phone && (
+        <PhoneList
+          rows={rows}
+          byDay={filters.sort === 'occurred_on'}
+          today={todayInZone(profile.data?.timezone)}
+          accountName={accountName}
+          categoryName={categoryName}
+          onOpen={openSheet}
+        />
+      )}
+
+      {rows.length > 0 && !phone && (
         <div className="table-wrap">
           <table className="ledger">
             <thead>
@@ -314,5 +333,90 @@ function SortButton({
       {label}
       {active && <span aria-hidden="true">{filters.direction === 'asc' ? ' ↑' : ' ↓'}</span>}
     </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The phone's ledger. The table hid its Category and Account columns below
+// 768 px, which left a transfer reading "Emergency fund $500.00" with no
+// account, arrow or sign, and repeated the full date on every row. Here each
+// transaction is one row you can tap: what it was, then its category and
+// account (or from → to), and the amount. Rows sit under their day, so the
+// date is said once. Sorted by amount, days mean nothing, so the date moves
+// into each row instead.
+// ---------------------------------------------------------------------------
+
+function dayLabel(day: string, today: string): string {
+  if (day === today) return 'Today';
+  const yesterday = new Date(`${today}T00:00:00Z`);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  if (day === yesterday.toISOString().slice(0, 10)) return 'Yesterday';
+  return day.slice(0, 4) === today.slice(0, 4) ? formatDateShort(day) : formatDate(day);
+}
+
+function detailOf(row: Transaction, accountName: Map<string, string>, categoryName: Map<string, string>): string {
+  const account = (id: string | null) => (id ? accountName.get(id) : undefined) ?? 'another account';
+  if (row.kind === 'transfer') return `${account(row.from_account_id)} → ${account(row.to_account_id)}`;
+  const category = row.category_id ? categoryName.get(row.category_id) : undefined;
+  return `${category ?? 'No category'} · ${account(row.from_account_id ?? row.to_account_id)}`;
+}
+
+function PhoneList({
+  rows,
+  byDay,
+  today,
+  accountName,
+  categoryName,
+  onOpen,
+}: {
+  rows: Transaction[];
+  byDay: boolean;
+  today: string;
+  accountName: Map<string, string>;
+  categoryName: Map<string, string>;
+  onOpen: (row: Transaction) => void;
+}) {
+  const currency = useCurrency();
+
+  // Rows arrive in date order when sorted by date, so each day is one run.
+  const days: { day: string | null; items: Transaction[] }[] = [];
+  for (const row of rows) {
+    const day = byDay ? row.occurred_on : null;
+    const last = days[days.length - 1];
+    if (last && last.day === day) last.items.push(row);
+    else days.push({ day, items: [row] });
+  }
+
+  return (
+    <div className="stack-tight">
+      {days.map(({ day, items }) => (
+        <div key={day ?? 'all'}>
+          {day && <h2 className="form-group-title">{dayLabel(day, today)}</h2>}
+          <ul className="rows-list">
+            {items.map((row) => (
+              <li key={row.id}>
+                <button type="button" className="row-button" onClick={() => onOpen(row)}>
+                  <span className="row-label">
+                    {row.description}
+                    <small>
+                      {!byDay && `${formatDateShort(row.occurred_on)} · `}
+                      {detailOf(row, accountName, categoryName)}
+                    </small>
+                  </span>
+                  <span className="phone-amount">
+                    <Amount
+                      minor={row.kind === 'expense' ? -row.amount_minor : row.amount_minor}
+                      currency={currency}
+                      signed={row.kind !== 'transfer'}
+                    />
+                    <span className="visually-hidden"> {KIND_LABEL[row.kind]}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }
