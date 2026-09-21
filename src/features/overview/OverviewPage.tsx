@@ -17,15 +17,16 @@ import { accountTypeLabel, netWorthOf, useAccounts, type AccountBalance } from '
 import { describeDue, dueStateOf, useBills } from '../bills/queries';
 import { totalsOf, useBudgets, type BudgetProgress } from '../budgets/queries';
 import { standingOf, useGoals } from '../goals/queries';
+import { useMonthAccounts } from '../months/queries';
 import { useCashFlow, useNetWorth } from '../reports/queries';
 import { TransactionSheet } from '../transactions/TransactionSheet';
 
 // Where you stand, in one screen. The large block is this month's plan: what
-// is left to spend, each category against its plan, and what the month has
-// brought in and paid out. It is the figure acted on day to day, so it leads.
-// Beside it, net worth and its trend, and the bills due this week. Below
-// them, the accounts and the goals being saved for. Every block links to the
-// page that explains it.
+// is left to spend and each category against its plan. It is the figure acted
+// on day to day, so it leads. Beside it, net worth and its trend, the bills
+// due this week, and the month's income, expenses and debt. Below them, the
+// accounts and the goals being saved for. Every block links to the page that
+// explains it.
 export function OverviewPage() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const currency = useCurrency();
@@ -74,6 +75,7 @@ export function OverviewPage() {
                 <Trend currency={currency} />
               </NetWorthGroup>
               <DueThisWeek today={today} currency={currency} />
+              <MonthTotals month={thisMonth} currency={currency} accounts={rows} />
             </div>
           </div>
 
@@ -121,31 +123,84 @@ function Trend({ currency }: { currency: Currency }) {
   );
 }
 
-function ThisMonth({ month, currency }: { month: string; currency: Currency }) {
+// The month in three totals: what came in, what went out, and where the debt
+// stands. Income and expenses come from the month's cash flow, so transfers
+// between your own accounts are left out of both. Debt is what is owed on
+// cards and loans now, with what was paid towards it this month: a payment
+// is a transfer into one of those accounts, so it is in neither of the lines
+// above it.
+function MonthTotals({
+  month,
+  currency,
+  accounts,
+}: {
+  month: string;
+  currency: Currency;
+  accounts: AccountBalance[];
+}) {
   const cashFlow = useCashFlow(2);
+  const flows = useMonthAccounts(month);
   const current = (cashFlow.data ?? []).find((row) => row.month === month);
+  const worth = netWorthOf(accounts);
+  const liabilities = new Set(accounts.filter((a) => a.is_liability && !a.archived_at).map((a) => a.account_id));
+  // Already-summed monthly flows of a few accounts, added for display.
+  const paid = (flows.data ?? [])
+    .filter((flow) => liabilities.has(flow.account_id))
+    .reduce((sum, flow) => sum + flow.transfer_in_minor, 0);
 
   return (
-    <div className="stand-month">
-      <h3 className="caption">
-        <TitleLink to={monthPath(month)}>This month</TitleLink>
-      </h3>
+    <section className="group overview-card" aria-labelledby="overview-month">
+      <div className="card-head">
+        <h2 className="caption" id="overview-month">
+          <TitleLink to={monthPath(month)}>This month</TitleLink>
+        </h2>
+        {current && <Amount minor={current.net_minor} currency={currency} signed className="card-total" />}
+      </div>
       {cashFlow.isPending ? (
         <p className="footnote flush">Loading…</p>
-      ) : current ? (
-        <p className="stand-month-figures flush">
-          <span className="card-figure">
-            <Amount minor={current.net_minor} currency={currency} signed />
-          </span>
-          <span className="footnote">
-            <Amount minor={current.money_in_minor} currency={currency} /> in ·{' '}
-            <Amount minor={current.money_out_minor} currency={currency} /> out
-          </span>
-        </p>
       ) : (
-        <p className="footnote flush">Nothing recorded this month yet.</p>
+        <>
+          {!current && <p className="footnote flush">Nothing recorded this month yet.</p>}
+          <ul className="mini-list">
+            {current && (
+              <>
+                <li>
+                  <span>Income</span>
+                  <Amount minor={current.money_in_minor} currency={currency} />
+                </li>
+                <li>
+                  <span>Expenses</span>
+                  <Amount minor={current.money_out_minor} currency={currency} />
+                </li>
+              </>
+            )}
+            {liabilities.size > 0 && (
+              <li>
+                <span className="row-label">
+                  Debt
+                  <small>
+                    {paid > 0 ? (
+                      <>
+                        <Amount minor={paid} currency={currency} /> paid this month
+                      </>
+                    ) : (
+                      'Owed on cards and loans'
+                    )}
+                  </small>
+                </span>
+                {worth.owed < 0 ? (
+                  <span>
+                    <Amount minor={-worth.owed} currency={currency} /> in credit
+                  </span>
+                ) : (
+                  <Amount minor={worth.owed} currency={currency} />
+                )}
+              </li>
+            )}
+          </ul>
+        </>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -199,7 +254,7 @@ function DueThisWeek({ today, currency }: { today: string; currency: Currency })
 // left to spend, or by how much the month is over plan, in words rather than
 // as a negative. Under it, each planned category against its plan: the ones
 // past their plan first, since those need you, then the rest by how much of
-// their plan is used. The month's money in and out closes the block.
+// their plan is used.
 const PLAN_ROWS_SHOWN = 8;
 
 function shareUsed(row: BudgetProgress): number {
@@ -282,7 +337,6 @@ function MonthPlan({ month, currency }: { month: string; currency: Currency }) {
         </>
       )}
 
-      <ThisMonth month={month} currency={currency} />
     </section>
   );
 }
