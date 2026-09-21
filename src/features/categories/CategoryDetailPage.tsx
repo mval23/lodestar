@@ -37,7 +37,7 @@ export function CategoryDetailPage() {
   const { id } = useParams();
   const valid = isUuid(id);
   const category = useCategory(valid ? id : undefined);
-  const back = { to: '/budgets', label: 'Budgets' };
+  const back = { to: '/categories', label: 'Categories' };
 
   if (!valid || (category.isSuccess && !category.data)) return <DetailNotFound what="category" back={back} />;
   if (category.isError)
@@ -90,7 +90,7 @@ function CategoryDetail({ category }: { category: Category }) {
   return (
     <div className="page">
       <DetailHeader
-        back={{ to: '/budgets', label: 'Budgets' }}
+        back={{ to: '/categories', label: 'Categories' }}
         title={category.name}
         subtitle={
           <>

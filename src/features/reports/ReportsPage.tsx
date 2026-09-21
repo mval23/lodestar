@@ -38,12 +38,9 @@ export function ReportsPage() {
           <h1 className="large-title">Reports</h1>
           <p className="footnote flush">Every figure is summed in the database from the same rows as Activity.</p>
         </div>
-        <Select
-          label="Range"
-          value={range}
-          onChange={setRange}
-          options={RANGES}
-        />
+        <div className="control-select">
+          <Select label="Range" value={range} onChange={setRange} options={RANGES} />
+        </div>
       </header>
 
       {cashFlow.isError && <Notice tone="err">{dataErrorMessage(cashFlow.error)}</Notice>}

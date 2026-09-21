@@ -1,4 +1,4 @@
-import { describeMoney, formatMoney, parseMoney, toAmountInput } from './money';
+import { describeMoney, formatMoney, formatMoneyAxis, parseMoney, toAmountInput } from './money';
 
 const MINUS = '−';
 const NBSP = ' '; // Intl keeps the code attached to the number
@@ -105,5 +105,18 @@ describe('toAmountInput', () => {
       const text = toAmountInput(minor, 'COP');
       expect(parseMoney(text, 'COP')).toEqual({ ok: true, minor });
     }
+  });
+});
+
+describe('formatMoneyAxis', () => {
+  it('writes an axis label short, for chart axes only', () => {
+    expect(formatMoneyAxis(0, 'USD')).toBe('$0');
+    expect(formatMoneyAxis(80_000, 'USD')).toBe('$800');
+    expect(formatMoneyAxis(120_000_000, 'USD')).toBe('$1.2M');
+    expect(formatMoneyAxis(4_500_000, 'COP')).toBe(`COP${NBSP}4.5M`);
+  });
+
+  it('keeps the true minus sign', () => {
+    expect(formatMoneyAxis(-250_000, 'USD')).toBe('−$2.5K');
   });
 });

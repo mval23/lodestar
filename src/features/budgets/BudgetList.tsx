@@ -49,6 +49,18 @@ export function BudgetList({ month, onMonth }: { month: string; onMonth: (month:
   const totals = totalsOf(budgets.data ?? []);
   const planned = rows.filter((row) => row.progress).length;
 
+  // Rows arrive sorted by group, then name, so each group is one run.
+  const sections = useMemo(() => {
+    const runs: { label: string; items: typeof rows }[] = [];
+    for (const row of rows) {
+      const label = groupName.get(row.category.group_id ?? '') ?? 'Ungrouped';
+      const last = runs[runs.length - 1];
+      if (last && last.label === label) last.items.push(row);
+      else runs.push({ label, items: [row] });
+    }
+    return runs;
+  }, [rows, groupName]);
+
   const save = async (categoryId: string, budgetId: string | undefined, text: string) => {
     setError(null);
     setCopied(null);
@@ -110,14 +122,19 @@ export function BudgetList({ month, onMonth }: { month: string; onMonth: (month:
       )}
 
       {rows.length === 0 ? (
-        <p className="secondary">Add an expense category below, then plan an amount for it here.</p>
+        <p className="secondary">
+          A plan is made per expense category. <Link to="/categories">Add a category</Link>, then plan an amount for
+          it here.
+        </p>
       ) : (
         <>
+          {/* Past the plan, the figure says so in words rather than going
+              negative, the same as each row and the budget line page. */}
           <div className="group figure-group">
-            <h3 className="caption">Left to spend</h3>
+            <h3 className="caption">{totals.left < 0 ? 'Over plan by' : 'Left to spend'}</h3>
             <p className="fig flush">
               <span className="bracket">
-                <Amount minor={totals.left} currency={currency} />
+                <Amount minor={Math.abs(totals.left)} currency={currency} />
               </span>
             </p>
             <p className="footnote flush">
@@ -132,19 +149,36 @@ export function BudgetList({ month, onMonth }: { month: string; onMonth: (month:
             </p>
           </div>
 
-          <ul className="rows-list">
-            {rows.map(({ category, progress }) => (
-              <BudgetRow
-                key={`${month}-${category.id}`}
-                name={category.name}
-                to={budgetLinePath(month, category.id)}
-                group={groupName.get(category.group_id ?? '') ?? 'Ungrouped'}
-                progress={progress}
-                currency={currency}
-                onSave={(text) => save(category.id, progress?.budget_id, text)}
-              />
-            ))}
-          </ul>
+          {/* One list per group, headed by the group and what it has spent of
+              its plan. The group used to repeat under every row instead. */}
+          {sections.map(({ label, items }) => {
+            const subtotal = totalsOf(items.flatMap((item) => (item.progress ? [item.progress] : [])));
+            return (
+              <section key={label} className="stack-tight" aria-label={label}>
+                <div className="budget-group-head">
+                  <h3 className="form-group-title flush">{label}</h3>
+                  {subtotal.planned > 0 && (
+                    <p className="footnote flush">
+                      <Amount minor={subtotal.spent} currency={currency} /> spent of{' '}
+                      <Amount minor={subtotal.planned} currency={currency} />
+                    </p>
+                  )}
+                </div>
+                <ul className="rows-list">
+                  {items.map(({ category, progress }) => (
+                    <BudgetRow
+                      key={`${month}-${category.id}`}
+                      name={category.name}
+                      to={budgetLinePath(month, category.id)}
+                      progress={progress}
+                      currency={currency}
+                      onSave={(text) => save(category.id, progress?.budget_id, text)}
+                    />
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
         </>
       )}
     </section>
@@ -154,19 +188,22 @@ export function BudgetList({ month, onMonth }: { month: string; onMonth: (month:
 function BudgetRow({
   name,
   to,
-  group,
   progress,
   currency,
   onSave,
 }: {
   name: string;
   to: string;
-  group: string;
   progress: BudgetProgress | undefined;
   currency: Parameters<typeof toAmountInput>[1];
   onSave: (text: string) => void;
 }) {
-  const [text, setText] = useState(progress ? toAmountInput(progress.planned_minor, currency) : '');
+  // Categories and budgets are two queries: this row can mount before its
+  // plan exists, so the field reads through to the server until the person
+  // types. Capturing it in state at mount would show "No plan" for a planned
+  // category, and blurring that field would then delete the plan.
+  const [draft, setDraft] = useState<string | null>(null);
+  const text = draft ?? (progress ? toAmountInput(progress.planned_minor, currency) : '');
   const planned = progress?.planned_minor ?? 0;
   const spent = progress?.spent_minor ?? 0;
   const left = progress?.left_minor ?? 0;
@@ -180,7 +217,6 @@ function BudgetRow({
       <div className="budget-head">
         <span className="row-label">
           <Link to={to}>{name}</Link>
-          <small>{group}</small>
         </span>
         <label className="budget-amount">
           <span className="visually-hidden">Planned for {name}</span>
@@ -189,8 +225,10 @@ function BudgetRow({
             className="num"
             placeholder="No plan"
             value={text}
-            onChange={(event) => setText(event.target.value)}
-            onBlur={() => onSave(text)}
+            onChange={(event) => setDraft(event.target.value)}
+            // Nothing typed, nothing to save: a blur on an untouched row must
+            // not write, least of all write an empty plan.
+            onBlur={() => draft !== null && onSave(draft)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') event.currentTarget.blur();
             }}
@@ -200,7 +238,7 @@ function BudgetRow({
 
       {progress && (
         <>
-          <div className={`prog${over ? ' over' : ''}`} role="presentation">
+          <div className={`prog spend${over ? ' over' : ''}`} role="presentation">
             <i style={{ width: `${share}%` }} />
           </div>
           <p className="footnote flush">

@@ -45,9 +45,11 @@ export const transactionsKey = ['transactions'] as const;
 
 export type Page = { rows: Transaction[]; total: number };
 
-export function useTransactions(filters: Filters) {
+// A phone asks for shorter pages than a wide screen; the size is part of the
+// key, so the two never share a cached page.
+export function useTransactions(filters: Filters, pageSize: number = PAGE_SIZE) {
   return useQuery({
-    queryKey: [...transactionsKey, filters],
+    queryKey: [...transactionsKey, filters, pageSize],
     queryFn: async (): Promise<Page> => {
       let query = db().from('transactions').select('*', { count: 'exact' });
 
@@ -65,8 +67,8 @@ export function useTransactions(filters: Filters) {
       const ascending = filters.direction === 'asc';
       query = query.order(filters.sort, { ascending }).order('id', { ascending });
 
-      const start = (filters.page - 1) * PAGE_SIZE;
-      const { data, error, count } = await query.range(start, start + PAGE_SIZE - 1);
+      const start = (filters.page - 1) * pageSize;
+      const { data, error, count } = await query.range(start, start + pageSize - 1);
       if (error) throw error;
       return { rows: data, total: count ?? 0 };
     },

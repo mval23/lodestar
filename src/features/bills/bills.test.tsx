@@ -109,7 +109,7 @@ describe('BillsPage', () => {
     expect(screen.getByText('No bills yet')).toBeInTheDocument();
   });
 
-  it('puts what is due now above what is due later', () => {
+  it('puts the next seven days above what is due later, with their total', () => {
     useBills.mockReturnValue({
       data: [bill({ id: 'a', name: 'Rent' }), bill({ id: 'b', name: 'Insurance', next_due_on: shift(40) })],
       isPending: false,
@@ -117,9 +117,12 @@ describe('BillsPage', () => {
       isSuccess: true,
     });
     render(<MemoryRouter><BillsPage /></MemoryRouter>);
-    expect(screen.getByText('Due now')).toBeInTheDocument();
+    expect(screen.getByText('Next 7 days')).toBeInTheDocument();
     expect(screen.getByText('Later')).toBeInTheDocument();
     expect(screen.getByText('Due today')).toBeInTheDocument();
+    expect(screen.getByText('Due in the next 7 days')).toBeInTheDocument();
+    // Only the bill due this week can be marked paid from the list.
+    expect(screen.getAllByRole('button', { name: 'Mark as paid' })).toHaveLength(1);
   });
 
   it('marks a fixed bill paid in one step, and says when it is next due', async () => {

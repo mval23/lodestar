@@ -44,7 +44,7 @@ export function DetailHeader({
 // The one blue bracket a screen is allowed.
 export function KeyFigure({ label, children, footnote }: { label: string; children: ReactNode; footnote?: ReactNode }) {
   return (
-    <section className="group figure-group key-figure">
+    <section className="figure-group key-figure">
       <h2 className="caption">{label}</h2>
       <p className="fig flush">
         <span className="bracket">{children}</span>
@@ -64,7 +64,7 @@ export function Facets({ children, label }: { children: ReactNode; label?: strin
 
 export function Facet({ label, children, note }: { label: string; children: ReactNode; note?: ReactNode }) {
   return (
-    <li className="group facet">
+    <li className="facet">
       <span className="caption">{label}</span>
       <span className="facet-value">{children}</span>
       {note && <span className="facet-note">{note}</span>}
@@ -72,9 +72,18 @@ export function Facet({ label, children, note }: { label: string; children: Reac
   );
 }
 
-// The top of a figure row: the key figure beside its facets.
-export function FigureRow({ children }: { children: ReactNode }) {
-  return <div className="figure-row">{children}</div>;
+// The top of a detail page, as one white group: the key figure beside its
+// facets, divided by hairlines rather than set in cards of their own, and,
+// under them, whatever belongs to the figure — its bar, what the pace says,
+// the plan that sets it. It used to be up to seven separate cards, some
+// holding one sentence, with a progress bar loose on the page between them.
+export function FigureRow({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+  return (
+    <div className="group figure-row">
+      <div className="figure-row-top">{children}</div>
+      {footer && <div className="figure-row-footer">{footer}</div>}
+    </div>
+  );
 }
 
 export function SectionHead({ title, id, link }: { title: string; id?: string; link?: { to: string; label: string } }) {

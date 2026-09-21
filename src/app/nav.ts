@@ -30,8 +30,8 @@ export const SIDEBAR_FOOT: NavItem[] = [
 ];
 
 // A detail page is somewhere you arrive from, so it keeps its list's item
-// lit. Most nest under their list (/accounts/:id), but a category is managed
-// on Budgets and a month is reached from Reports.
+// lit. Most nest under their list (/accounts/:id), but categories sit with
+// Budgets and a month is reached from Reports.
 const OWNED_BY: [prefix: string, owner: string][] = [
   ['/categories', '/budgets'],
   ['/months', '/reports'],
@@ -39,6 +39,23 @@ const OWNED_BY: [prefix: string, owner: string][] = [
 
 export function navOwnerOf(pathname: string): string | null {
   return OWNED_BY.find(([prefix]) => pathname === prefix || pathname.startsWith(prefix + '/'))?.[1] ?? null;
+}
+
+// The tab bar has four places, so every other screen lives under one of them
+// and lights it: Bills and Categories are reached from Budgets, and Accounts,
+// Reports, a month and Import & export from the Overview. Settings has its
+// own button in the top bar and lights no tab.
+const TAB_OWNED_BY: [prefix: string, owner: string][] = [
+  ['/bills', '/budgets'],
+  ['/categories', '/budgets'],
+  ['/accounts', '/'],
+  ['/reports', '/'],
+  ['/months', '/'],
+  ['/import-export', '/'],
+];
+
+export function tabOwnerOf(pathname: string): string | null {
+  return TAB_OWNED_BY.find(([prefix]) => pathname === prefix || pathname.startsWith(prefix + '/'))?.[1] ?? null;
 }
 
 export const TAB_BAR: NavItem[] = [

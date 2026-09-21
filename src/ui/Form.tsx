@@ -31,9 +31,31 @@ export function FormRow({
 }
 
 // Field errors listed under the group, in words.
-export function FieldErrors({ messages }: { messages: (string | undefined)[] }) {
+//
+// Until the person has tried to save, the reason is a hint, not an error: a
+// sheet that opens with "Enter an amount." in red is telling someone off for
+// something they haven't done yet. The words are the same either way, so
+// what the dimmed button is waiting for is never a mystery.
+export function FieldErrors({
+  messages,
+  attempted = true,
+}: {
+  messages: (string | undefined)[];
+  attempted?: boolean;
+}) {
   const list = messages.filter((m): m is string => Boolean(m));
   if (list.length === 0) return null;
+  if (!attempted) {
+    return (
+      <div>
+        {list.map((m) => (
+          <p key={m} className="form-hint">
+            {m}
+          </p>
+        ))}
+      </div>
+    );
+  }
   return (
     <div role="alert">
       {list.map((m) => (

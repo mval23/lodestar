@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { ChartPie } from 'lucide-react';
 import { categoryPath } from '../../lib/routes';
 import { Button } from '../../ui/Button';
+import { DetailHeader } from '../../ui/Detail';
 import { EmptyState } from '../../ui/EmptyState';
 import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
@@ -22,7 +23,11 @@ import {
   type CategoryKind,
 } from './queries';
 
-export function CategoryManager() {
+// Categories have a page of their own. They used to sit under the budget plan
+// on one long page, which listed every category twice and buried the plan
+// under its own upkeep. A plan is used every week; this is visited when
+// something needs renaming, grouping, merging or archiving.
+export function CategoriesPage() {
   const categories = useCategories();
   const groups = useCategoryGroups();
   const usage = useCategoryUsage();
@@ -54,18 +59,16 @@ export function CategoryManager() {
   };
 
   return (
-    <section className="stack">
-      <header className="page-head">
-        <div>
-          <h2 className="title-2">Categories</h2>
-          <p className="footnote flush">
-            A category is what money was for. A budget plans one category for one month.
-          </p>
-        </div>
-        <Button onClick={() => open()}>Add category</Button>
-      </header>
+    <div className="page">
+      <DetailHeader
+        back={{ to: '/budgets', label: 'Budgets' }}
+        title="Categories"
+        subtitle="A category is what money was for. A budget plans one category for one month."
+        actions={<Button onClick={() => open()}>Add category</Button>}
+      />
 
       {categories.isError && <Notice tone="err">{dataErrorMessage(categories.error)}</Notice>}
+      {categories.isPending && <p className="secondary">Loading your categories…</p>}
 
       {categories.isSuccess && rows.length === 0 && (
         <EmptyState icon={ChartPie} title="No categories yet" action={<Button onClick={() => open()}>Add a category</Button>}>
@@ -73,26 +76,30 @@ export function CategoryManager() {
         </EmptyState>
       )}
 
-      {byGroup.map(([groupId, items]) => (
-        <section key={groupId || 'ungrouped'}>
-          <h2 className="form-group-title">{groupName.get(groupId) ?? 'Ungrouped'}</h2>
-          <ul className="rows-list">
-            {items.map((category) => (
-              <li key={category.id}>
-                <Link to={categoryPath(category.id)} className="row-button">
-                  <span className="row-label">
-                    {category.name}
-                    <small>
-                      {category.kind === 'income' ? 'Income' : 'Expense'} ·{' '}
-                      {useCount.get(category.id) ?? 0} used
-                    </small>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      {/* Groups sit side by side on a wide screen: each is a short list, and
+          one long column left most of the frame empty. */}
+      <div className="group-columns">
+        {byGroup.map(([groupId, items]) => (
+          <section key={groupId || 'ungrouped'}>
+            <h2 className="form-group-title">{groupName.get(groupId) ?? 'Ungrouped'}</h2>
+            <ul className="rows-list">
+              {items.map((category) => (
+                <li key={category.id}>
+                  <Link to={categoryPath(category.id)} className="row-button">
+                    <span className="row-label">
+                      {category.name}
+                      <small>
+                        {category.kind === 'income' ? 'Income' : 'Expense'} ·{' '}
+                        {useCount.get(category.id) ?? 0} used
+                      </small>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
 
       {archived.length > 0 && (
         <details className="archived">
@@ -120,7 +127,7 @@ export function CategoryManager() {
           onClose={() => setSheetOpen(false)}
         />
       )}
-    </section>
+    </div>
   );
 }
 

@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { Settings } from 'lucide-react';
 import { Wordmark } from '../ui/Logo';
-import { SIDEBAR_FOOT, SIDEBAR_MAIN, TAB_BAR, navOwnerOf, type NavItem } from './nav';
+import { SIDEBAR_FOOT, SIDEBAR_MAIN, TAB_BAR, navOwnerOf, tabOwnerOf, type NavItem } from './nav';
 
 function SidebarLink({ item, owned }: { item: NavItem; owned: boolean }) {
   const Icon = item.icon;
@@ -21,7 +21,9 @@ function SidebarLink({ item, owned }: { item: NavItem; owned: boolean }) {
 }
 
 export function AppLayout() {
-  const owner = navOwnerOf(useLocation().pathname);
+  const { pathname } = useLocation();
+  const owner = navOwnerOf(pathname);
+  const tabOwner = tabOwnerOf(pathname);
 
   return (
     <div className="shell">
@@ -58,7 +60,7 @@ export function AppLayout() {
             to={to}
             end={to === '/'}
             className="tab-link"
-            aria-current={owner === to ? 'page' : undefined}
+            aria-current={tabOwner === to ? 'page' : undefined}
           >
             <Icon strokeWidth={1.75} aria-hidden />
             {label}

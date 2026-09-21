@@ -1,13 +1,13 @@
-import { Navigate, useNavigate, useParams } from 'react-router';
+import { Link, Navigate, useNavigate, useParams } from 'react-router';
 import { useProfile } from '../../lib/profile';
 import { monthStartInZone } from '../../lib/dates';
 import { budgetMonthPath, monthFromParam } from '../../lib/routes';
-import { CategoryManager } from '../categories/CategoryManager';
 import { BudgetList } from './BudgetList';
 
-// Budgets and categories share a page because a budget is a plan for one
-// category in one month: managing them apart means holding both in your head.
-// The month is part of the address; /budgets alone opens the current month.
+// The month's plan, category by category. The month is part of the address;
+// /budgets alone opens the current month. Categories themselves are kept on
+// their own page: planning happens every week, and renaming or merging
+// happens rarely, so the two no longer share one long scroll.
 export function BudgetsPage() {
   const { month: param } = useParams();
   const navigate = useNavigate();
@@ -17,14 +17,20 @@ export function BudgetsPage() {
   if (month === null) return <Navigate to="/budgets" replace />;
 
   return (
-    <div className="page page-narrow">
+    <div className="page">
       <header className="page-head">
         <h1 className="large-title">Budgets</h1>
+        <nav className="actions" aria-label="Related">
+          {/* On a phone, Bills sits under Budgets (CLAUDE.md): the tab bar has
+              no room for it. The sidebar lists it on a wide screen. */}
+          <Link className="mobile-only" to="/bills">
+            Bills
+          </Link>
+          <Link to="/categories">Categories</Link>
+        </nav>
       </header>
 
       <BudgetList month={month} onMonth={(next) => navigate(budgetMonthPath(next), { replace: true })} />
-
-      <CategoryManager />
     </div>
   );
 }

@@ -102,8 +102,24 @@ describe('BudgetList', () => {
       isError: false,
     });
     renderList();
-    expect(screen.getByText(/Over plan by/)).toBeInTheDocument();
+    // The row says it, and so does the month's figure, rather than showing
+    // a negative "Left to spend".
+    expect(screen.getByRole('heading', { name: 'Over plan by' })).toBeInTheDocument();
+    expect(screen.getByText(/spent · Over plan by/)).toBeInTheDocument();
+    expect(screen.queryByText('Left to spend')).not.toBeInTheDocument();
     expect(screen.getAllByText('$55.50').length).toBeGreaterThan(0);
+  });
+
+  it('heads each group with what it has spent of its plan', () => {
+    useBudgets.mockReturnValue({
+      data: [progress({ planned_minor: 20000, spent_minor: 5000, left_minor: 15000 })],
+      isError: false,
+    });
+    renderList();
+    expect(screen.getByRole('region', { name: 'Essentials' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Essentials' })).toBeInTheDocument();
+    // The group is named once, above its rows, not under every category.
+    expect(screen.getAllByText('Essentials')).toHaveLength(1);
   });
 
   it('shows what is left when under plan', () => {
@@ -133,6 +149,31 @@ describe('BudgetList', () => {
     await userEvent.clear(field);
     await userEvent.tab();
     expect(setBudget).toHaveBeenCalledWith(expect.objectContaining({ amountMinor: null, budgetId: 'b1' }));
+  });
+
+  // Categories and budgets are separate queries. A row that mounted before
+  // its plan arrived used to keep an empty field, and blurring that field
+  // saved the emptiness — which removes the plan.
+  it('picks up a plan that arrives after the row has mounted', () => {
+    useBudgets.mockReturnValue({ data: undefined, isError: false });
+    const { rerender } = renderList();
+    expect(screen.getAllByPlaceholderText('No plan').length).toBeGreaterThan(0);
+
+    useBudgets.mockReturnValue({ data: [progress({ planned_minor: 40000 })], isError: false });
+    rerender(
+      <MemoryRouter>
+        <Harness />
+      </MemoryRouter>,
+    );
+    expect(screen.getByDisplayValue('400.00')).toBeInTheDocument();
+  });
+
+  it('writes nothing when a field is entered and left untouched', async () => {
+    useBudgets.mockReturnValue({ data: [progress({ planned_minor: 40000 })], isError: false });
+    renderList();
+    await userEvent.click(screen.getByDisplayValue('400.00'));
+    await userEvent.tab();
+    expect(setBudget).not.toHaveBeenCalled();
   });
 
   it('refuses an amount it would have to round', async () => {

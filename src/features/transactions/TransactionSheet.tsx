@@ -19,6 +19,10 @@ import {
   type TxnKind,
 } from './queries';
 
+// The submit button lives in the sheet's bar, outside the form, and is tied
+// back to it by id.
+const FORM_ID = 'transaction-form';
+
 const KINDS: { value: TxnKind; label: string }[] = [
   { value: 'expense', label: 'Expense' },
   { value: 'income', label: 'Income' },
@@ -86,6 +90,8 @@ export function TransactionSheet({
     return base;
   });
   const [error, setError] = useState<string | null>(null);
+  // Whether Save has been pressed: until then a missing amount is a hint.
+  const [attempted, setAttempted] = useState(false);
 
   const set = <K extends keyof Values>(key: K, value: Values[K]) => setValues((v) => ({ ...v, [key]: value }));
 
@@ -121,6 +127,7 @@ export function TransactionSheet({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
+    setAttempted(true);
     if (reason || !parsed.ok) return;
     const row = {
       kind: values.kind,
@@ -144,10 +151,30 @@ export function TransactionSheet({
   };
 
   const busy = create.isPending || update.isPending;
+  const actionName = transaction ? 'Save transaction' : 'Add transaction';
 
   return (
-    <Sheet onClose={onClose} open title={transaction ? 'Edit transaction' : 'Add transaction'}>
-      <form onSubmit={submit} className="stack" noValidate>
+    <Sheet
+      onClose={onClose}
+      open
+      title={transaction ? 'Edit transaction' : 'Add transaction'}
+      // The action sits opposite Cancel, where it stays in reach however
+      // long the form is. The title already says "transaction", so the button
+      // says the verb; its accessible name keeps the whole phrase.
+      footer={
+        <Button
+          type="submit"
+          form={FORM_ID}
+          className="btn-compact"
+          aria-label={actionName}
+          dimmed={Boolean(reason)}
+          busy={busy}
+        >
+          {busy ? 'Saving…' : transaction ? 'Save' : 'Add'}
+        </Button>
+      }
+    >
+      <form id={FORM_ID} onSubmit={submit} className="stack" noValidate>
         <div className="segmented segmented-wide" role="radiogroup" aria-label="Kind">
           {KINDS.map((kind) => (
             <label key={kind.value}>
@@ -264,13 +291,7 @@ export function TransactionSheet({
         )}
 
         {error && <Notice tone="err">{error}</Notice>}
-        <FieldErrors messages={[reason]} />
-
-        <div className="actions">
-          <Button type="submit" dimmed={Boolean(reason)} busy={busy}>
-            {busy ? 'Saving…' : transaction ? 'Save transaction' : 'Add transaction'}
-          </Button>
-        </div>
+        <FieldErrors messages={[reason]} attempted={attempted} />
       </form>
 
       {transaction && <DeleteTransaction transaction={transaction} onDone={onClose} onError={setError} />}

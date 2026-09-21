@@ -64,6 +64,31 @@ export function formatMoney(minor: number, currency: Currency, options: FormatOp
   return text;
 }
 
+// Chart axes only (BRAND.md §6): "$1.2M", "$800", "COP 4.5M". Everywhere
+// else an amount is written in full; an axis label only has to say roughly
+// where a grid line sits, and the exact figures are one hover or one table
+// away.
+const axisFormatters = new Map<Currency, Intl.NumberFormat>();
+
+export function formatMoneyAxis(minor: number, currency: Currency): string {
+  let formatter = axisFormatters.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      currencyDisplay: currency === 'COP' ? 'code' : 'symbol',
+      notation: 'compact',
+      // Both bounds, or some ICU versions carry the currency's two decimals
+      // into the minimum and print "$0.0" and "$800.0".
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 1,
+    });
+    axisFormatters.set(currency, formatter);
+  }
+  const text = formatter.format(Math.abs(minor) / 10 ** exponentOf(currency));
+  return minor < 0 ? MINUS + text : text;
+}
+
 // Spoken by screen readers, which read "−" poorly.
 export function describeMoney(minor: number, currency: Currency): string {
   const words = formatMoney(Math.abs(minor), currency);
