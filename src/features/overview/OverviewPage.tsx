@@ -20,13 +20,15 @@ import { standingOf, useGoals } from '../goals/queries';
 import { useMonthAccounts } from '../months/queries';
 import { useCashFlow, useNetWorth } from '../reports/queries';
 import { TransactionSheet } from '../transactions/TransactionSheet';
+import { PHONE, useMediaQuery } from '../../lib/media';
+import { TitleLink } from './TitleLink';
+import { WideOverview } from './WideOverview';
 
-// Where you stand, in one screen. The large block is this month's plan: what
-// is left to spend and each category against its plan. It is the figure acted
-// on day to day, so it leads. Beside it, net worth and its trend, the bills
-// due this week, and the month's income, expenses and debt. Below them, the
-// accounts and the goals being saved for. Every block links to the page that
-// explains it.
+// Where you stand, in one screen. A wide screen gets WideOverview: the key
+// figures in a band, then two columns. A phone gets the stack below: the
+// month's plan first, then net worth, the bills due this week, the month's
+// income, expenses and debt, the accounts and the goals. Every block links to
+// the page that explains it.
 export function OverviewPage() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const currency = useCurrency();
@@ -34,6 +36,7 @@ export function OverviewPage() {
   const accounts = useAccounts();
   const [accountSheet, setAccountSheet] = useState(false);
   const [txnSheet, setTxnSheet] = useState(false);
+  const phone = useMediaQuery(PHONE);
 
   const today = todayInZone(profile.data?.timezone);
   const thisMonth = monthStartInZone(profile.data?.timezone);
@@ -66,38 +69,32 @@ export function OverviewPage() {
       {firstRun ? (
         <FirstRun onAddAccount={() => setAccountSheet(true)} />
       ) : accounts.isPending ? null : (
-        <>
-          <div className="overview-layout">
-            <MonthPlan month={thisMonth} currency={currency} />
+        !phone ? (
+          <WideOverview accounts={rows} today={today} month={thisMonth} currency={currency} />
+        ) : (
+          <>
+            <div className="overview-layout">
+              <MonthPlan month={thisMonth} currency={currency} />
 
-            <div className="overview-side">
-              <NetWorthGroup accounts={rows} compact>
-                <Trend currency={currency} />
-              </NetWorthGroup>
-              <DueThisWeek today={today} currency={currency} />
-              <MonthTotals month={thisMonth} currency={currency} accounts={rows} />
+              <div className="overview-side">
+                <NetWorthGroup accounts={rows} compact>
+                  <Trend currency={currency} />
+                </NetWorthGroup>
+                <DueThisWeek today={today} currency={currency} />
+                <MonthTotals month={thisMonth} currency={currency} accounts={rows} />
+              </div>
             </div>
-          </div>
 
-          <AccountsSection accounts={rows} currency={currency} />
-          <GoalsStrip currency={currency} month={thisMonth} />
-          <MoreOnPhone />
-        </>
+            <AccountsSection accounts={rows} currency={currency} />
+            <GoalsStrip currency={currency} month={thisMonth} />
+            <MoreOnPhone />
+          </>
+        )
       )}
 
       {accountSheet && <AccountSheet onClose={() => setAccountSheet(false)} />}
       {txnSheet && <TransactionSheet onClose={() => setTxnSheet(false)} />}
     </div>
-  );
-}
-
-// A caption that is also the way to the page behind it.
-function TitleLink({ to, children }: { to: string; children: string }) {
-  return (
-    <Link className="card-title-link" to={to}>
-      {children}
-      <ChevronRight strokeWidth={1.75} aria-hidden />
-    </Link>
   );
 }
 
