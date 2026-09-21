@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { Flag } from 'lucide-react';
 import { useCurrency, useProfile } from '../../lib/profile';
+import { goalPath } from '../../lib/routes';
 import { formatDate, monthStartInZone } from '../../lib/dates';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
@@ -56,7 +58,9 @@ export function GoalsPage() {
           <section key={goal.goal_id} className="group goal-card">
             <header className="goal-head">
               <div>
-                <h2 className="headline">{goal.name}</h2>
+                <h2 className="headline">
+                  <Link to={goalPath(goal.goal_id)}>{goal.name}</Link>
+                </h2>
                 <p className="footnote flush">
                   {goal.target_minor === null ? (
                     'No target'

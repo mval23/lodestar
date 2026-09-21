@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { GoalsPage } from './GoalsPage';
 import { standingOf, type GoalProgress } from './queries';
 
@@ -89,13 +90,13 @@ describe('standingOf', () => {
 
 describe('GoalsPage', () => {
   it('invites a first goal when there are none', () => {
-    render(<GoalsPage />);
+    render(<MemoryRouter><GoalsPage /></MemoryRouter>);
     expect(screen.getByText('No goals yet')).toBeInTheDocument();
   });
 
   it('shows the balance, the target and what is left to save', () => {
     useGoals.mockReturnValue({ data: [goal()], isPending: false, isError: false, isSuccess: true });
-    render(<GoalsPage />);
+    render(<MemoryRouter><GoalsPage /></MemoryRouter>);
     expect(screen.getByText('Emergency fund')).toBeInTheDocument();
     expect(screen.getAllByText('$500.00').length).toBeGreaterThan(0);
     expect(screen.getByText(/to go/)).toBeInTheDocument();
@@ -109,7 +110,7 @@ describe('GoalsPage', () => {
       isError: false,
       isSuccess: true,
     });
-    render(<GoalsPage />);
+    render(<MemoryRouter><GoalsPage /></MemoryRouter>);
     expect(screen.getByText('Target reached.')).toBeInTheDocument();
   });
 
@@ -120,7 +121,7 @@ describe('GoalsPage', () => {
       isError: false,
       isSuccess: true,
     });
-    render(<GoalsPage />);
+    render(<MemoryRouter><GoalsPage /></MemoryRouter>);
     expect(screen.getByText('No target')).toBeInTheDocument();
     expect(screen.getByText('Growing with every transfer in.')).toBeInTheDocument();
   });
@@ -132,7 +133,7 @@ describe('GoalsPage', () => {
       isError: false,
       isSuccess: true,
     });
-    render(<GoalsPage />);
+    render(<MemoryRouter><GoalsPage /></MemoryRouter>);
     expect(screen.getByText(/set aside this month/)).toBeInTheDocument();
     expect(screen.getAllByText('$250.00').length).toBeGreaterThan(0);
     expect(screen.getAllByText('$300.00').length).toBeGreaterThan(0);
@@ -145,7 +146,7 @@ describe('GoalsPage', () => {
       isError: false,
       isSuccess: true,
     });
-    render(<GoalsPage />);
+    render(<MemoryRouter><GoalsPage /></MemoryRouter>);
     expect(screen.queryByText('Emergency fund')).not.toBeInTheDocument();
   });
 });

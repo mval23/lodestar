@@ -29,6 +29,18 @@ export const SIDEBAR_FOOT: NavItem[] = [
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
+// A detail page is somewhere you arrive from, so it keeps its list's item
+// lit. Most nest under their list (/accounts/:id), but a category is managed
+// on Budgets and a month is reached from Reports.
+const OWNED_BY: [prefix: string, owner: string][] = [
+  ['/categories', '/budgets'],
+  ['/months', '/reports'],
+];
+
+export function navOwnerOf(pathname: string): string | null {
+  return OWNED_BY.find(([prefix]) => pathname === prefix || pathname.startsWith(prefix + '/'))?.[1] ?? null;
+}
+
 export const TAB_BAR: NavItem[] = [
   { to: '/', label: 'Overview', icon: LayoutGrid },
   { to: '/activity', label: 'Activity', icon: ArrowLeftRight },

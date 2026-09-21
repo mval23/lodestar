@@ -157,3 +157,89 @@ export function useMergeCategories() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// The category page. Totals sit under transactionsKey, so any change to the
+// ledger refreshes them.
+// ---------------------------------------------------------------------------
+
+export function useCategory(id: string | undefined) {
+  return useQuery({
+    queryKey: [...categoriesKey, id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<Category | null> => {
+      const { data, error } = await db().from('categories').select('*').eq('id', id!).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export type CategoryMonth = { month: string; total_minor: number; txn_count: number };
+
+// Months with activity only; the page fills quiet months with zero for the chart.
+export function useCategoryMonths(id: string | undefined, from: string) {
+  return useQuery({
+    queryKey: ['transactions', 'category-months', id, from],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<CategoryMonth[]> => {
+      const { data, error } = await db()
+        .from('category_month_totals')
+        .select('month, total_minor, txn_count')
+        .eq('category_id', id!)
+        .gte('month', from)
+        .order('month', { ascending: true });
+      if (error) throw error;
+      return data.map((row) => ({
+        month: (row.month ?? '').slice(0, 10),
+        total_minor: row.total_minor ?? 0,
+        txn_count: row.txn_count ?? 0,
+      }));
+    },
+  });
+}
+
+// Every month's total for the category, for "last 12 months" and a typical month.
+export function useCategoryMonthTotals(from: string, to: string) {
+  return useQuery({
+    queryKey: ['transactions', 'category-month-totals', from, to],
+    queryFn: async () => {
+      const { data, error } = await db()
+        .from('category_month_totals')
+        .select('category_id, kind, month, total_minor, txn_count')
+        .gte('month', from)
+        .lte('month', to);
+      if (error) throw error;
+      return data.map((row) => ({
+        category_id: row.category_id ?? '',
+        kind: row.kind ?? 'expense',
+        month: (row.month ?? '').slice(0, 10),
+        total_minor: row.total_minor ?? 0,
+        txn_count: row.txn_count ?? 0,
+      }));
+    },
+  });
+}
+
+export type TopDescription = { description: string; total_minor: number; txn_count: number };
+
+export function useTopDescriptions(id: string | undefined, from: string, to: string, limit = 5) {
+  return useQuery({
+    queryKey: ['transactions', 'top-descriptions', id, from, to, limit],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<TopDescription[]> => {
+      const { data, error } = await db().rpc('category_top_descriptions', {
+        p_category_id: id!,
+        p_from: from,
+        p_to: to,
+        p_limit: limit,
+      });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        description: row.description,
+        total_minor: row.total_minor,
+        txn_count: row.txn_count,
+      }));
+    },
+  });
+}

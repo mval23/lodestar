@@ -121,3 +121,49 @@ export function standingOf(goal: GoalProgress, today: string): GoalStanding {
 
   return { share, reached, monthsLeft, neededPerMonth };
 }
+
+export function useGoal(id: string | undefined) {
+  return useQuery({
+    queryKey: [...goalsKey, id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<GoalProgress | null> => {
+      const { data, error } = await db().from('goal_progress').select('*').eq('goal_id', id!).maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return {
+        goal_id: data.goal_id ?? '',
+        account_id: data.account_id ?? '',
+        name: data.name ?? '',
+        target_minor: data.target_minor,
+        target_date: data.target_date,
+        monthly_plan_minor: data.monthly_plan_minor,
+        achieved_at: data.achieved_at,
+        archived_at: data.archived_at,
+        balance_minor: data.balance_minor ?? 0,
+        remaining_minor: data.remaining_minor,
+        this_month: data.this_month ?? '',
+        this_month_contributed_minor: data.this_month_contributed_minor ?? 0,
+      };
+    },
+  });
+}
+
+// Where the recent pace leads: the average of the last complete months'
+// contributions, and the month the target is reached at that rate. `arrives`
+// is null when there is no target, nothing is coming in, or the target is
+// already reached. Stated as arithmetic, never as a grade.
+export function paceOf(
+  goal: Pick<GoalProgress, 'target_minor' | 'balance_minor'>,
+  contributions: number[],
+  currentMonth: string,
+): { average: number; arrives: string | null } {
+  const average =
+    contributions.length > 0 ? Math.round(contributions.reduce((a, b) => a + b, 0) / contributions.length) : 0;
+  if (goal.target_minor === null || average <= 0 || goal.balance_minor >= goal.target_minor) {
+    return { average, arrives: null };
+  }
+  const months = Math.ceil((goal.target_minor - goal.balance_minor) / average);
+  const [y, m] = currentMonth.split('-').map(Number);
+  const date = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1 + months, 1));
+  return { average, arrives: date.toISOString().slice(0, 10) };
+}

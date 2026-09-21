@@ -155,3 +155,67 @@ export function describeDue(nextDueOn: string, today: string): string {
   }
   return days === 1 ? 'Due tomorrow' : `Due in ${days} days`;
 }
+
+export function useBill(id: string | undefined) {
+  return useQuery({
+    queryKey: [...billsKey, id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<RecurringItem | null> => {
+      const { data, error } = await db().from('recurring_items').select('*').eq('id', id!).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export type BillMonth = { month: string; paid_minor: number; payment_count: number; last_paid_on: string };
+
+// What the item actually cost, month by month, from `from` on. What it was
+// expected to cost at the time is not stored, so only what was paid is shown.
+export function useBillMonths(id: string | undefined, from: string) {
+  return useQuery({
+    queryKey: [...transactionsKey, 'bill-months', id, from],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<BillMonth[]> => {
+      const { data, error } = await db()
+        .from('recurring_item_months')
+        .select('month, paid_minor, payment_count, last_paid_on')
+        .eq('recurring_item_id', id!)
+        .gte('month', from)
+        .order('month', { ascending: true });
+      if (error) throw error;
+      return data.map((row) => ({
+        month: (row.month ?? '').slice(0, 10),
+        paid_minor: row.paid_minor ?? 0,
+        payment_count: row.payment_count ?? 0,
+        last_paid_on: (row.last_paid_on ?? '').slice(0, 10),
+      }));
+    },
+  });
+}
+
+// The payments themselves, newest first.
+export function useBillPayments(id: string | undefined) {
+  return useQuery({
+    queryKey: [...transactionsKey, 'bill-payments', id],
+    enabled: Boolean(id),
+    queryFn: async () => {
+      const { data, error, count } = await db()
+        .from('transactions')
+        .select('*', { count: 'exact' })
+        .eq('recurring_item_id', id!)
+        .order('occurred_on', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return { rows: data, total: count ?? 0 };
+    },
+  });
+}
+
+// How many times a schedule comes round in a year, for "a year of it". A
+// computation on the schedule, never a stored column.
+export function perYear(unit: CadenceUnit, interval: number): number {
+  const base = unit === 'week' ? 52 : unit === 'month' ? 12 : 1;
+  return base / Math.max(1, interval);
+}

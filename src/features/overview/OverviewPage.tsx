@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router';
 import { useCurrency, useProfile, useUpdateProfile } from '../../lib/profile';
 import { CURRENCIES, type Currency } from '../../lib/money';
 import { monthStartInZone, todayInZone } from '../../lib/dates';
+import { budgetMonthPath, monthPath } from '../../lib/routes';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
 import { Notice } from '../../ui/Notice';
@@ -134,7 +135,7 @@ function ThisMonth({ month, currency }: { month: string; currency: Currency }) {
   const current = (cashFlow.data ?? []).find((row) => row.month === month);
 
   return (
-    <Card title="This month" to="/reports" linkText="Reports">
+    <Card title="This month" to={monthPath(month)} linkText="Open the month">
       {current ? (
         <>
           <p className="card-figure flush">
@@ -159,7 +160,7 @@ function BudgetSummary({ month, currency }: { month: string; currency: Currency 
   const over = rows.filter((row) => row.left_minor < 0);
 
   return (
-    <Card title="Budgets" to="/budgets" linkText="Budgets">
+    <Card title="Budgets" to={budgetMonthPath(month)} linkText="Budgets">
       {rows.length === 0 ? (
         <p className="footnote flush">No plan for this month yet.</p>
       ) : (

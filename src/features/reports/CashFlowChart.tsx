@@ -1,9 +1,11 @@
+import { Link } from 'react-router';
 import { AxisBottom } from '@visx/axis';
 import { Group } from '@visx/group';
 import { scaleBand, scaleLinear } from '@visx/scale';
 import { Bar } from '@visx/shape';
 import { formatMoney, type Currency } from '../../lib/money';
 import { formatMonth } from '../../lib/dates';
+import { monthPath } from '../../lib/routes';
 import { Amount } from '../../ui/Amount';
 import { ChartFrame, ChartLegend } from '../../ui/Chart';
 import type { CashFlowMonth } from './queries';
@@ -134,7 +136,9 @@ function CashFlowTable({ rows, currency }: { rows: CashFlowMonth[]; currency: Cu
       <tbody>
         {rows.map((row) => (
           <tr key={row.month}>
-            <th scope="row">{formatMonth(row.month)}</th>
+            <th scope="row">
+              <Link to={monthPath(row.month)}>{formatMonth(row.month)}</Link>
+            </th>
             <td className="num">
               <Amount minor={row.money_in_minor} currency={currency} />
             </td>

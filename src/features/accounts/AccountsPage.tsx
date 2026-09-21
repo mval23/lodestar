@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { SquareStack } from 'lucide-react';
 import { useCurrency } from '../../lib/profile';
+import { accountPath } from '../../lib/routes';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
@@ -14,24 +16,6 @@ import {
   type Account,
   type AccountBalance,
 } from './queries';
-
-// The view carries everything the row shows, but the edit sheet writes the
-// table, so the row is turned back into an account before editing.
-function toAccount(row: AccountBalance): Account {
-  return {
-    id: row.account_id,
-    user_id: row.user_id,
-    name: row.name,
-    type: row.type,
-    opening_balance_minor: row.opening_balance_minor,
-    opening_date: null,
-    sort_order: row.sort_order,
-    archived_at: row.archived_at,
-    source_ref: null,
-    created_at: '',
-    updated_at: '',
-  };
-}
 
 export function AccountsPage() {
   const currency = useCurrency();
@@ -97,14 +81,14 @@ export function AccountsPage() {
             </p>
           </section>
 
-          <AccountList rows={open} onEdit={openSheet} />
+          <AccountList rows={open} />
         </>
       )}
 
       {archived.length > 0 && (
         <details className="archived">
           <summary>{archived.length} archived</summary>
-          <AccountList rows={archived} onEdit={openSheet} />
+          <AccountList rows={archived} />
         </details>
       )}
 
@@ -121,19 +105,20 @@ function describeRow(row: AccountBalance): string {
   return parts.join(' · ');
 }
 
-function AccountList({ rows, onEdit }: { rows: AccountBalance[]; onEdit: (account: Account) => void }) {
+// A row opens the account's own page, where it is also edited.
+function AccountList({ rows }: { rows: AccountBalance[] }) {
   const currency = useCurrency();
   return (
     <ul className="rows-list">
       {rows.map((row) => (
         <li key={row.account_id}>
-          <button type="button" className="row-button" onClick={() => onEdit(toAccount(row))}>
+          <Link to={accountPath(row.account_id)} className="row-button">
             <span className="row-label">
               {row.name}
               <small>{describeRow(row)}</small>
             </span>
             <Amount minor={row.balance_minor} currency={currency} />
-          </button>
+          </Link>
         </li>
       ))}
     </ul>

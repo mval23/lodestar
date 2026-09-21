@@ -146,3 +146,37 @@ export function directionProblem(values: {
   }
   return undefined;
 }
+
+// One transaction, for editing a row that came from a view with fewer columns.
+export function useTransaction(id: string | undefined) {
+  return useQuery({
+    queryKey: [...transactionsKey, 'one', id],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<Transaction | null> => {
+      const { data, error } = await db().from('transactions').select('*').eq('id', id!).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+// The largest expense in a date range, for the month page.
+export function useLargestExpense(from: string, to: string) {
+  return useQuery({
+    queryKey: [...transactionsKey, 'largest-expense', from, to],
+    queryFn: async (): Promise<Transaction | null> => {
+      const { data, error } = await db()
+        .from('transactions')
+        .select('*')
+        .eq('kind', 'expense')
+        .gte('occurred_on', from)
+        .lte('occurred_on', to)
+        .order('amount_minor', { ascending: false })
+        .order('occurred_on', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
