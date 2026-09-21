@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { OverviewPage } from './OverviewPage';
 
@@ -8,6 +8,7 @@ const useNetWorth = vi.fn();
 const useBudgets = vi.fn();
 const useBills = vi.fn();
 const useGoals = vi.fn();
+const useMonthAccounts = vi.fn();
 
 vi.mock('../accounts/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../accounts/queries')>();
@@ -29,6 +30,7 @@ vi.mock('../goals/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../goals/queries')>();
   return { ...actual, useGoals: () => useGoals() };
 });
+vi.mock('../months/queries', () => ({ useMonthAccounts: () => useMonthAccounts() }));
 vi.mock('../../lib/profile', () => ({
   useCurrency: () => 'USD',
   useProfile: () => ({ data: { id: 'u1', timezone: 'UTC', currency: 'USD' } }),
@@ -53,6 +55,7 @@ beforeEach(() => {
   useBudgets.mockReturnValue({ data: [] });
   useBills.mockReturnValue({ data: [] });
   useGoals.mockReturnValue({ data: [] });
+  useMonthAccounts.mockReturnValue({ data: [] });
 });
 
 describe('OverviewPage', () => {
@@ -238,5 +241,41 @@ describe('OverviewPage', () => {
     expect(screen.getByRole('img', { name: /Net worth over the last 2 months/ })).toBeInTheDocument();
     expect(screen.getByText(/over 2 months/)).toBeInTheDocument();
     expect(screen.getAllByText('+$100.00').length).toBeGreaterThan(0);
+  });
+
+  // The month's income, expenses and debt, side by side. A card payment is a
+  // transfer into the card, so it is in neither income nor expenses: it shows
+  // under the debt it paid down.
+  it('totals the month: income, expenses, and the debt with what was paid towards it', () => {
+    useAccounts.mockReturnValue({
+      data: [
+        checking,
+        { ...checking, account_id: 'c', name: 'Blue card', type: 'credit_card', is_liability: true, balance_minor: -98964 },
+      ],
+      isSuccess: true,
+      isPending: false,
+      isError: false,
+    });
+    useCashFlow.mockReturnValue({
+      data: [{ month: THIS_MONTH, money_in_minor: 688200, money_out_minor: 363190, net_minor: 325010 }],
+    });
+    useMonthAccounts.mockReturnValue({
+      data: [
+        { account_id: 'c', transfer_in_minor: 40000 },
+        { account_id: 'a', transfer_in_minor: 12345 },
+      ],
+    });
+    show();
+
+    const card = screen.getByRole('region', { name: 'This month' });
+    expect(within(card).getByText('Income')).toBeInTheDocument();
+    expect(within(card).getAllByText('$6,882.00').length).toBeGreaterThan(0);
+    expect(within(card).getByText('Expenses')).toBeInTheDocument();
+    expect(within(card).getAllByText('$3,631.90').length).toBeGreaterThan(0);
+    // Owed, as a positive amount, the way it is said.
+    expect(within(card).getAllByText('$989.64').length).toBeGreaterThan(0);
+    // Only transfers into a card or loan count as paying it down.
+    expect(within(card).getByText(/paid this month/)).toHaveTextContent('$400.00');
+    expect(within(card).getAllByText('+$3,250.10').length).toBeGreaterThan(0);
   });
 });
