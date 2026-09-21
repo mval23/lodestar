@@ -78,6 +78,9 @@ export function formatMoneyAxis(minor: number, currency: Currency): string {
       currency,
       currencyDisplay: currency === 'COP' ? 'code' : 'symbol',
       notation: 'compact',
+      // Both bounds, or some ICU versions carry the currency's two decimals
+      // into the minimum and print "$0.0" and "$800.0".
+      minimumFractionDigits: 0,
       maximumFractionDigits: 1,
     });
     axisFormatters.set(currency, formatter);
