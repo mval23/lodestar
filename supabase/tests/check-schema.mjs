@@ -984,6 +984,65 @@ await test('deleting an auth user cascades every row and leaves other users inta
   eq(await countFor(B), bBefore, 'B unchanged');
 });
 
+// ---------------------------------------------------------------------------
+// The restore drill's fingerprint (supabase/checks/fingerprint.sql) runs
+// against this schema, so it cannot rot unnoticed before the day it's needed.
+// ---------------------------------------------------------------------------
+group('Restore drill fingerprint');
+
+const fingerprintFile = await readFile(path.join(here, '..', 'checks', 'fingerprint.sql'), 'utf8');
+const fingerprintBuilder = fingerprintFile.slice(
+  fingerprintFile.indexOf('select string_agg('),
+  // Everything before the psql directive that runs it (the last "gexec").
+  fingerprintFile.lastIndexOf('gexec') - 1,
+);
+
+// What psql does: build the query in a read-only transaction, then run it.
+async function fingerprint() {
+  await db.exec("begin transaction read only; set local timezone = 'UTC';");
+  try {
+    const built = (await db.query(fingerprintBuilder)).rows[0].query;
+    return (await db.query(built)).rows;
+  } finally {
+    await db.exec('rollback');
+  }
+}
+
+await test('runs read-only, over every public table and auth.users', async () => {
+  const rows = await fingerprint();
+  const tables = (await sql(
+    `select 'public.' || c.relname as name from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind in ('r', 'p') order by 1`,
+  )).rows.map((r) => r.name);
+  eq(rows.map((r) => r.relation), [...tables, 'auth.users'].sort(), 'relations covered');
+});
+
+await test('is the same every time it runs', async () => {
+  eq(await fingerprint(), await fingerprint(), 'two runs');
+});
+
+await test('notices a single edited row, and only in its table', async () => {
+  const before = await fingerprint();
+  await db.exec('begin');
+  await sql(
+    'update public.transactions set description = description || $1 where id = (select id from public.transactions order by id limit 1)',
+    [' (edited)'],
+  );
+  const built = (await sql(fingerprintBuilder)).rows[0].query;
+  const after = (await sql(built)).rows;
+  await db.exec('rollback');
+  const changed = after.filter((row, i) => row.rows_md5 !== before[i].rows_md5).map((row) => row.relation);
+  eq(changed, ['public.transactions'], 'tables whose fingerprint moved');
+});
+
+await test('shows no amount or description', async () => {
+  const rows = await fingerprint();
+  const description = (await sql('select description from public.transactions where description is not null limit 1')).rows[0]?.description;
+  assert(description, 'the fixture has a described transaction to look for');
+  assert(!JSON.stringify(rows).includes(description), 'a description appeared in the output');
+  eq(Object.keys(rows[0]), ['relation', 'row_count', 'rows_md5', 'last_changed'], 'columns');
+});
+
 summarize();
 
 // ---------------------------------------------------------------------------

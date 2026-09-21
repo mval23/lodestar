@@ -1,30 +1,81 @@
 name: Migrate production
 
 # Production schema changes happen only here, never by hand (CLAUDE.md).
-# Run manually from the Actions tab after the change has been on staging.
-# The `production` environment should require the owner's approval.
+#
+# Two ways in, one set of steps:
+#   - After every successful CI run on main (which has already migrated
+#     staging). The run then waits for the owner to approve it in the
+#     `production` environment, so production can no longer fall silently
+#     behind the app it serves.
+#   - By hand from the Actions tab, to retry, typing the confirmation.
+#
+# It is its own workflow, not a job inside CI, so a run waiting for approval
+# never holds up the next merge or staging.
+#
+# It refuses to run at all unless `production` requires a reviewer: without
+# one, "waits for approval" would quietly mean "runs immediately".
 
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       confirm:
         description: 'Type "migrate production" to confirm'
         required: true
 
+# One at a time, and never cancelled: stopping a migration halfway is worse
+# than waiting for it. A newer run waits behind an older one.
+concurrency:
+  group: production
+  cancel-in-progress: false
+
 permissions:
   contents: read
+  actions: read
 
 jobs:
+  gate:
+    name: Production requires approval
+    if: >-
+      (github.event_name == 'workflow_run'
+        && github.event.workflow_run.event == 'push'
+        && github.event.workflow_run.conclusion == 'success')
+      || (github.event_name == 'workflow_dispatch'
+        && github.ref == 'refs/heads/main'
+        && inputs.confirm == 'migrate production')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check the production environment has a required reviewer
+        run: |
+          reviewers=$(gh api "repos/${{ github.repository }}/environments/production" \
+            --jq '[.protection_rules[]? | select(.type == "required_reviewers")] | length')
+          if [ -z "$reviewers" ] || [ "$reviewers" = "0" ]; then
+            echo "::error::The production environment has no required reviewer, so nothing would stop this run. Add one: Settings → Environments → production → Required reviewers. See docs/phase-10/production.md."
+            exit 1
+          fi
+          echo "Production requires approval."
+
   migrate:
-    if: github.ref == 'refs/heads/main' && inputs.confirm == 'migrate production'
+    name: Migrate and deploy production
+    needs: gate
     runs-on: ubuntu-latest
     environment: production
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      SITE_URL: ${{ vars.PRODUCTION_SITE_URL || 'https://lodestar-mari-s-org.vercel.app' }}
     steps:
+      # Exactly the commit CI passed, not whatever main is by the time the
+      # owner approves.
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: supabase/setup-cli@v1
         with:
           version: latest
@@ -34,3 +85,15 @@ jobs:
         run: supabase migration list
       - name: Push migrations
         run: supabase db push
+      # --no-verify-jwt: the function checks the token itself, and the
+      # browser's CORS preflight carries none (docs/phase-9/account-deletion.md).
+      - name: Deploy the delete-account function
+        run: supabase functions deploy delete-account --no-verify-jwt --project-ref "$SUPABASE_PROJECT_REF"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      # From the outside, as a stranger: every relation the app expects
+      # exists and refuses the signed out, the function is live, and the
+      # headers match vercel.json.
+      - name: Check production from the outside
+        run: node scripts/health/cli.mjs "$SITE_URL"

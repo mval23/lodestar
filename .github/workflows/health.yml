@@ -1,0 +1,41 @@
+name: Health
+
+# Looks at staging and production from the outside every three hours, as a
+# stranger would, and fails if anything is wrong. GitHub emails a failed
+# scheduled run to whoever last changed this schedule.
+#
+# No secrets: it signs in as no one, which is exactly the point. It checks the
+# headers against vercel.json, that the bundle holds no secret key, that every
+# table and view the migrations create exists and refuses the signed out, and
+# that delete-account is deployed and refuses a request with no token.
+
+on:
+  schedule:
+    - cron: '17 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Staging
+            site: ${{ vars.STAGING_SITE_URL || 'https://lodestar-git-dev-mari-s-org.vercel.app' }}
+          - name: Production
+            site: ${{ vars.PRODUCTION_SITE_URL || 'https://lodestar-mari-s-org.vercel.app' }}
+    steps:
+      # main's migrations are what the deployed app expects to find.
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Check ${{ matrix.site }}
+        run: node scripts/health/cli.mjs "${{ matrix.site }}"

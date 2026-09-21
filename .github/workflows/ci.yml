@@ -72,6 +72,10 @@ jobs:
         run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -f supabase/checks/rls_gate.sql
       - name: pgTAP suite (isolation matrix)
         run: supabase test db
+      # The restore drill's fingerprint, run by psql as the drill runs it, on
+      # the real stack: it must work on the day a backup needs proving.
+      - name: Restore-drill fingerprint
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/checks/fingerprint.sql
       - uses: actions/setup-node@v5
         with:
           node-version: 22
