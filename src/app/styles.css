@@ -2314,3 +2314,115 @@ a:hover {
     white-space: nowrap;
   }
 }
+
+/* ---------- Overview on a wide screen: figures first ---------- */
+/* The band: four figures in one white group. The cells sit on a 1 px grid gap
+   over the line colour, so the hairlines between them follow any column
+   count without a border of their own. */
+.group.fig-band {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  padding: 0;
+  overflow: hidden;
+  background: var(--line);
+}
+.fig-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-5) var(--space-6);
+  background: var(--surface);
+}
+.fig-cell .fig {
+  margin-block: 2px;
+}
+/* A caption that is not a link keeps the linked ones' line, so the four
+   figures sit on one baseline. */
+.fig-cell > .caption {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  margin: 0;
+}
+@media (max-width: 1179px) {
+  .group.fig-band {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Two columns that end together: the plan beside what is coming and owed. */
+.wide-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  align-items: stretch;
+}
+.wide-bottom {
+  align-items: start;
+}
+@media (max-width: 1099px) {
+  .wide-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.wide-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.group.wide-group {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.wide-grow {
+  flex-grow: 1;
+}
+.wide-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) 10px;
+}
+.wide-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 48px;
+  padding: var(--space-1) var(--space-5);
+  border-top: 1px solid var(--line);
+}
+/* One line per item: name, bar, and what is left or how far along. */
+.wide-bar-row {
+  display: grid;
+  grid-template-columns: minmax(110px, 160px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-5);
+  min-height: 48px;
+  padding: 0 var(--space-5);
+  border-top: 1px solid var(--line);
+}
+.wide-end {
+  text-align: right;
+  white-space: nowrap;
+}
+.wide-foot {
+  min-height: 44px;
+  margin-top: auto;
+}
+.wide-empty {
+  margin: 0;
+  padding: var(--space-1) var(--space-5) var(--space-5);
+}
+/* A link that names a record, not an action: ink, blue on hover. */
+.plain-link {
+  color: var(--ink);
+}
+.plain-link:hover {
+  color: var(--blue);
+}

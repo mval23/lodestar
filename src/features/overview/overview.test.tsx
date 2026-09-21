@@ -30,6 +30,11 @@ vi.mock('../goals/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../goals/queries')>();
   return { ...actual, useGoals: () => useGoals() };
 });
+const phone = vi.fn(() => false);
+vi.mock('../../lib/media', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/media')>();
+  return { ...actual, useMediaQuery: () => phone() };
+});
 vi.mock('../months/queries', () => ({ useMonthAccounts: () => useMonthAccounts() }));
 vi.mock('../../lib/profile', () => ({
   useCurrency: () => 'USD',
@@ -56,6 +61,7 @@ beforeEach(() => {
   useBills.mockReturnValue({ data: [] });
   useGoals.mockReturnValue({ data: [] });
   useMonthAccounts.mockReturnValue({ data: [] });
+  phone.mockReturnValue(false);
 });
 
 describe('OverviewPage', () => {
@@ -103,12 +109,12 @@ describe('OverviewPage', () => {
     show();
     // 285450 − 31000 = 254450
     expect(screen.getAllByText('$2,544.50').length).toBeGreaterThan(0);
-    expect(screen.getByText(/in assets/)).toBeInTheDocument();
-    expect(screen.getByText(/owed/)).toBeInTheDocument();
     expect(screen.getByText('Everyday checking')).toBeInTheDocument();
-    // Assets and liabilities are listed apart, each side totalled.
-    expect(screen.getByRole('heading', { name: 'Assets' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Cards and loans' })).toBeInTheDocument();
+    // On a wide screen what is owned and what is owed are separate groups,
+    // each with its total: owed is said as a positive amount.
+    expect(screen.getByRole('region', { name: 'Accounts' })).toHaveTextContent('$2,854.50');
+    expect(screen.getByRole('region', { name: 'Debt' })).toHaveTextContent('$310.00');
+    expect(screen.getByRole('region', { name: 'Debt' })).toHaveTextContent('Blue card');
   });
 
   it('says plainly when each card has nothing to show', () => {
@@ -241,6 +247,113 @@ describe('OverviewPage', () => {
     expect(screen.getByRole('img', { name: /Net worth over the last 2 months/ })).toBeInTheDocument();
     expect(screen.getByText(/over 2 months/)).toBeInTheDocument();
     expect(screen.getAllByText('+$100.00').length).toBeGreaterThan(0);
+  });
+
+  // The four figures checked every time, in one band: left to spend (the
+  // page's one bracket), net worth, this month, and what is due this week.
+  it('leads a wide screen with the key figures in one band', () => {
+    useAccounts.mockReturnValue({ data: [checking], isSuccess: true, isPending: false, isError: false });
+    useCashFlow.mockReturnValue({
+      data: [{ month: THIS_MONTH, money_in_minor: 250000, money_out_minor: 100000, net_minor: 150000 }],
+    });
+    useBudgets.mockReturnValue({
+      data: [
+        {
+          budget_id: 'b1',
+          category_id: 'groceries',
+          category_name: 'Groceries',
+          group_id: null,
+          month: THIS_MONTH,
+          planned_minor: 60000,
+          spent_minor: 45000,
+          left_minor: 15000,
+        },
+      ],
+    });
+    useBills.mockReturnValue({
+      data: [
+        { id: 'bill1', name: 'Phone', next_due_on: TODAY, amount_minor: 4500, archived_at: null, label: 'bill', kind: 'expense' },
+        { id: 'bill2', name: 'Salary', next_due_on: '2099-01-01', amount_minor: 285000, archived_at: null, label: 'income', kind: 'income' },
+      ],
+    });
+    show();
+
+    const band = screen.getByRole('region', { name: 'Key figures' });
+    expect(within(band).getByRole('link', { name: /Left to spend/ })).toBeInTheDocument();
+    expect(band.querySelectorAll('.bracket')).toHaveLength(1);
+    expect(within(band).getAllByText('$150.00').length).toBeGreaterThan(0);
+    expect(within(band).getAllByText('+$1,500.00').length).toBeGreaterThan(0);
+    expect(within(band).getByText('Next: Phone, due today')).toBeInTheDocument();
+
+    // Coming up lists what comes round next, money in included.
+    const coming = screen.getByRole('region', { name: 'Coming up' });
+    expect(within(coming).getByRole('link', { name: 'Salary' })).toBeInTheDocument();
+    expect(within(coming).getAllByText('+$2,850.00').length).toBeGreaterThan(0);
+
+    // The phone's stack is not drawn beside it.
+    expect(screen.queryByRole('navigation', { name: 'More' })).not.toBeInTheDocument();
+  });
+
+  // A card payment is a transfer into the card, so it is in neither income
+  // nor expenses: it shows under the debt it paid down.
+  it('shows what was paid towards debt this month, counting only cards and loans', () => {
+    useAccounts.mockReturnValue({
+      data: [
+        checking,
+        { ...checking, account_id: 'c', name: 'Blue card', type: 'credit_card', is_liability: true, balance_minor: -98964 },
+      ],
+      isSuccess: true,
+      isPending: false,
+      isError: false,
+    });
+    useMonthAccounts.mockReturnValue({
+      data: [
+        { account_id: 'c', transfer_in_minor: 40000 },
+        { account_id: 'a', transfer_in_minor: 12345 },
+      ],
+    });
+    show();
+
+    const debt = screen.getByRole('region', { name: 'Debt' });
+    expect(within(debt).getAllByText('$989.64').length).toBeGreaterThan(0);
+    expect(within(debt).getByText('Paid this month').closest('.wide-row')).toHaveTextContent('$400.00');
+  });
+});
+
+// A phone keeps the stacked Overview: the month's plan first, then the cards.
+describe('OverviewPage on a phone', () => {
+  beforeEach(() => phone.mockReturnValue(true));
+
+  const checking = {
+    account_id: 'a',
+    name: 'Everyday checking',
+    type: 'checking',
+    is_liability: false,
+    archived_at: null,
+    balance_minor: 100000,
+    user_id: 'u1',
+    sort_order: 0,
+    opening_balance_minor: 100000,
+    money_in_minor: 0,
+    money_out_minor: 0,
+  };
+
+  it('keeps the stack, with assets and liabilities apart and the More list', () => {
+    useAccounts.mockReturnValue({
+      data: [
+        checking,
+        { ...checking, account_id: 'c', name: 'Blue card', type: 'credit_card', is_liability: true, balance_minor: -31000 },
+      ],
+      isSuccess: true,
+      isPending: false,
+      isError: false,
+    });
+    show();
+    expect(screen.queryByRole('region', { name: 'Key figures' })).not.toBeInTheDocument();
+    expect(screen.getByText(/in assets/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Assets' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Cards and loans' })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'More' })).toBeInTheDocument();
   });
 
   // The month's income, expenses and debt, side by side. A card payment is a
