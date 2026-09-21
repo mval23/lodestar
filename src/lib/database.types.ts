@@ -371,8 +371,85 @@ export type Database = {
         };
         Relationships: [];
       };
+      account_month_flow: {
+        Row: {
+          user_id: string | null;
+          account_id: string | null;
+          month: string | null;
+          income_minor: number | null;
+          income_count: number | null;
+          expense_minor: number | null;
+          expense_count: number | null;
+          transfer_in_minor: number | null;
+          transfer_in_count: number | null;
+          transfer_out_minor: number | null;
+          transfer_out_count: number | null;
+          net_minor: number | null;
+          closing_balance_minor: number | null;
+        };
+        Relationships: [];
+      };
+      account_ledger: {
+        Row: {
+          user_id: string | null;
+          account_id: string | null;
+          transaction_id: string | null;
+          kind: Database['public']['Enums']['txn_kind'] | null;
+          status: Database['public']['Enums']['txn_status'] | null;
+          occurred_on: string | null;
+          created_at: string | null;
+          signed_amount_minor: number | null;
+          description: string | null;
+          category_id: string | null;
+          from_account_id: string | null;
+          to_account_id: string | null;
+          balance_after_minor: number | null;
+        };
+        Relationships: [];
+      };
+      category_month_totals: {
+        Row: {
+          user_id: string | null;
+          category_id: string | null;
+          kind: Database['public']['Enums']['category_kind'] | null;
+          month: string | null;
+          total_minor: number | null;
+          txn_count: number | null;
+        };
+        Relationships: [];
+      };
+      month_summary: {
+        Row: {
+          user_id: string | null;
+          month: string | null;
+          income_minor: number | null;
+          income_count: number | null;
+          expense_minor: number | null;
+          expense_count: number | null;
+          transfer_minor: number | null;
+          transfer_count: number | null;
+          to_goals_minor: number | null;
+          net_minor: number | null;
+        };
+        Relationships: [];
+      };
+      recurring_item_months: {
+        Row: {
+          user_id: string | null;
+          recurring_item_id: string | null;
+          month: string | null;
+          paid_minor: number | null;
+          payment_count: number | null;
+          last_paid_on: string | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
+      category_top_descriptions: {
+        Args: { p_category_id: string; p_from: string; p_to: string; p_limit?: number };
+        Returns: { description: string; total_minor: number; txn_count: number }[];
+      };
       copy_budgets: {
         Args: { p_from_month: string; p_to_month: string };
         Returns: number;

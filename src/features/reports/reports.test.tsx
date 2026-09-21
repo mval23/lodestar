@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { ReportsPage } from './ReportsPage';
 import { averagePerMonth, summarizeCashFlow, type CashFlowMonth, type NetWorthMonth } from './queries';
 
@@ -63,7 +64,7 @@ describe('averagePerMonth', () => {
 
 describe('ReportsPage', () => {
   it('explains what to do when there is nothing to report', () => {
-    render(<ReportsPage />);
+    render(<MemoryRouter><ReportsPage /></MemoryRouter>);
     expect(screen.getByText('Nothing to report yet')).toBeInTheDocument();
   });
 
@@ -74,7 +75,7 @@ describe('ReportsPage', () => {
       isError: false,
       isSuccess: true,
     });
-    render(<ReportsPage />);
+    render(<MemoryRouter><ReportsPage /></MemoryRouter>);
     expect(screen.getAllByText('$5,000.00').length).toBeGreaterThan(0);
     expect(screen.getAllByText('$2,200.00').length).toBeGreaterThan(0);
     expect(screen.getAllByText('+$2,800.00').length).toBeGreaterThan(0);
@@ -87,7 +88,7 @@ describe('ReportsPage', () => {
       isError: false,
       isSuccess: true,
     });
-    render(<ReportsPage />);
+    render(<MemoryRouter><ReportsPage /></MemoryRouter>);
 
     const chart = screen.getByRole('img', { name: /Money in and out/ });
     expect(chart).toBeInTheDocument();
@@ -115,7 +116,7 @@ describe('ReportsPage', () => {
       isError: false,
       isSuccess: true,
     });
-    render(<ReportsPage />);
+    render(<MemoryRouter><ReportsPage /></MemoryRouter>);
 
     expect(screen.getByRole('img', { name: /Net worth over/ })).toBeInTheDocument();
     const [, netWorthToggle] = screen.getAllByRole('button', { name: 'Show as table' });
@@ -135,7 +136,7 @@ describe('ReportsPage', () => {
       isError: false,
       isSuccess: true,
     });
-    render(<ReportsPage />);
+    render(<MemoryRouter><ReportsPage /></MemoryRouter>);
     expect(screen.getByText('Money in')).toBeInTheDocument();
     expect(screen.getByText('Money out')).toBeInTheDocument();
     expect(screen.getAllByText('This month').length).toBeGreaterThan(0);

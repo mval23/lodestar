@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { BillsPage } from './BillsPage';
 import { describeDue, describeSchedule, dueStateOf, kindForLabel, type RecurringItem } from './queries';
 
@@ -104,7 +105,7 @@ describe('kindForLabel', () => {
 
 describe('BillsPage', () => {
   it('invites a first bill when there are none', () => {
-    render(<BillsPage />);
+    render(<MemoryRouter><BillsPage /></MemoryRouter>);
     expect(screen.getByText('No bills yet')).toBeInTheDocument();
   });
 
@@ -115,7 +116,7 @@ describe('BillsPage', () => {
       isError: false,
       isSuccess: true,
     });
-    render(<BillsPage />);
+    render(<MemoryRouter><BillsPage /></MemoryRouter>);
     expect(screen.getByText('Due now')).toBeInTheDocument();
     expect(screen.getByText('Later')).toBeInTheDocument();
     expect(screen.getByText('Due today')).toBeInTheDocument();
@@ -123,7 +124,7 @@ describe('BillsPage', () => {
 
   it('marks a fixed bill paid in one step, and says when it is next due', async () => {
     useBills.mockReturnValue({ data: [bill()], isPending: false, isError: false, isSuccess: true });
-    render(<BillsPage />);
+    render(<MemoryRouter><BillsPage /></MemoryRouter>);
     await userEvent.click(screen.getByRole('button', { name: 'Mark as paid' }));
     expect(markPaid).toHaveBeenCalledWith(expect.objectContaining({ id: 'b1', paidOn: TODAY }));
     expect(await screen.findByText(/Recorded\. Next due/)).toBeInTheDocument();
@@ -136,7 +137,7 @@ describe('BillsPage', () => {
       isError: false,
       isSuccess: true,
     });
-    render(<BillsPage />);
+    render(<MemoryRouter><BillsPage /></MemoryRouter>);
     const field = screen.getByLabelText('Amount');
     await userEvent.clear(field);
     await userEvent.type(field, '84.20');
@@ -151,7 +152,7 @@ describe('BillsPage', () => {
       isError: false,
       isSuccess: true,
     });
-    render(<BillsPage />);
+    render(<MemoryRouter><BillsPage /></MemoryRouter>);
     const field = screen.getByLabelText('Amount');
     await userEvent.clear(field);
     await userEvent.type(field, '10.005');
@@ -163,7 +164,7 @@ describe('BillsPage', () => {
   it('keeps the bill unpaid and explains when the database refuses', async () => {
     markPaid.mockRejectedValue({ code: '55000', message: 'This bill is archived.' });
     useBills.mockReturnValue({ data: [bill()], isPending: false, isError: false, isSuccess: true });
-    render(<BillsPage />);
+    render(<MemoryRouter><BillsPage /></MemoryRouter>);
     await userEvent.click(screen.getByRole('button', { name: 'Mark as paid' }));
     expect(await screen.findByText(/archived/)).toBeInTheDocument();
     // The success message never appears, so nothing claims to be paid.
@@ -172,7 +173,7 @@ describe('BillsPage', () => {
 
   it('can pay on another date or for another amount', async () => {
     useBills.mockReturnValue({ data: [bill()], isPending: false, isError: false, isSuccess: true });
-    render(<BillsPage />);
+    render(<MemoryRouter><BillsPage /></MemoryRouter>);
     await userEvent.click(screen.getByRole('button', { name: 'Different amount or date' }));
     expect(screen.getByLabelText('Amount')).toHaveValue('1200.00');
     await userEvent.click(screen.getByRole('button', { name: 'Mark as paid' }));

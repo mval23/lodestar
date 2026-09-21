@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { CalendarClock } from 'lucide-react';
 import { useCurrency, useProfile } from '../../lib/profile';
+import { billPath } from '../../lib/routes';
 import { formatDate, todayInZone } from '../../lib/dates';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
@@ -65,7 +67,7 @@ export function BillsPage() {
           <h2 className="form-group-title">Due now</h2>
           <ul className="rows-list">
             {due.map((bill) => (
-              <BillRow key={bill.id} bill={bill} today={today} currency={currency} onEdit={() => openSheet(bill)} />
+              <BillRow key={bill.id} bill={bill} today={today} currency={currency} />
             ))}
           </ul>
         </section>
@@ -76,7 +78,7 @@ export function BillsPage() {
           <h2 className="form-group-title">Later</h2>
           <ul className="rows-list">
             {later.map((bill) => (
-              <BillRow key={bill.id} bill={bill} today={today} currency={currency} onEdit={() => openSheet(bill)} />
+              <BillRow key={bill.id} bill={bill} today={today} currency={currency} />
             ))}
           </ul>
         </section>
@@ -88,13 +90,13 @@ export function BillsPage() {
           <ul className="rows-list">
             {archived.map((bill) => (
               <li key={bill.id}>
-                <button type="button" className="row-button" onClick={() => openSheet(bill)}>
+                <Link to={billPath(bill.id)} className="row-button">
                   <span className="row-label">
                     {bill.name}
                     <small>Archived</small>
                   </span>
                   <Amount minor={bill.amount_minor} currency={currency} />
-                </button>
+                </Link>
               </li>
             ))}
           </ul>
@@ -110,17 +112,15 @@ function BillRow({
   bill,
   today,
   currency,
-  onEdit,
 }: {
   bill: RecurringItem;
   today: string;
   currency: Parameters<typeof Amount>[0]['currency'];
-  onEdit: () => void;
 }) {
   const state = dueStateOf(bill.next_due_on, today);
   return (
     <li className="bill-row">
-      <button type="button" className="row-button bill-main" onClick={onEdit}>
+      <Link to={billPath(bill.id)} className="row-button bill-main">
         <span className="row-label">
           {bill.name}
           <small>
@@ -135,7 +135,7 @@ function BillRow({
             {describeDue(bill.next_due_on, today)}
           </small>
         </span>
-      </button>
+      </Link>
       <MarkPaid bill={bill} today={today} />
     </li>
   );

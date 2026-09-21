@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import { ChartPie } from 'lucide-react';
+import { categoryPath } from '../../lib/routes';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
@@ -77,7 +79,7 @@ export function CategoryManager() {
           <ul className="rows-list">
             {items.map((category) => (
               <li key={category.id}>
-                <button type="button" className="row-button" onClick={() => open(category)}>
+                <Link to={categoryPath(category.id)} className="row-button">
                   <span className="row-label">
                     {category.name}
                     <small>
@@ -85,7 +87,7 @@ export function CategoryManager() {
                       {useCount.get(category.id) ?? 0} used
                     </small>
                   </span>
-                </button>
+                </Link>
               </li>
             ))}
           </ul>
@@ -98,12 +100,12 @@ export function CategoryManager() {
           <ul className="rows-list">
             {archived.map((category) => (
               <li key={category.id}>
-                <button type="button" className="row-button" onClick={() => open(category)}>
+                <Link to={categoryPath(category.id)} className="row-button">
                   <span className="row-label">
                     {category.name}
                     <small>Archived · {useCount.get(category.id) ?? 0} used</small>
                   </span>
-                </button>
+                </Link>
               </li>
             ))}
           </ul>
@@ -122,7 +124,7 @@ export function CategoryManager() {
   );
 }
 
-function CategorySheet({
+export function CategorySheet({
   category,
   siblings,
   useCount,

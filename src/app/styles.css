@@ -1414,3 +1414,344 @@ a:hover {
   justify-content: space-between;
   gap: var(--space-3);
 }
+
+/* ---------- Detail pages ---------- */
+/* One shell for the account, category, budget line, month, goal and bill
+   pages: back link and title, one key figure, facets, a chart, the activity,
+   then actions. Blue stays on links, buttons and the one bracket. */
+.detail-head {
+  display: grid;
+  gap: var(--space-2);
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: -6px;
+  min-height: 32px;
+  font-size: 15px;
+  font-weight: 500;
+  width: fit-content;
+}
+.back-link svg {
+  width: 18px;
+  height: 18px;
+}
+.detail-title {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.detail-title-row .month-nav .btn {
+  min-height: 34px;
+}
+
+.figure-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+.figure-row > .key-figure {
+  flex: 1 1 320px;
+}
+.facets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.facet {
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  min-width: 150px;
+  flex: 1 1 150px;
+}
+.facet-value {
+  font-size: 21px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.facet-note {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+}
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0 var(--space-1);
+}
+.detail-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+.pace p + p {
+  margin-top: var(--space-2);
+}
+
+/* Share of a total: grey bars, never a second hue. */
+.bar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.bar-list-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 14px;
+  margin-bottom: var(--space-1);
+}
+.bar-track {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--sunk);
+  overflow: hidden;
+}
+.bar-track > i {
+  display: block;
+  height: 100%;
+  background: var(--out);
+  border-radius: var(--radius-pill);
+}
+
+/* ---------- Activity by kind ---------- */
+/* The tab decides the kind, so the quick-add row below it cannot write a row
+   the direction check would refuse. */
+.kind-tabs {
+  display: grid;
+  gap: var(--space-2);
+}
+.kind-tablist {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--line);
+  padding: 0 var(--space-1);
+  overflow-x: auto;
+}
+.kind-tab {
+  display: grid;
+  gap: 2px;
+  justify-items: start;
+  padding: var(--space-2) var(--space-4) 9px;
+  min-height: 44px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-3);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.kind-tab:hover {
+  color: var(--ink);
+}
+.kind-tab[aria-selected='true'] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.kind-tab-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+.kind-tab-total {
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.kind-tab-count {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.kind-panel {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.quick-add {
+  border-bottom: 1px solid var(--line);
+  background: var(--ground);
+}
+.quick-add-fields {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  flex-wrap: wrap;
+}
+.quick-add-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--ink-3);
+  flex: none;
+}
+.quick-add-fixed {
+  margin-left: 0;
+}
+.quick-add input,
+.quick-add .select-trigger {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+.quick-add-date {
+  width: 150px;
+}
+.quick-add-description {
+  flex: 1 1 180px;
+  min-width: 140px;
+}
+.quick-add-amount {
+  width: 110px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.quick-add .select-trigger {
+  width: 170px;
+}
+.quick-add-status:empty {
+  display: none;
+}
+.quick-add-status {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-3);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.activity-table {
+  border-radius: 0;
+}
+.activity-detail {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+}
+.activity-open {
+  white-space: normal;
+  font-weight: 500;
+}
+.activity-empty {
+  margin: 0;
+  padding: var(--space-5) var(--space-4);
+}
+.activity-more {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+}
+
+.ledger.compact th,
+.ledger.compact td {
+  padding: 8px var(--space-2);
+  height: 36px;
+}
+.ledger.compact tbody tr:hover {
+  background: transparent;
+}
+
+.plan-form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.plan-form input {
+  min-height: 44px;
+  width: 160px;
+  padding: 6px var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.plan-form .footnote {
+  flex-basis: 100%;
+  color: var(--ink-2);
+}
+.mark-paid-row .bill-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  flex-wrap: wrap;
+}
+
+/* Charts: the plan is a fine ink rule, what is ahead is a dashed grey line,
+   and the target is a dashed rule. Blue is only ever "now". */
+.chart-plan {
+  stroke: var(--in);
+  stroke-width: 2;
+}
+.chart-target {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.line-ahead {
+  fill: none;
+  stroke: var(--out);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+  stroke-linejoin: round;
+}
+.chart-now-rule {
+  stroke: var(--fix);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.swatch-line {
+  height: 3px;
+  width: 14px;
+  border-radius: 1px;
+}
+
+@media (max-width: 767px) {
+  /* The ledger hides its middle columns on a phone; these tables are
+     already narrow, so every column stays. */
+  .ledger.activity-table th,
+  .ledger.activity-table td,
+  .ledger.compact th,
+  .ledger.compact td {
+    display: table-cell;
+  }
+  .facet {
+    min-width: 46%;
+  }
+  .quick-add .select-trigger,
+  .quick-add-date {
+    width: 100%;
+  }
+  .kind-tab {
+    padding-inline: var(--space-3);
+  }
+}

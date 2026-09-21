@@ -417,7 +417,8 @@ await test("profiles: B cannot read or update A's profile, or reassign its own",
 
 await test('views return only the caller\'s rows', async () => {
   for (const v of ['account_entries', 'account_balances', 'budget_progress', 'monthly_cash_flow',
-                   'goal_progress', 'net_worth_by_month', 'category_usage']) {
+                   'goal_progress', 'net_worth_by_month', 'category_usage', 'account_month_flow', 'account_ledger',
+                   'category_month_totals', 'month_summary', 'recurring_item_months']) {
     const r = await asUser(B, `select count(*)::int as n from public.${v} where user_id <> $1`, [B]);
     eq(r.rows[0].n, 0, `${v} rows of other users`);
   }
@@ -620,6 +621,113 @@ await test('category_usage reports use counts', async () => {
 });
 
 // ===========================================================================
+group('Detail-page views (hand-computed synthetic numbers)');
+
+const flowRow = (x) => [x.month.slice(0, 10), num(x.income_minor), num(x.income_count), num(x.expense_minor),
+  num(x.expense_count), num(x.transfer_in_minor), num(x.transfer_in_count), num(x.transfer_out_minor),
+  num(x.transfer_out_count), num(x.net_minor), num(x.closing_balance_minor)];
+
+// chk:  opening 100000; last month +250000 salary; this month -4550 expense, -50000 and -10000 transfers out.
+// card: opening -20000; this month -3000 and -18000 expenses, +10000 transfer in.
+// cash: nothing, so a single zero row for the current month.
+await test('account_month_flow splits by kind and closes each month at the running balance', async () => {
+  const q = `select month::text, income_minor, income_count, expense_minor, expense_count, transfer_in_minor,
+                    transfer_in_count, transfer_out_minor, transfer_out_count, net_minor, closing_balance_minor
+               from public.account_month_flow where account_id = $1 order by month`;
+  eq((await asUser(A, q, [ids.A.chk])).rows.map(flowRow),
+     [[prevMonth, 250000, 1, 0, 0, 0, 0, 0, 0, 250000, 350000],
+      [monthStart, 0, 0, 4550, 1, 0, 0, 60000, 2, -64550, 285450]], 'checking');
+  eq((await asUser(A, q, [ids.A.card])).rows.map(flowRow),
+     [[monthStart, 0, 0, 21000, 2, 10000, 1, 0, 0, -11000, -31000]], 'card');
+  eq((await asUser(A, q, [ids.A.cash])).rows.map(flowRow),
+     [[monthStart, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], 'cash');
+});
+
+await test('account_month_flow ends every account at its account_balances figure', async () => {
+  const r = await asUser(A, `select b.account_id, b.balance_minor, f.closing_balance_minor
+                               from public.account_balances b
+                               join public.account_month_flow f on f.account_id = b.account_id
+                              where f.month = (select max(month) from public.account_month_flow x where x.account_id = b.account_id)`);
+  eq(r.rows.length, 4, 'one closing row per account');
+  for (const row of r.rows) eq(num(row.closing_balance_minor), num(row.balance_minor), `account ${row.account_id}`);
+});
+
+await test('account_ledger runs the balance entry by entry, and a kind filter leaves it intact', async () => {
+  const q = `select transaction_id, kind, signed_amount_minor, balance_after_minor from public.account_ledger
+              where account_id = $1 order by occurred_on, created_at, transaction_id`;
+  const rows = (await asUser(A, q, [ids.A.chk])).rows;
+  eq(rows.length, 4, 'checking entries');
+  let running = 100000;
+  for (const row of rows) {
+    running += num(row.signed_amount_minor);
+    eq(num(row.balance_after_minor), running, `balance after ${row.transaction_id}`);
+  }
+  eq(running, 285450, 'ends at the account balance');
+  const salary = await one(asUser(A, `select balance_after_minor from public.account_ledger
+                                       where account_id = $1 and kind = 'income'`, [ids.A.chk]));
+  eq(num(salary.balance_after_minor), 350000, 'filtered row keeps its running balance');
+  const fund = await one(asUser(A, `select signed_amount_minor, balance_after_minor from public.account_ledger
+                                     where account_id = $1`, [ids.A.sav]));
+  eq([num(fund.signed_amount_minor), num(fund.balance_after_minor)], [50000, 50000], 'transfer in, signed from the fund side');
+});
+
+await test('category_month_totals sums each category per month', async () => {
+  const r = await asUser(A, `select category_id, kind, month::text, total_minor, txn_count
+                               from public.category_month_totals order by month, category_id`);
+  const rows = r.rows.map((x) => [x.category_id, x.kind, x.month.slice(0, 10), num(x.total_minor), num(x.txn_count)]);
+  eq(rows.find((x) => x[0] === ids.A.groceries), [ids.A.groceries, 'expense', monthStart, 25550, 3], 'groceries');
+  eq(rows.find((x) => x[0] === ids.A.salary), [ids.A.salary, 'income', prevMonth, 250000, 1], 'salary');
+  eq(rows.length, 2, 'no row for unused categories or for transfers');
+});
+
+await test('month_summary totals each kind and the money moved into goal accounts', async () => {
+  const r = await asUser(A, `select month::text, income_minor, income_count, expense_minor, expense_count,
+                                    transfer_minor, transfer_count, to_goals_minor, net_minor
+                               from public.month_summary order by month`);
+  const rows = r.rows.map((x) => [x.month.slice(0, 10), num(x.income_minor), num(x.income_count), num(x.expense_minor),
+    num(x.expense_count), num(x.transfer_minor), num(x.transfer_count), num(x.to_goals_minor), num(x.net_minor)]);
+  // The 50000 transfer lands in the goal's fund; the 10000 card payment does not.
+  eq(rows, [[prevMonth, 250000, 1, 0, 0, 0, 0, 0, 250000],
+            [monthStart, 0, 0, 25550, 3, 60000, 2, 50000, -25550]], 'months');
+});
+
+await test('recurring_item_months sums what each item actually cost', async () => {
+  eq((await asUser(A, `select count(*)::int as n from public.recurring_item_months`)).rows[0].n, 0, 'nothing paid yet');
+  await db.exec('begin');
+  await insertAs(A, 'transactions', { kind: 'expense', occurred_on: monthStart, amount_minor: 120000, from_account_id: ids.A.chk,
+    category_id: ids.A.rent, recurring_item_id: ids.A.recurring, description: 'Synthetic rent' });
+  await insertAs(A, 'transactions', { kind: 'expense', occurred_on: prevMonth, amount_minor: 118000, from_account_id: ids.A.chk,
+    category_id: ids.A.rent, recurring_item_id: ids.A.recurring, description: 'Synthetic rent' });
+  const r = await asUser(A, `select month::text, paid_minor, payment_count, last_paid_on::text
+                               from public.recurring_item_months where recurring_item_id = $1 order by month`, [ids.A.recurring]);
+  eq(r.rows.map((x) => [x.month.slice(0, 10), num(x.paid_minor), num(x.payment_count), x.last_paid_on.slice(0, 10)]),
+     [[prevMonth, 118000, 1, prevMonth], [monthStart, 120000, 1, monthStart]], 'rent');
+});
+
+await test('category_top_descriptions ranks exact descriptions by total, and respects the limit', async () => {
+  const r = await asUser(A, `select description, total_minor, txn_count from public.category_top_descriptions($1, $2, $3)`,
+    [ids.A.groceries, monthStart, nextMonth]);
+  eq(r.rows.map((x) => [x.description, num(x.total_minor), num(x.txn_count)]),
+     [['Synthetic groceries run', 18000, 1], ['Synthetic market', 4550, 1], ['Synthetic bakery', 3000, 1]], 'ranking');
+  const two = await asUser(A, `select count(*)::int as n from public.category_top_descriptions($1, $2, $3, 2)`,
+    [ids.A.groceries, monthStart, nextMonth]);
+  eq(two.rows[0].n, 2, 'limit');
+  const before = await asUser(A, `select count(*)::int as n from public.category_top_descriptions($1, $2, $3)`,
+    [ids.A.groceries, prevMonth, monthStart]);
+  eq(before.rows[0].n, 0, 'the end date is exclusive and the range is honoured');
+});
+
+await test("the detail-page views and function show B nothing of A's", async () => {
+  for (const v of ['account_month_flow', 'account_ledger', 'category_month_totals', 'month_summary', 'recurring_item_months']) {
+    const r = await asUser(B, `select count(*)::int as n from public.${v} where user_id = $1`, [A]);
+    eq(r.rows[0].n, 0, `${v} rows of A`);
+  }
+  const f = await asUser(B, `select count(*)::int as n from public.category_top_descriptions($1, $2, $3)`,
+    [ids.A.groceries, prevMonth, nextMonth]);
+  eq(f.rows[0].n, 0, "A's category through the function");
+});
+
+// ===========================================================================
 group('Recurrence and mark_bill_paid');
 
 const next = async (anchor, unit, interval, after) =>
@@ -812,7 +920,8 @@ group('anon sees nothing');
 
 const relations = ['currencies', 'profiles', 'accounts', 'category_groups', 'categories', 'import_batches',
   'recurring_items', 'transactions', 'budgets', 'goals', 'audit_events', 'account_entries', 'account_balances',
-  'budget_progress', 'monthly_cash_flow', 'goal_progress', 'net_worth_by_month', 'category_usage'];
+  'budget_progress', 'monthly_cash_flow', 'goal_progress', 'net_worth_by_month', 'category_usage',
+  'account_month_flow', 'account_ledger', 'category_month_totals', 'month_summary', 'recurring_item_months'];
 await test('anon cannot read any table or view', async () => {
   for (const rel of relations) {
     await expectError(asAnon(`select count(*) from public.${rel}`), /permission denied/, rel);
@@ -829,6 +938,7 @@ await test('anon cannot call any RPC', async () => {
     `select * from public.import_transactions('{}', '[]')`,
     `select public.merge_categories(gen_random_uuid(), gen_random_uuid())`,
     `select public.recurrence_next('2026-01-01', 'month', 1, '2026-01-01')`,
+    `select * from public.category_top_descriptions(gen_random_uuid(), '2026-01-01', '2026-02-01')`,
   ]) {
     await expectError(asAnon(call), /permission denied/, call);
   }

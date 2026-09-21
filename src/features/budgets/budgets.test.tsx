@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { BudgetList } from './BudgetList';
 import { totalsOf, type BudgetProgress } from './queries';
@@ -51,6 +53,20 @@ function progress(over: Partial<BudgetProgress> = {}): BudgetProgress {
   };
 }
 
+// The month now lives in the address; the page owns it and hands it down.
+function Harness() {
+  const [month, setMonth] = useState('2026-09-01');
+  return <BudgetList month={month} onMonth={setMonth} />;
+}
+
+function renderList() {
+  return render(
+    <MemoryRouter>
+      <Harness />
+    </MemoryRouter>,
+  );
+}
+
 beforeEach(() => {
   setBudget.mockReset().mockResolvedValue(undefined);
   copyBudgets.mockReset().mockResolvedValue(2);
@@ -73,7 +89,7 @@ describe('totalsOf', () => {
 
 describe('BudgetList', () => {
   it('lists every expense category, planned or not, and leaves income out', () => {
-    render(<BudgetList />);
+    renderList();
     expect(screen.getByText('Groceries')).toBeInTheDocument();
     expect(screen.getByText('Rent')).toBeInTheDocument();
     expect(screen.queryByText('Salary')).not.toBeInTheDocument();
@@ -85,7 +101,7 @@ describe('BudgetList', () => {
       data: [progress({ planned_minor: 20000, spent_minor: 25550, left_minor: -5550 })],
       isError: false,
     });
-    render(<BudgetList />);
+    renderList();
     expect(screen.getByText(/Over plan by/)).toBeInTheDocument();
     expect(screen.getAllByText('$55.50').length).toBeGreaterThan(0);
   });
@@ -95,13 +111,13 @@ describe('BudgetList', () => {
       data: [progress({ planned_minor: 20000, spent_minor: 5000, left_minor: 15000 })],
       isError: false,
     });
-    render(<BudgetList />);
+    renderList();
     expect(screen.getByText(/left/)).toBeInTheDocument();
     expect(screen.getAllByText('$150.00').length).toBeGreaterThan(0);
   });
 
   it('saves a typed plan as integer minor units', async () => {
-    render(<BudgetList />);
+    renderList();
     const [field] = screen.getAllByPlaceholderText('No plan');
     await userEvent.type(field!, '400');
     await userEvent.tab();
@@ -112,7 +128,7 @@ describe('BudgetList', () => {
 
   it('clearing the field removes the plan, rather than planning zero', async () => {
     useBudgets.mockReturnValue({ data: [progress({ planned_minor: 40000 })], isError: false });
-    render(<BudgetList />);
+    renderList();
     const field = screen.getByDisplayValue('400.00');
     await userEvent.clear(field);
     await userEvent.tab();
@@ -120,7 +136,7 @@ describe('BudgetList', () => {
   });
 
   it('refuses an amount it would have to round', async () => {
-    render(<BudgetList />);
+    renderList();
     const [field] = screen.getAllByPlaceholderText('No plan');
     await userEvent.type(field!, '10.005');
     await userEvent.tab();
@@ -129,7 +145,7 @@ describe('BudgetList', () => {
   });
 
   it('offers last month’s plan only while this month has none', async () => {
-    render(<BudgetList />);
+    renderList();
     await userEvent.click(screen.getByRole('button', { name: 'Copy last month’s plan' }));
     expect(copyBudgets).toHaveBeenCalled();
     expect(await screen.findByText(/2 plans copied/)).toBeInTheDocument();
@@ -137,12 +153,12 @@ describe('BudgetList', () => {
 
   it('hides the copy button once a plan exists', () => {
     useBudgets.mockReturnValue({ data: [progress()], isError: false });
-    render(<BudgetList />);
+    renderList();
     expect(screen.queryByRole('button', { name: 'Copy last month’s plan' })).not.toBeInTheDocument();
   });
 
   it('moves between months', async () => {
-    render(<BudgetList />);
+    renderList();
     const heading = screen.getByRole('heading', { level: 2 }).textContent;
     await userEvent.click(screen.getByRole('button', { name: 'Previous month' }));
     expect(screen.getByRole('heading', { level: 2 }).textContent).not.toBe(heading);

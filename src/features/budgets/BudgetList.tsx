@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useCurrency, useProfile } from '../../lib/profile';
+import { useCurrency } from '../../lib/profile';
 import { parseMoney, toAmountInput } from '../../lib/money';
-import { addMonths, formatMonth, monthStartInZone } from '../../lib/dates';
+import { addMonths, formatMonth } from '../../lib/dates';
+import { budgetLinePath } from '../../lib/routes';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
 import { Notice } from '../../ui/Notice';
@@ -13,10 +15,10 @@ import { totalsOf, useBudgets, useCopyBudgets, useSetBudget, type BudgetProgress
 // A row per expense category: what you planned, what you spent, what's left.
 // Left is allowed to go negative and is shown as "Over plan by", because a
 // number clamped at zero hides the thing you most need to see.
-export function BudgetList() {
-  const profile = useProfile();
+// The month lives in the address (/budgets/2026-09), so a month can be linked
+// to from the Overview, a report or a month page.
+export function BudgetList({ month, onMonth }: { month: string; onMonth: (month: string) => void }) {
   const currency = useCurrency();
-  const [month, setMonth] = useState(() => monthStartInZone(profile.data?.timezone));
   const budgets = useBudgets(month);
   const categories = useCategories();
   const groups = useCategoryGroups();
@@ -69,11 +71,11 @@ export function BudgetList() {
     <section className="stack">
       <header className="page-head">
         <nav className="month-nav" aria-label="Month">
-          <Button variant="secondary" aria-label="Previous month" onClick={() => setMonth(addMonths(month, -1))}>
+          <Button variant="secondary" aria-label="Previous month" onClick={() => onMonth(addMonths(month, -1))}>
             <ChevronLeft strokeWidth={1.75} aria-hidden />
           </Button>
           <h2 className="title-2">{formatMonth(month)}</h2>
-          <Button variant="secondary" aria-label="Next month" onClick={() => setMonth(addMonths(month, 1))}>
+          <Button variant="secondary" aria-label="Next month" onClick={() => onMonth(addMonths(month, 1))}>
             <ChevronRight strokeWidth={1.75} aria-hidden />
           </Button>
         </nav>
@@ -133,8 +135,9 @@ export function BudgetList() {
           <ul className="rows-list">
             {rows.map(({ category, progress }) => (
               <BudgetRow
-                key={category.id}
+                key={`${month}-${category.id}`}
                 name={category.name}
+                to={budgetLinePath(month, category.id)}
                 group={groupName.get(category.group_id ?? '') ?? 'Ungrouped'}
                 progress={progress}
                 currency={currency}
@@ -150,12 +153,14 @@ export function BudgetList() {
 
 function BudgetRow({
   name,
+  to,
   group,
   progress,
   currency,
   onSave,
 }: {
   name: string;
+  to: string;
   group: string;
   progress: BudgetProgress | undefined;
   currency: Parameters<typeof toAmountInput>[1];
@@ -174,7 +179,7 @@ function BudgetRow({
     <li className="budget-row">
       <div className="budget-head">
         <span className="row-label">
-          {name}
+          <Link to={to}>{name}</Link>
           <small>{group}</small>
         </span>
         <label className="budget-amount">
