@@ -1504,29 +1504,54 @@ a:hover {
   min-height: 34px;
 }
 
+/* One white group: the key figure, its facets beside it divided by
+   hairlines, and under them what belongs to the figure. */
 .figure-row {
-  display: flex;
-  gap: var(--space-3);
-  align-items: stretch;
-  flex-wrap: wrap;
+  display: grid;
+  gap: var(--space-4);
 }
-.figure-row > .key-figure {
-  flex: 1 1 320px;
+.figure-row-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-4) 0;
+}
+.figure-row-top > .key-figure {
+  flex: 1 1 280px;
+  padding-right: var(--space-5);
+}
+.figure-row-top > .facets {
+  flex: 2 1 300px;
 }
 .facets {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
-  gap: var(--space-3);
+  gap: var(--space-3) 0;
   flex-wrap: wrap;
 }
 .facet {
   display: grid;
   align-content: center;
   gap: 2px;
-  min-width: 150px;
-  flex: 1 1 150px;
+  min-width: 140px;
+  flex: 1 1 140px;
+  padding: 0 var(--space-5);
+  border-left: 1px solid var(--line);
+}
+.figure-row-footer {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+/* In the footer, the pace sentence and the plan form are rows of the group,
+   not groups of their own. */
+.figure-row-footer .pace,
+.figure-row-footer .plan-form {
+  padding: 0;
+  background: none;
 }
 .facet-value {
   font-size: 21px;
@@ -1804,8 +1829,19 @@ a:hover {
   .ledger.compact td {
     display: table-cell;
   }
+  /* On a phone the facets sit under the figure, two across, set off by a
+     hairline above rather than beside. */
+  .figure-row-top > .key-figure {
+    padding-right: 0;
+  }
+  .figure-row-top > .facets {
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line);
+  }
   .facet {
     min-width: 46%;
+    padding-left: 0;
+    border-left: 0;
   }
   .quick-add .select-trigger,
   .quick-add-date {

@@ -97,7 +97,51 @@ function GoalDetail({ goal }: { goal: GoalProgress }) {
         }
       />
 
-      <FigureRow>
+      <FigureRow
+        // The bar and what the pace says belong to the figure, so they sit in its
+        // group rather than loose on the page and in a card of their own.
+        footer={
+          goal.target_minor !== null && (
+            <>
+              <div className="prog" role="presentation">
+                <i style={{ width: `${standing.share}%` }} />
+              </div>
+              {!standing.reached && (
+                <section className="stack-tight pace">
+                  {pace.average > 0 ? (
+                    <p className="flush">
+                      Over the last {recent.length} {recent.length === 1 ? 'month' : 'months'} you put in an average of{' '}
+                      <strong>
+                        <Amount minor={pace.average} currency={currency} />
+                      </strong>{' '}
+                      a month.{pace.arrives && <> At that rate the target arrives in <strong>{formatMonth(pace.arrives)}</strong>.</>}
+                    </p>
+                  ) : (
+                    <p className="flush">Nothing has come in over the last six months.</p>
+                  )}
+                  {goal.target_date && standing.neededPerMonth !== null && standing.monthsLeft !== null && (
+                    <p className="flush">
+                      {standing.monthsLeft > 0 ? (
+                        <>
+                          Reaching it by <strong>{formatMonth(goal.target_date)}</strong> takes{' '}
+                          <strong>
+                            <Amount minor={standing.neededPerMonth} currency={currency} />
+                          </strong>{' '}
+                          a month from here.
+                        </>
+                      ) : (
+                        <>
+                          The target date has passed; <Amount minor={standing.neededPerMonth} currency={currency} /> remains.
+                        </>
+                      )}
+                    </p>
+                  )}
+                </section>
+              )}
+            </>
+          )
+        }
+      >
         <KeyFigure
           label="Saved so far"
           footnote={
@@ -136,12 +180,6 @@ function GoalDetail({ goal }: { goal: GoalProgress }) {
         </Facets>
       </FigureRow>
 
-      {goal.target_minor !== null && (
-        <div className="prog" role="presentation">
-          <i style={{ width: `${standing.share}%` }} />
-        </div>
-      )}
-
       {months.isError && <Notice tone="err">{dataErrorMessage(months.error)}</Notice>}
       {history.length > 0 && (
         <MonthLine
@@ -155,39 +193,6 @@ function GoalDetail({ goal }: { goal: GoalProgress }) {
           valueLabel="Saved"
           aheadLabel="The plan"
         />
-      )}
-
-      {goal.target_minor !== null && !standing.reached && (
-        <section className="group stack-tight pace">
-          {pace.average > 0 ? (
-            <p className="flush">
-              Over the last {recent.length} {recent.length === 1 ? 'month' : 'months'} you put in an average of{' '}
-              <strong>
-                <Amount minor={pace.average} currency={currency} />
-              </strong>{' '}
-              a month.{pace.arrives && <> At that rate the target arrives in <strong>{formatMonth(pace.arrives)}</strong>.</>}
-            </p>
-          ) : (
-            <p className="flush">Nothing has come in over the last six months.</p>
-          )}
-          {goal.target_date && standing.neededPerMonth !== null && standing.monthsLeft !== null && (
-            <p className="flush">
-              {standing.monthsLeft > 0 ? (
-                <>
-                  Reaching it by <strong>{formatMonth(goal.target_date)}</strong> takes{' '}
-                  <strong>
-                    <Amount minor={standing.neededPerMonth} currency={currency} />
-                  </strong>{' '}
-                  a month from here.
-                </>
-              ) : (
-                <>
-                  The target date has passed; <Amount minor={standing.neededPerMonth} currency={currency} /> remains.
-                </>
-              )}
-            </p>
-          )}
-        </section>
       )}
 
       <section className="stack" aria-labelledby="goal-moves">

@@ -141,7 +141,68 @@ function BudgetLine({ month, category }: { month: string; category: Category }) 
 
       {error && <Notice tone="err">{error}</Notice>}
 
-      <FigureRow>
+      <FigureRow
+        // The bar, what the pace says, and the plan itself all belong to the
+        // figure, so they sit in its group rather than as cards of their own.
+        footer={
+          <>
+            {line && (
+              <div className={`prog spend${line.left_minor < 0 ? ' over' : ''}`} role="presentation">
+                <i
+                  style={{
+                    width: `${line.planned_minor > 0 ? Math.min(100, Math.round((spent / line.planned_minor) * 100)) : 100}%`,
+                  }}
+                />
+              </div>
+            )}
+
+            {line && projected !== null && (
+              <section className="pace">
+                <p className="flush">
+                  At this rate, about{' '}
+                  <strong>
+                    <Amount minor={projected} currency={currency} />
+                  </strong>{' '}
+                  by the {daysInMonth}
+                  {ordinal(daysInMonth)}
+                  {projected > line.planned_minor ? (
+                    <>
+                      {' — '}
+                      <Amount minor={projected - line.planned_minor} currency={currency} /> over the plan.
+                    </>
+                  ) : (
+                    <>, within the plan.</>
+                  )}
+                </p>
+              </section>
+            )}
+
+            <form
+              className="plan-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void save();
+              }}
+            >
+              <label htmlFor="plan-amount" className="headline">
+                {line ? 'Change the plan' : 'Set a plan'}
+              </label>
+              <input
+                id="plan-amount"
+                className="num"
+                inputMode="decimal"
+                placeholder="No plan"
+                value={planText}
+                onChange={(e) => setDraft(e.target.value)}
+              />
+              <Button type="submit" dimmed={budgets.data === undefined} busy={setBudget.isPending}>
+                Save plan
+              </Button>
+              <p className="footnote flush">Leave it empty to remove the plan. It applies to {formatMonth(month)} only.</p>
+            </form>
+          </>
+        }
+      >
         {line ? (
           <KeyFigure
             label={line.left_minor < 0 ? 'Over plan by' : 'Left this month'}
@@ -168,61 +229,6 @@ function BudgetLine({ month, category }: { month: string; category: Category }) 
           )}
         </Facets>
       </FigureRow>
-
-      {line && (
-        <div className={`prog spend${line.left_minor < 0 ? ' over' : ''}`} role="presentation">
-          <i
-            style={{
-              width: `${line.planned_minor > 0 ? Math.min(100, Math.round((spent / line.planned_minor) * 100)) : 100}%`,
-            }}
-          />
-        </div>
-      )}
-
-      {line && projected !== null && (
-        <section className="group pace">
-          <p className="flush">
-            At this rate, about{' '}
-            <strong>
-              <Amount minor={projected} currency={currency} />
-            </strong>{' '}
-            by the {daysInMonth}
-            {ordinal(daysInMonth)}
-            {projected > line.planned_minor ? (
-              <>
-                {' — '}
-                <Amount minor={projected - line.planned_minor} currency={currency} /> over the plan.
-              </>
-            ) : (
-              <>, within the plan.</>
-            )}
-          </p>
-        </section>
-      )}
-
-      <form
-        className="group plan-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void save();
-        }}
-      >
-        <label htmlFor="plan-amount" className="headline">
-          {line ? 'Change the plan' : 'Set a plan'}
-        </label>
-        <input
-          id="plan-amount"
-          className="num"
-          inputMode="decimal"
-          placeholder="No plan"
-          value={planText}
-          onChange={(e) => setDraft(e.target.value)}
-        />
-        <Button type="submit" dimmed={budgets.data === undefined} busy={setBudget.isPending}>
-          Save plan
-        </Button>
-        <p className="footnote flush">Leave it empty to remove the plan. It applies to {formatMonth(month)} only.</p>
-      </form>
 
       <MonthBars
         title="Planned against spent"
