@@ -914,9 +914,6 @@ a:hover {
 .ledger tbody tr:hover {
   background: var(--sunk);
 }
-.ledger tr.pending td {
-  color: var(--ink-2);
-}
 .ledger .num {
   text-align: right;
   white-space: nowrap;

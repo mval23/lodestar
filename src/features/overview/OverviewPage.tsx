@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router';
 import { useCurrency, useProfile, useUpdateProfile } from '../../lib/profile';
 import { CURRENCIES, type Currency } from '../../lib/money';
 import { monthStartInZone, todayInZone } from '../../lib/dates';
-import { budgetMonthPath, monthPath } from '../../lib/routes';
+import { accountPath, billPath, budgetMonthPath, goalPath, monthPath } from '../../lib/routes';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
 import { Notice } from '../../ui/Notice';
@@ -80,7 +80,7 @@ export function OverviewPage() {
               <ul className="rows-list">
                 {open.slice(0, 5).map((row) => (
                   <li key={row.account_id}>
-                    <Link className="row-button" to="/accounts">
+                    <Link className="row-button" to={accountPath(row.account_id)}>
                       <span className="row-label">
                         {row.name}
                         <small>{accountTypeLabel(row.type)}</small>
@@ -193,7 +193,7 @@ function DueSoon({ today, currency }: { today: string; currency: Currency }) {
           {due.map((bill) => (
             <li key={bill.id}>
               <span className="row-label">
-                {bill.name}
+                <Link to={billPath(bill.id)}>{bill.name}</Link>
                 <small>{describeDue(bill.next_due_on, today)}</small>
               </span>
               <Amount minor={bill.amount_minor} currency={currency} />
@@ -218,7 +218,7 @@ function GoalsSummary({ currency }: { currency: Currency }) {
           {rows.map((goal) => (
             <li key={goal.goal_id}>
               <span className="row-label">
-                {goal.name}
+                <Link to={goalPath(goal.goal_id)}>{goal.name}</Link>
                 <small>
                   {goal.target_minor === null
                     ? 'No target'

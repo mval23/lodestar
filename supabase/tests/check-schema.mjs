@@ -282,7 +282,7 @@ await test('user A records transactions', async () => {
   a.t1 = (await t({ kind: 'income', occurred_on: prevMonth, amount_minor: 250000, to_account_id: a.chk, category_id: a.salary, description: 'Synthetic salary' })).id;
   a.t2 = (await t({ kind: 'expense', occurred_on: monthStart, amount_minor: 4550, from_account_id: a.chk, category_id: a.groceries, description: 'Synthetic market' })).id;
   a.t3 = (await t({ kind: 'transfer', occurred_on: monthStart, amount_minor: 50000, from_account_id: a.chk, to_account_id: a.sav, description: 'To fund' })).id;
-  a.t4 = (await t({ kind: 'expense', occurred_on: monthStart, amount_minor: 3000, from_account_id: a.card, category_id: a.groceries, description: 'Synthetic bakery', status: 'pending' })).id;
+  a.t4 = (await t({ kind: 'expense', occurred_on: monthStart, amount_minor: 3000, from_account_id: a.card, category_id: a.groceries, description: 'Synthetic bakery' })).id;
   a.t5 = (await t({ kind: 'transfer', occurred_on: monthStart, amount_minor: 10000, from_account_id: a.chk, to_account_id: a.card, description: 'Card payment' })).id;
   a.t6 = (await t({ kind: 'expense', occurred_on: monthStart, amount_minor: 18000, from_account_id: a.card, category_id: a.groceries, description: 'Synthetic groceries run', notes: 'weekly shop' })).id;
 });
@@ -557,10 +557,10 @@ group('Views (hand-computed synthetic numbers)');
 
 // chk  = 100000 + 250000 - 4550 - 50000 - 10000             = 285450
 // sav  = 0 + 50000                                           = 50000
-// card = -20000 - 3000 (pending) - 18000 + 10000             = -31000, cleared -28000
+// card = -20000 - 3000 - 18000 + 10000                       = -31000
 // cash = 0
 await test('account_balances = opening + in - out', async () => {
-  const r = await asUser(A, `select account_id, balance_minor, cleared_balance_minor, money_in_minor, money_out_minor, is_liability
+  const r = await asUser(A, `select account_id, balance_minor, money_in_minor, money_out_minor, is_liability
                                from public.account_balances`);
   const by = Object.fromEntries(r.rows.map((x) => [x.account_id, x]));
   eq(num(by[ids.A.chk].balance_minor), 285450, 'checking');
@@ -568,7 +568,6 @@ await test('account_balances = opening + in - out', async () => {
   eq(num(by[ids.A.chk].money_out_minor), 64550, 'checking out');
   eq(num(by[ids.A.sav].balance_minor), 50000, 'fund');
   eq(num(by[ids.A.card].balance_minor), -31000, 'card');
-  eq(num(by[ids.A.card].cleared_balance_minor), -28000, 'card cleared');
   eq(num(by[ids.A.cash].balance_minor), 0, 'cash');
   eq(by[ids.A.card].is_liability, true, 'card is a liability');
 });
@@ -818,7 +817,7 @@ group('import_transactions');
 const importRows = () => [
   { kind: 'expense', occurred_on: monthStart, amount_minor: 1250, from_account_id: ids.A.chk, category_id: ids.A.food, description: 'Synthetic lunch', source_ref: 'csv:synthetic-1' },
   { kind: 'income', occurred_on: monthStart, amount_minor: 5000, to_account_id: ids.A.chk, description: 'Synthetic refund', source_ref: 'csv:synthetic-2' },
-  { kind: 'transfer', occurred_on: monthStart, amount_minor: 700, from_account_id: ids.A.chk, to_account_id: ids.A.sav, description: 'Synthetic top-up', source_ref: 'csv:synthetic-3', status: 'pending' },
+  { kind: 'transfer', occurred_on: monthStart, amount_minor: 700, from_account_id: ids.A.chk, to_account_id: ids.A.sav, description: 'Synthetic top-up', source_ref: 'csv:synthetic-3' },
   { kind: 'expense', occurred_on: monthStart, amount_minor: 1250, from_account_id: ids.A.chk, category_id: ids.A.food, description: 'Synthetic lunch', source_ref: 'csv:synthetic-1' },
 ];
 const countImported = async () =>

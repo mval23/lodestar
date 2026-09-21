@@ -174,7 +174,6 @@ export function QuickAdd({ scope }: { scope: QuickAddScope }) {
         to_account_id: toId,
         category_id: category,
         description: text,
-        status: 'cleared',
       });
       setDescription('');
       setAmount('');
@@ -275,7 +274,6 @@ export type ActivityRow = {
   amount: number;
   signed: boolean;
   balance?: number;
-  pending?: boolean;
 };
 
 export function ActivityRows({
@@ -315,13 +313,12 @@ export function ActivityRows({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id} className={row.pending ? 'pending' : undefined}>
+              <tr key={row.id}>
                 <td className="secondary">{formatDateShort(row.occurred_on)}</td>
                 <td>
                   <button type="button" className="link-button activity-open" onClick={() => setEditing(row.id)}>
                     {row.description}
                   </button>
-                  {row.pending && <span className="chip">Pending</span>}
                   {row.detail && <small className="activity-detail">{row.detail}</small>}
                 </td>
                 <td className="num">

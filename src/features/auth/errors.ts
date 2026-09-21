@@ -32,6 +32,13 @@ const BY_CODE: Record<string, string> = {
 
 export const NETWORK_MESSAGE = 'Lodestar can’t be reached. Check your connection and try again.';
 export const GENERIC_MESSAGE = 'Something went wrong. Try again in a moment.';
+export const BEHIND_MESSAGE =
+  'This part of Lodestar is newer than the database it is talking to. Apply the latest migrations, then reload.';
+
+// PostgREST cannot find the view or function (PGRST2xx), or Postgres itself
+// says the relation or function does not exist. Every one of them means the
+// same thing: the migrations have not been applied here yet.
+const BEHIND_CODES = new Set(['PGRST202', 'PGRST205', '42P01', '42883']);
 
 export function authErrorMessage(raw: ErrorLike): string {
   if (!raw) return GENERIC_MESSAGE;
@@ -59,6 +66,7 @@ export function dataErrorMessage(raw: ErrorLike): string {
   if (code && TRIGGER_CODES.has(code) && message.length < 200 && !message.includes('violates')) {
     return message;
   }
+  if (code && BEHIND_CODES.has(code)) return BEHIND_MESSAGE;
   if (error.name === 'TypeError' || error.status === 0) return NETWORK_MESSAGE;
   return GENERIC_MESSAGE;
 }

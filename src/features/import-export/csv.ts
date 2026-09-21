@@ -1,5 +1,5 @@
 import { parseMoney, type Currency } from '../../lib/money';
-import type { TxnKind, TxnStatus } from '../transactions/queries';
+import type { TxnKind } from '../transactions/queries';
 
 // Everything about reading a bank's CSV lives here, kept away from React so
 // each rule can be tested on its own.
@@ -27,7 +27,6 @@ export type ImportRow = {
   category_id: string | null;
   description: string;
   notes: string | null;
-  status: TxnStatus;
   source_ref: string;
 };
 
@@ -186,7 +185,6 @@ export function prepareRows(options: PrepareOptions): Prepared {
         category_id: categoryId,
         description,
         notes: notesText === '' ? null : notesText.slice(0, 4000),
-        status: 'cleared',
         source_ref: sourceRef({
           accountId,
           occurredOn,

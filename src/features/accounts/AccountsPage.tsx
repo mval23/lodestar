@@ -101,7 +101,6 @@ export function AccountsPage() {
 function describeRow(row: AccountBalance): string {
   const parts = [accountTypeLabel(row.type)];
   if (row.archived_at) parts.push('Archived');
-  if (row.balance_minor !== row.cleared_balance_minor) parts.push('Has pending');
   return parts.join(' · ');
 }
 

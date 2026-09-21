@@ -5,7 +5,6 @@ import { categoryUsageKey } from '../categories/queries';
 import type { Database } from '../../lib/database.types';
 
 export type TxnKind = Database['public']['Enums']['txn_kind'];
-export type TxnStatus = Database['public']['Enums']['txn_status'];
 export type Transaction = Database['public']['Tables']['transactions']['Row'];
 export type TransactionInsert = Database['public']['Tables']['transactions']['Insert'];
 export type TransactionUpdate = Database['public']['Tables']['transactions']['Update'];
@@ -17,7 +16,6 @@ export type Filters = {
   kind: TxnKind | 'all';
   accountId: string | 'all';
   categoryId: string | 'all';
-  status: TxnStatus | 'all';
   from: string;
   to: string;
   sort: 'occurred_on' | 'amount_minor';
@@ -30,7 +28,6 @@ export const DEFAULT_FILTERS: Filters = {
   kind: 'all',
   accountId: 'all',
   categoryId: 'all',
-  status: 'all',
   from: '',
   to: '',
   sort: 'occurred_on',
@@ -57,7 +54,6 @@ export function useTransactions(filters: Filters) {
       const search = sanitizeSearch(filters.search);
       if (search) query = query.or(`description.ilike.%${search}%,notes.ilike.%${search}%`);
       if (filters.kind !== 'all') query = query.eq('kind', filters.kind);
-      if (filters.status !== 'all') query = query.eq('status', filters.status);
       // An account matches whether the money left it or arrived in it.
       if (filters.accountId !== 'all') {
         query = query.or(`from_account_id.eq.${filters.accountId},to_account_id.eq.${filters.accountId}`);

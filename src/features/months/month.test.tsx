@@ -108,7 +108,6 @@ const transfer = {
   category_id: null,
   from_account_id: 'acc-1',
   to_account_id: 'acc-2',
-  status: 'cleared',
 };
 
 beforeEach(() => {

@@ -38,8 +38,6 @@ function balance(over: Partial<AccountBalance>): AccountBalance {
     money_out_minor: 0,
     balance_minor: 0,
     ...over,
-    // Unless a test says otherwise, everything is cleared.
-    cleared_balance_minor: over.cleared_balance_minor ?? over.balance_minor ?? 0,
   };
 }
 

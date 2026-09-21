@@ -267,7 +267,6 @@ function MonthRows({
     // From the month's side a transfer only moved, so it carries no sign.
     amount: row.kind === 'transfer' ? row.amount_minor : signedAmount(row),
     signed: row.kind === 'income',
-    pending: row.status === 'pending',
   }));
 
   return (

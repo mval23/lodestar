@@ -282,7 +282,6 @@ function CategoryRows({ categoryId }: { categoryId: string }) {
     detail: describeTransaction(row, (id) => names.get(id ?? '') ?? '—', () => null),
     amount: signedAmount(row),
     signed: row.kind === 'income',
-    pending: row.status === 'pending',
   }));
 
   return (

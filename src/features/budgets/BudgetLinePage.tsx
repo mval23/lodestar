@@ -274,7 +274,6 @@ function LineRows({ categoryId, from, to }: { categoryId: string; from: string; 
     detail: describeTransaction(row, (id) => names.get(id ?? '') ?? '—', () => null),
     amount: signedAmount(row),
     signed: false,
-    pending: row.status === 'pending',
   }));
   return (
     <ActivityRows

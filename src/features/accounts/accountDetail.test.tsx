@@ -26,7 +26,6 @@ function balance(over: Partial<AccountBalance> = {}): AccountBalance {
     money_in_minor: 5842000,
     money_out_minor: 5420165,
     balance_minor: 421835,
-    cleared_balance_minor: 411835,
     ...over,
   };
 }
@@ -52,7 +51,6 @@ function entry(over: Partial<LedgerEntry> = {}): LedgerEntry {
   return {
     transaction_id: 't1',
     kind: 'expense',
-    status: 'cleared',
     occurred_on: '2026-09-18',
     signed_amount_minor: -145000,
     description: 'Rent',
@@ -176,7 +174,8 @@ describe('AccountDetailPage', () => {
     renderPage();
     expect(screen.getByRole('heading', { level: 1, name: 'Everyday checking' })).toBeInTheDocument();
     expect(screen.getAllByText('$4,218.35').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('$4,118.35', { exact: false }).length).toBeGreaterThan(0);
+    // One balance, not two: there is no cleared figure to sit beside it.
+    expect(screen.queryByText(/cleared|pending/i)).not.toBeInTheDocument();
 
     const tabs = screen.getByRole('tablist', { name: 'Activity by kind' });
     expect(within(tabs).getByRole('tab', { name: /Income/ })).toHaveTextContent('$2,910.00');
@@ -279,7 +278,7 @@ describe('AccountDetailPage', () => {
 
   it('calls a liability what it is', () => {
     useAccountBalance.mockReturnValue({
-      data: balance({ type: 'credit_card', is_liability: true, balance_minor: -31000, cleared_balance_minor: -31000 }),
+      data: balance({ type: 'credit_card', is_liability: true, balance_minor: -31000 }),
       isSuccess: true,
       isError: false,
     });

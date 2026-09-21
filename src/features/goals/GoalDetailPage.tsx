@@ -227,8 +227,7 @@ function Moves({ accountId }: { accountId: string }) {
       amount: row.signed_amount_minor,
       signed: incoming,
       balance: row.balance_after_minor,
-      pending: row.status === 'pending',
-    };
+      };
   });
   return (
     <ActivityRows

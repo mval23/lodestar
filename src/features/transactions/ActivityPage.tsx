@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { ArrowLeftRight } from 'lucide-react';
 import { useCurrency } from '../../lib/profile';
 import { formatDate } from '../../lib/dates';
+import { accountPath, categoryPath } from '../../lib/routes';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
@@ -31,7 +32,6 @@ function readFilters(params: URLSearchParams): Filters {
     kind: value('kind', 'all') as Filters['kind'],
     accountId: value('accountId', 'all'),
     categoryId: value('categoryId', 'all'),
-    status: value('status', 'all') as Filters['status'],
     from: params.get('from') ?? '',
     to: params.get('to') ?? '',
     sort: (params.get('sort') === 'amount_minor' ? 'amount_minor' : 'occurred_on') as Filters['sort'],
@@ -141,16 +141,6 @@ export function ActivityPage() {
             ...(categories.data ?? []).map((c) => ({ value: c.id, label: c.name })),
           ]}
         />
-        <Select
-          label="Status"
-          value={filters.status}
-          onChange={(next) => update({ status: next as Filters['status'] })}
-          options={[
-            { value: 'all', label: 'Cleared and pending' },
-            { value: 'cleared', label: 'Cleared' },
-            { value: 'pending', label: 'Pending' },
-          ]}
-        />
         <input
           type="date"
           aria-label="From date"
@@ -205,23 +195,30 @@ export function ActivityPage() {
             </thead>
             <tbody>
               {rows.map((row) => {
-                const pending = row.status === 'pending';
                 return (
-                  <tr key={row.id} className={pending ? 'pending' : undefined}>
+                  <tr key={row.id}>
                     <td>
                       <button type="button" className="link-button" onClick={() => openSheet(row)}>
                         {formatDate(row.occurred_on)}
                       </button>
                     </td>
-                    <td>
-                      {row.description}
-                      {pending && <span className="chip">Pending</span>}
-                    </td>
-                    <td className="secondary">{row.category_id ? (categoryName.get(row.category_id) ?? '—') : '—'}</td>
+                    <td>{row.description}</td>
                     <td className="secondary">
-                      {row.kind === 'transfer'
-                        ? `${accountName.get(row.from_account_id ?? '') ?? '—'} → ${accountName.get(row.to_account_id ?? '') ?? '—'}`
-                        : (accountName.get((row.from_account_id ?? row.to_account_id) ?? '') ?? '—')}
+                      {row.category_id && categoryName.has(row.category_id) ? (
+                        <Link to={categoryPath(row.category_id)}>{categoryName.get(row.category_id)}</Link>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="secondary">
+                      {row.kind === 'transfer' ? (
+                        <>
+                          <AccountLink id={row.from_account_id} names={accountName} /> →{' '}
+                          <AccountLink id={row.to_account_id} names={accountName} />
+                        </>
+                      ) : (
+                        <AccountLink id={row.from_account_id ?? row.to_account_id} names={accountName} />
+                      )}
                     </td>
                     <td className="num">
                       <Amount
@@ -264,6 +261,13 @@ export function ActivityPage() {
       {sheetOpen && <TransactionSheet transaction={editing} onClose={() => setSheetOpen(false)} />}
     </div>
   );
+}
+
+// The account a row touched opens its own page, when the name is known.
+function AccountLink({ id, names }: { id: string | null; names: Map<string, string> }) {
+  const name = id ? names.get(id) : undefined;
+  if (!id || !name) return <>—</>;
+  return <Link to={accountPath(id)}>{name}</Link>;
 }
 
 function SortButton({
