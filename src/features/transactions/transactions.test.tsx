@@ -101,7 +101,6 @@ describe('TransactionSheet', () => {
         to_account_id: null,
         category_id: 'groceries',
         description: 'Market',
-        status: 'cleared',
       }),
     );
   });
@@ -149,13 +148,13 @@ describe('TransactionSheet', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('marks a transaction as pending when asked', async () => {
+  it('has nothing to say about pending: every transaction is simply recorded', async () => {
     renderSheet();
+    expect(screen.queryByLabelText('Pending')).not.toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('Amount'), '30');
     await pick('Account', 'Everyday checking');
-    await userEvent.click(screen.getByLabelText('Pending'));
     await userEvent.click(screen.getByRole('button', { name: 'Add transaction' }));
-    expect(create).toHaveBeenCalledWith(expect.objectContaining({ status: 'pending' }));
+    expect(create).toHaveBeenCalledWith(expect.not.objectContaining({ status: expect.anything() }));
   });
 
   it('names an unnamed expense after its category, then its kind', async () => {

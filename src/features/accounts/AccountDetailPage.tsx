@@ -82,7 +82,6 @@ function AccountDetail({ account }: { account: AccountBalance }) {
   const drawing = (bills.data ?? []).filter(
     (b) => !b.archived_at && (b.from_account_id === account.account_id || b.to_account_id === account.account_id),
   );
-  const pending = account.balance_minor - account.cleared_balance_minor;
   const owed = account.is_liability;
 
   const toggleArchive = async () => {
@@ -124,16 +123,6 @@ function AccountDetail({ account }: { account: AccountBalance }) {
       <FigureRow>
         <KeyFigure
           label={owed ? 'Owed' : 'Current balance'}
-          footnote={
-            pending !== 0 ? (
-              <>
-                <Amount minor={account.cleared_balance_minor} currency={currency} /> cleared ·{' '}
-                <Amount minor={pending} currency={currency} /> pending
-              </>
-            ) : (
-              'Everything has cleared.'
-            )
-          }
         >
           <Amount minor={account.balance_minor} currency={currency} />
         </KeyFigure>
@@ -241,7 +230,6 @@ function LedgerTable({ accountId, kind }: { accountId: string; kind: TxnKind }) 
       amount: row.signed_amount_minor,
       signed: row.kind === 'income' || (row.kind === 'transfer' && incoming),
       balance: row.balance_after_minor,
-      pending: row.status === 'pending',
     };
   });
 

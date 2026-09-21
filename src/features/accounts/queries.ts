@@ -23,7 +23,6 @@ export type AccountBalance = {
   money_in_minor: number;
   money_out_minor: number;
   balance_minor: number;
-  cleared_balance_minor: number;
 };
 
 export function normalizeBalance(row: AccountBalanceRow): AccountBalance {
@@ -39,7 +38,6 @@ export function normalizeBalance(row: AccountBalanceRow): AccountBalance {
     money_in_minor: row.money_in_minor ?? 0,
     money_out_minor: row.money_out_minor ?? 0,
     balance_minor: row.balance_minor ?? 0,
-    cleared_balance_minor: row.cleared_balance_minor ?? 0,
   };
 }
 export type AccountInsert = Database['public']['Tables']['accounts']['Insert'];
@@ -235,7 +233,6 @@ export type LedgerKind = Database['public']['Enums']['txn_kind'];
 export type LedgerEntry = {
   transaction_id: string;
   kind: LedgerKind;
-  status: Database['public']['Enums']['txn_status'];
   occurred_on: string;
   signed_amount_minor: number;
   description: string;
@@ -271,7 +268,6 @@ export function useAccountLedger(id: string | undefined, kind: LedgerKind, page 
         rows: data.map((row) => ({
           transaction_id: row.transaction_id ?? '',
           kind: row.kind ?? kind,
-          status: row.status ?? 'cleared',
           occurred_on: row.occurred_on ?? '',
           signed_amount_minor: row.signed_amount_minor ?? 0,
           description: row.description ?? '',

@@ -135,7 +135,6 @@ beforeEach(() => {
           category_id: ID,
           from_account_id: 'acc-1',
           to_account_id: null,
-          status: 'cleared',
         },
       ],
       total: 1,

@@ -64,8 +64,8 @@ export function withData(): Tables {
     { id: 'acc-card', user_id: USER_ID, name: 'Blue card', type: 'credit_card', opening_balance_minor: -20000, opening_date: null, sort_order: 1, archived_at: null, source_ref: null, created_at: '', updated_at: '' },
   ];
   tables.account_balances = [
-    { user_id: USER_ID, account_id: 'acc-chk', name: 'Everyday checking', type: 'checking', is_liability: false, sort_order: 0, archived_at: null, opening_balance_minor: 100000, money_in_minor: 250000, money_out_minor: 64550, balance_minor: 285450, cleared_balance_minor: 285450 },
-    { user_id: USER_ID, account_id: 'acc-card', name: 'Blue card', type: 'credit_card', is_liability: true, sort_order: 1, archived_at: null, opening_balance_minor: -20000, money_in_minor: 10000, money_out_minor: 21000, balance_minor: -31000, cleared_balance_minor: -28000 },
+    { user_id: USER_ID, account_id: 'acc-chk', name: 'Everyday checking', type: 'checking', is_liability: false, sort_order: 0, archived_at: null, opening_balance_minor: 100000, money_in_minor: 250000, money_out_minor: 64550, balance_minor: 285450 },
+    { user_id: USER_ID, account_id: 'acc-card', name: 'Blue card', type: 'credit_card', is_liability: true, sort_order: 1, archived_at: null, opening_balance_minor: -20000, money_in_minor: 10000, money_out_minor: 21000, balance_minor: -31000 },
   ];
   tables.category_groups = [{ id: 'grp-1', user_id: USER_ID, name: 'Essentials', sort_order: 0, created_at: '', updated_at: '' }];
   tables.categories = [
@@ -77,8 +77,8 @@ export function withData(): Tables {
     { user_id: USER_ID, category_id: 'cat-salary', kind: 'income', last_used_at: null, use_count: 0 },
   ];
   tables.transactions = [
-    { id: 'txn-1', user_id: USER_ID, kind: 'expense', occurred_on: today, amount_minor: 4550, from_account_id: 'acc-chk', to_account_id: null, category_id: 'cat-groceries', category_kind: 'expense', description: 'Market', notes: null, status: 'cleared', recurring_item_id: null, import_batch_id: null, source_ref: null, created_at: '', updated_at: '' },
-    { id: 'txn-2', user_id: USER_ID, kind: 'income', occurred_on: today, amount_minor: 250000, from_account_id: null, to_account_id: 'acc-chk', category_id: 'cat-salary', category_kind: 'income', description: 'Pay', notes: null, status: 'pending', recurring_item_id: null, import_batch_id: null, source_ref: null, created_at: '', updated_at: '' },
+    { id: 'txn-1', user_id: USER_ID, kind: 'expense', occurred_on: today, amount_minor: 4550, from_account_id: 'acc-chk', to_account_id: null, category_id: 'cat-groceries', category_kind: 'expense', description: 'Market', notes: null, recurring_item_id: null, import_batch_id: null, source_ref: null, created_at: '', updated_at: '' },
+    { id: 'txn-2', user_id: USER_ID, kind: 'income', occurred_on: today, amount_minor: 250000, from_account_id: null, to_account_id: 'acc-chk', category_id: 'cat-salary', category_kind: 'income', description: 'Pay', notes: null, recurring_item_id: null, import_batch_id: null, source_ref: null, created_at: '', updated_at: '' },
   ];
   tables.budget_progress = [
     { user_id: USER_ID, budget_id: 'bud-1', category_id: 'cat-groceries', category_name: 'Groceries', group_id: 'grp-1', month: thisMonth, planned_minor: 20000, spent_minor: 25550, left_minor: -5550 },

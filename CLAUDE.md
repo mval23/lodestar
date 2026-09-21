@@ -42,7 +42,7 @@ Many columns, formulas, views and pages in the Notion system exist only because 
 
 Tables, all user-owned except `currencies`: `profiles`, `accounts`, `category_groups`, `categories`, `transactions`, `budgets`, `goals`, `recurring_items`, `import_batches`, `audit_events`, plus the read-only `currencies` reference (USD, COP).
 
-- **transactions:** one row per event, with `kind` (expense | income | transfer), `amount_minor > 0`, `from_account_id` and `to_account_id`. Direction check: expense has from only, income has to only, transfer has both and they differ. Transfers never carry a category. `notes`, `status` (cleared | pending), `recurring_item_id`, `import_batch_id`, and `source_ref` (unique per user, so imports are idempotent).
+- **transactions:** one row per event, with `kind` (expense | income | transfer), `amount_minor > 0`, `from_account_id` and `to_account_id`. Direction check: expense has from only, income has to only, transfer has both and they differ. Transfers never carry a category. `notes`, `recurring_item_id`, `import_batch_id`, and `source_ref` (unique per user, so imports are idempotent).
 - **accounts:** `opening_balance_minor` (liabilities negative). The balance is a view: opening + money in − money out. Archive accounts that have history; hard delete only when there are none.
 - **categories:** `kind` is expense or income only. There are no savings categories. Archive or merge instead of deleting used ones. Pickers are ordered by recent use.
 - **budgets:** one row per category per month (`month` is the first of the month). Spent counts expenses only. Left may go negative. `copy_budgets(from, to)` starts a new month.

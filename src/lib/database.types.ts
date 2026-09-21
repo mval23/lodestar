@@ -252,7 +252,6 @@ export type Database = {
           category_kind: Database['public']['Enums']['category_kind'] | null;
           description: string;
           notes: string | null;
-          status: Database['public']['Enums']['txn_status'];
           recurring_item_id: string | null;
           import_batch_id: string | null;
           source_ref: string | null;
@@ -269,7 +268,6 @@ export type Database = {
           category_id?: string | null;
           description: string;
           notes?: string | null;
-          status?: Database['public']['Enums']['txn_status'];
           recurring_item_id?: string | null;
           import_batch_id?: string | null;
           source_ref?: string | null;
@@ -283,7 +281,6 @@ export type Database = {
           category_id?: string | null;
           description?: string;
           notes?: string | null;
-          status?: Database['public']['Enums']['txn_status'];
         };
         Relationships: [];
       };
@@ -367,7 +364,6 @@ export type Database = {
           money_in_minor: number | null;
           money_out_minor: number | null;
           balance_minor: number | null;
-          cleared_balance_minor: number | null;
         };
         Relationships: [];
       };
@@ -395,7 +391,6 @@ export type Database = {
           account_id: string | null;
           transaction_id: string | null;
           kind: Database['public']['Enums']['txn_kind'] | null;
-          status: Database['public']['Enums']['txn_status'] | null;
           occurred_on: string | null;
           created_at: string | null;
           signed_amount_minor: number | null;
@@ -478,8 +473,7 @@ export type Database = {
     Enums: {
       account_type: 'checking' | 'savings' | 'credit_card' | 'cash' | 'investment' | 'loan' | 'other_asset';
       txn_kind: 'expense' | 'income' | 'transfer';
-      txn_status: 'cleared' | 'pending';
-      category_kind: 'expense' | 'income';
+        category_kind: 'expense' | 'income';
       cadence_unit: 'week' | 'month' | 'year';
       recurring_label: 'bill' | 'subscription' | 'income' | 'transfer';
     };

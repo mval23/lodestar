@@ -34,7 +34,6 @@ type Values = {
   category_id: string;
   description: string;
   notes: string;
-  pending: boolean;
 };
 
 function initialValues(transaction: Transaction | undefined, currency: Currency, today: string): Values {
@@ -47,7 +46,6 @@ function initialValues(transaction: Transaction | undefined, currency: Currency,
     category_id: transaction?.category_id ?? '',
     description: transaction?.description ?? '',
     notes: transaction?.notes ?? '',
-    pending: transaction?.status === 'pending',
   };
 }
 
@@ -135,7 +133,6 @@ export function TransactionSheet({
       category_id: isTransfer ? null : values.category_id || null,
       description: finalDescription,
       notes: values.notes.trim() === '' ? null : values.notes.trim(),
-      status: values.pending ? ('pending' as const) : ('cleared' as const),
     };
     try {
       if (transaction) await update.mutateAsync({ id: transaction.id, changes: row });
@@ -255,23 +252,8 @@ export function TransactionSheet({
             />
           </FormRow>
 
-          <FormRow label="Pending" htmlFor="txn-pending">
-            <input
-              id="txn-pending"
-              type="checkbox"
-              role="switch"
-              className="toggle"
-              aria-describedby="txn-pending-hint"
-              checked={values.pending}
-              onChange={(e) => set('pending', e.target.checked)}
-            />
-          </FormRow>
         </FormGroup>
 
-        <p id="txn-pending-hint" className="form-hint">
-          Pending means your bank hasn’t settled it yet. It still counts in the balance; accounts also show a cleared
-          balance that leaves pending amounts out.
-        </p>
         {isTransfer && (
           <p className="form-hint">
             A transfer moves money between your own accounts, so it carries no category and never counts as spending.
