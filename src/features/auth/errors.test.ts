@@ -12,6 +12,12 @@ describe('authErrorMessage', () => {
     expect(authErrorMessage({ name: 'AuthRetryableFetchError', status: 0 })).toBe(NETWORK_MESSAGE);
   });
 
+  // auth-js gives server errors the same name as fetch failures.
+  it('does not blame the connection when the server answered with an error', () => {
+    expect(authErrorMessage({ name: 'AuthRetryableFetchError', status: 500 })).toBe(GENERIC_MESSAGE);
+    expect(authErrorMessage({ name: 'AuthRetryableFetchError', status: 504 })).toBe(GENERIC_MESSAGE);
+  });
+
   it('never echoes an unknown server message', () => {
     expect(authErrorMessage({ code: 'something_new', message: 'internal detail' })).toBe(GENERIC_MESSAGE);
   });
