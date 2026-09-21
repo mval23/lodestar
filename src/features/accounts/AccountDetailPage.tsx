@@ -31,12 +31,10 @@ import {
   useAccounts,
   useArchiveAccount,
   type AccountBalance,
-  type AccountMonth,
 } from './queries';
 
 // Every figure on this page comes from account_balances, account_month_flow
-// or account_ledger; nothing is added up here except the per-kind totals of
-// already-summed months.
+// or account_ledger; nothing is added up here.
 export function AccountDetailPage() {
   const { id } = useParams();
   const valid = isUuid(id);
@@ -64,8 +62,7 @@ function AccountDetail({ account }: { account: AccountBalance }) {
   const profile = useProfile();
   const thisMonth = monthStartInZone(profile.data?.timezone);
   const today = todayInZone(profile.data?.timezone);
-  // Every month the account has, so the tab totals cover its whole history.
-  const months = useAccountMonths(account.account_id, 600);
+  const months = useAccountMonths(account.account_id, 12);
   const goals = useGoals();
   const bills = useBills();
   const archive = useArchiveAccount();
@@ -75,9 +72,7 @@ function AccountDetail({ account }: { account: AccountBalance }) {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const all = useMemo(() => months.data ?? [], [months.data]);
-  const chart = all.slice(-12);
-  const totals = useMemo(() => totalsByKind(all), [all]);
+  const chart = months.data ?? [];
   const goal = (goals.data ?? []).find((g) => g.account_id === account.account_id && !g.archived_at);
   const drawing = (bills.data ?? []).filter(
     (b) => !b.archived_at && (b.from_account_id === account.account_id || b.to_account_id === account.account_id),
@@ -173,16 +168,7 @@ function AccountDetail({ account }: { account: AccountBalance }) {
           label="Activity by kind"
           value={kind}
           onChange={setKind}
-          tabs={KIND_ORDER.map((k) => ({
-            kind: k,
-            count: totals[k].count,
-            summary:
-              k === 'transfer' ? (
-                <TransferSummary inMinor={totals.transfer.in} outMinor={totals.transfer.out} />
-              ) : (
-                <Amount minor={totals[k].total} currency={currency} />
-              ),
-          }))}
+          tabs={KIND_ORDER.map((k) => ({ kind: k }))}
         >
           <QuickAdd key={`${account.account_id}-${kind}`} scope={{ kind, accountId: account.account_id, defaultDate: today }} />
           <LedgerTable accountId={account.account_id} kind={kind} />
@@ -191,17 +177,6 @@ function AccountDetail({ account }: { account: AccountBalance }) {
 
       {editing && row.data && <AccountSheet account={row.data} onClose={() => setEditing(false)} />}
     </div>
-  );
-}
-
-function TransferSummary({ inMinor, outMinor }: { inMinor: number; outMinor: number }) {
-  const currency = useCurrency();
-  if (inMinor === 0) return <><Amount minor={outMinor} currency={currency} /> out</>;
-  if (outMinor === 0) return <><Amount minor={inMinor} currency={currency} /> in</>;
-  return (
-    <>
-      <Amount minor={inMinor} currency={currency} /> in · <Amount minor={outMinor} currency={currency} /> out
-    </>
   );
 }
 
@@ -249,28 +224,5 @@ function LedgerTable({ accountId, kind }: { accountId: string; kind: TxnKind }) 
       )}
     </>
   );
-}
-
-type KindTotals = Record<'income' | 'expense', { total: number; count: number }> & {
-  transfer: { in: number; out: number; count: number };
-};
-
-// Totals per kind over the months the view already summed.
-export function totalsByKind(months: AccountMonth[]): KindTotals {
-  const totals: KindTotals = {
-    income: { total: 0, count: 0 },
-    expense: { total: 0, count: 0 },
-    transfer: { in: 0, out: 0, count: 0 },
-  };
-  for (const m of months) {
-    totals.income.total += m.income_minor;
-    totals.income.count += m.income_count;
-    totals.expense.total += m.expense_minor;
-    totals.expense.count += m.expense_count;
-    totals.transfer.in += m.transfer_in_minor;
-    totals.transfer.out += m.transfer_out_minor;
-    totals.transfer.count += m.transfer_in_count + m.transfer_out_count;
-  }
-  return totals;
 }
 

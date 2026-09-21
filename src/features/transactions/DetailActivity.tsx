@@ -20,7 +20,8 @@ export const KIND_LABEL: Record<TxnKind, string> = { income: 'Income', expense: 
 const KIND_SINGULAR: Record<TxnKind, string> = { income: 'income', expense: 'an expense', transfer: 'a transfer' };
 export const KIND_ORDER: TxnKind[] = ['income', 'expense', 'transfer'];
 
-export type KindTab = { kind: TxnKind; summary: ReactNode; count: number };
+// A tab can carry its total and row count, or be just its name.
+export type KindTab = { kind: TxnKind; summary?: ReactNode; count?: number };
 
 // A tablist in the WAI-ARIA pattern: arrow keys move between tabs, and only
 // the selected tab is in the tab order.
@@ -75,10 +76,12 @@ export function KindTabs({
               onKeyDown={(event) => onKey(event, index)}
             >
               <span className="kind-tab-label">{KIND_LABEL[tab.kind]}</span>
-              <span className="kind-tab-total">{tab.summary}</span>
-              <span className="kind-tab-count">
-                {tab.count} {tab.count === 1 ? 'row' : 'rows'}
-              </span>
+              {tab.summary !== undefined && <span className="kind-tab-total">{tab.summary}</span>}
+              {tab.count !== undefined && (
+                <span className="kind-tab-count">
+                  {tab.count} {tab.count === 1 ? 'row' : 'rows'}
+                </span>
+              )}
             </button>
           );
         })}

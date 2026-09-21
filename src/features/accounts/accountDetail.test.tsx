@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { pick } from '../../test/select';
-import { AccountDetailPage, totalsByKind } from './AccountDetailPage';
+import { AccountDetailPage } from './AccountDetailPage';
 import type { AccountBalance, AccountMonth, LedgerEntry } from './queries';
 
 const useAccountBalance = vi.fn();
@@ -144,18 +144,6 @@ beforeEach(() => {
   useAccountLedger.mockReturnValue({ data: { rows: [entry()], total: 1 }, isError: false });
 });
 
-describe('totalsByKind', () => {
-  it('adds up the months the view already summed, and keeps transfers apart', () => {
-    const totals = totalsByKind([
-      month({ income_minor: 291000, income_count: 1, expense_minor: 18240, expense_count: 2 }),
-      month({ transfer_in_minor: 5000, transfer_in_count: 1, transfer_out_minor: 40000, transfer_out_count: 3 }),
-    ]);
-    expect(totals.income).toEqual({ total: 291000, count: 1 });
-    expect(totals.expense).toEqual({ total: 18240, count: 2 });
-    expect(totals.transfer).toEqual({ in: 5000, out: 40000, count: 4 });
-  });
-});
-
 describe('AccountDetailPage', () => {
   it('refuses an id that is not one, without asking the database', () => {
     renderPage('not-an-id');
@@ -170,7 +158,7 @@ describe('AccountDetailPage', () => {
     expect(screen.getByText('This account doesn’t exist')).toBeInTheDocument();
   });
 
-  it('leads with the balance and splits the totals by kind across the tabs', () => {
+  it('leads with the balance, and names the kinds in its tabs without totals', () => {
     renderPage();
     expect(screen.getByRole('heading', { level: 1, name: 'Everyday checking' })).toBeInTheDocument();
     expect(screen.getAllByText('$4,218.35').length).toBeGreaterThan(0);
@@ -178,9 +166,8 @@ describe('AccountDetailPage', () => {
     expect(screen.queryByText(/cleared|pending/i)).not.toBeInTheDocument();
 
     const tabs = screen.getByRole('tablist', { name: 'Activity by kind' });
-    expect(within(tabs).getByRole('tab', { name: /Income/ })).toHaveTextContent('$2,910.00');
-    expect(within(tabs).getByRole('tab', { name: /Expenses/ })).toHaveTextContent('$1,450.00');
-    expect(within(tabs).getByRole('tab', { name: /Transfers/ })).toHaveTextContent('$400.00 out');
+    // The figures above already say how much moved; the tabs only choose.
+    expect(within(tabs).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Income', 'Expenses', 'Transfers']);
   });
 
   it('opens on expenses and moves to another kind', async () => {
