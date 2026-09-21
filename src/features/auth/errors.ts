@@ -45,7 +45,10 @@ export function authErrorMessage(raw: ErrorLike): string {
   const error = fields(raw);
   const code = typeof error.code === 'string' ? error.code : undefined;
   if (code && BY_CODE[code]) return BY_CODE[code];
-  if (error.name === 'AuthRetryableFetchError' || error.name === 'TypeError' || error.status === 0) {
+  // auth-js labels every 5xx an AuthRetryableFetchError too, so only a
+  // request that got no response at all (status 0) is a connection problem.
+  const noResponse = error.status === 0 || error.status === undefined;
+  if (error.name === 'TypeError' || error.status === 0 || (error.name === 'AuthRetryableFetchError' && noResponse)) {
     return NETWORK_MESSAGE;
   }
   if (error.status === 429) return BY_CODE.over_request_rate_limit!;
