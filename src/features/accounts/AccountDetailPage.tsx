@@ -205,6 +205,8 @@ function LedgerTable({ accountId, kind }: { accountId: string; kind: TxnKind }) 
       amount: row.signed_amount_minor,
       signed: row.kind === 'income' || (row.kind === 'transfer' && incoming),
       balance: row.balance_after_minor,
+      kind: row.kind,
+      category_id: row.kind === 'transfer' ? undefined : (row.category_id ?? null),
     };
   });
 

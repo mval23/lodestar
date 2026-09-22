@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { db } from '../../lib/supabase';
 import { accountsKey } from '../accounts/queries';
+import { budgetsKey } from '../budgets/queries';
 import { categoryUsageKey } from '../categories/queries';
+import { goalsKey } from '../goals/queries';
 import type { Database } from '../../lib/database.types';
 
 export type TxnKind = Database['public']['Enums']['txn_kind'];
@@ -83,6 +85,9 @@ function useInvalidateLedger() {
     void queryClient.invalidateQueries({ queryKey: transactionsKey });
     void queryClient.invalidateQueries({ queryKey: accountsKey });
     void queryClient.invalidateQueries({ queryKey: categoryUsageKey });
+    // Spent-this-month and contributed-this-month move with every edit.
+    void queryClient.invalidateQueries({ queryKey: budgetsKey });
+    void queryClient.invalidateQueries({ queryKey: goalsKey });
   };
 }
 

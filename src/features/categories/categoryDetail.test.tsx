@@ -27,6 +27,8 @@ const category = (over = {}) => ({
   ...over,
 });
 
+const update = vi.hoisted(() => vi.fn());
+
 vi.mock('./queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./queries')>();
   return {
@@ -69,6 +71,7 @@ vi.mock('../transactions/queries', async (importOriginal) => {
     ...actual,
     useTransactions: () => useTransactions(),
     useCreateTransaction: () => ({ mutateAsync: create, isPending: false }),
+    useUpdateTransaction: () => ({ mutateAsync: update, isPending: false }),
     useTransaction: () => ({ data: undefined }),
   };
 });

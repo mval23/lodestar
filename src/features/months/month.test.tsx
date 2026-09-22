@@ -10,6 +10,8 @@ const create = vi.fn();
 
 const THIS_MONTH = '2026-09-01';
 
+const update = vi.hoisted(() => vi.fn());
+
 vi.mock('./queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./queries')>();
   return {
@@ -44,6 +46,7 @@ vi.mock('../transactions/queries', async (importOriginal) => {
     useTransactions: (filters: { kind: string }) => useTransactions(filters),
     useLargestExpense: () => ({ data: { description: 'Rent', occurred_on: '2026-09-18', amount_minor: 145000 } }),
     useCreateTransaction: () => ({ mutateAsync: create, isPending: false }),
+    useUpdateTransaction: () => ({ mutateAsync: update, isPending: false }),
     useTransaction: () => ({ data: undefined }),
   };
 });

@@ -91,6 +91,7 @@ function BillDetail({ bill }: { bill: RecurringItem }) {
     detail: '',
     amount: row.kind === 'transfer' ? row.amount_minor : signedAmount(row),
     signed: row.kind === 'income',
+    kind: row.kind,
   }));
 
   return (

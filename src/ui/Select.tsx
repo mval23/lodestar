@@ -21,6 +21,7 @@ export function Select({
   disabled,
   emptyText = 'Nothing to choose yet.',
   searchThreshold = 12,
+  className,
 }: {
   id?: string;
   value: string;
@@ -31,6 +32,8 @@ export function Select({
   disabled?: boolean;
   emptyText?: string;
   searchThreshold?: number;
+  // Extra classes for the trigger, where it has to sit in a different place.
+  className?: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -118,7 +121,7 @@ export function Select({
         type="button"
         id={id}
         ref={triggerRef}
-        className="select-trigger"
+        className={className ? `select-trigger ${className}` : 'select-trigger'}
         disabled={disabled}
         aria-label={`${label}, ${selected?.label ?? placeholder}`}
         aria-haspopup="listbox"

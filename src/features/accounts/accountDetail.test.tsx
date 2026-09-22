@@ -62,6 +62,8 @@ function entry(over: Partial<LedgerEntry> = {}): LedgerEntry {
   };
 }
 
+const update = vi.hoisted(() => vi.fn());
+
 vi.mock('./queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./queries')>();
   return {
@@ -82,6 +84,7 @@ vi.mock('../transactions/queries', async (importOriginal) => {
   return {
     ...actual,
     useCreateTransaction: () => ({ mutateAsync: create, isPending: false }),
+    useUpdateTransaction: () => ({ mutateAsync: update, isPending: false }),
     useTransaction: () => ({ data: undefined }),
   };
 });
@@ -189,8 +192,68 @@ describe('AccountDetailPage', () => {
     renderPage();
     const table = screen.getByRole('table', { name: /Expenses on this account/ });
     expect(within(table).getByText('Rent')).toBeInTheDocument();
-    expect(within(table).getByText('Housing')).toBeInTheDocument();
+    expect(within(table).getByRole('button', { name: 'Category of “Rent”, Housing' })).toBeInTheDocument();
     expect(within(table).getByText('−$1,450.00')).toBeInTheDocument();
+  });
+
+  describe('editing in place, like a spreadsheet', () => {
+    beforeEach(() => update.mockReset().mockResolvedValue({}));
+
+    it('saves an amount typed into its cell, in integer minor units', async () => {
+      renderPage();
+      await userEvent.click(screen.getByRole('button', { name: 'Amount, 1450.00. Edit' }));
+      const input = within(screen.getByRole('table')).getByRole('textbox', { name: 'Amount' });
+      expect(input).toHaveValue('1450.00');
+      await userEvent.clear(input);
+      await userEvent.type(input, '1,500.25{Enter}');
+      expect(update).toHaveBeenCalledWith({ id: 't1', changes: { amount_minor: 150025 } });
+      // What was typed shows at once, before the refreshed rows arrive.
+      expect(screen.getByText('−$1,500.25')).toBeInTheDocument();
+    });
+
+    it('moves to the next cell with Tab, saving the one it leaves', async () => {
+      renderPage();
+      await userEvent.click(screen.getByRole('button', { name: 'Description, Rent. Edit' }));
+      const description = within(screen.getByRole('table')).getByRole('textbox', { name: 'Description' });
+      await userEvent.clear(description);
+      await userEvent.type(description, 'Rent, September');
+      await userEvent.tab();
+      expect(update).toHaveBeenCalledWith({ id: 't1', changes: { description: 'Rent, September' } });
+      expect(within(screen.getByRole('table')).getByRole('textbox', { name: 'Amount' })).toHaveFocus();
+    });
+
+    it('puts a cell back with Escape, and writes nothing', async () => {
+      renderPage();
+      await userEvent.click(screen.getByRole('button', { name: 'Description, Rent. Edit' }));
+      const description = within(screen.getByRole('table')).getByRole('textbox', { name: 'Description' });
+      await userEvent.clear(description);
+      await userEvent.type(description, 'Something else{Escape}');
+      expect(update).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: 'Description, Rent. Edit' })).toBeInTheDocument();
+    });
+
+    it('writes nothing when a cell is left as it was', async () => {
+      renderPage();
+      await userEvent.click(screen.getByRole('button', { name: 'Amount, 1450.00. Edit' }));
+      await userEvent.keyboard('{Enter}');
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('keeps the editor open and says why when an amount can’t be saved', async () => {
+      renderPage();
+      await userEvent.click(screen.getByRole('button', { name: 'Amount, 1450.00. Edit' }));
+      const input = within(screen.getByRole('table')).getByRole('textbox', { name: 'Amount' });
+      await userEvent.clear(input);
+      await userEvent.type(input, '10.005{Enter}');
+      expect(update).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert')).toHaveTextContent('Enter at most 2 decimal places.');
+      expect(within(screen.getByRole('table')).getByRole('textbox', { name: 'Amount' })).toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('still opens the full form for accounts, notes and deleting', async () => {
+      renderPage();
+      expect(screen.getByRole('button', { name: 'Open “Rent” in the full form' })).toBeInTheDocument();
+    });
   });
 
   it('adds an expense that leaves this account, with no second account to choose', async () => {

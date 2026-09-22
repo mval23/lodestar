@@ -23,6 +23,8 @@ export type Tables = {
   monthly_cash_flow: Record<string, unknown>[];
   net_worth_by_month: Record<string, unknown>[];
   import_batches: Record<string, unknown>[];
+  account_month_flow?: Record<string, unknown>[];
+  account_ledger?: Record<string, unknown>[];
 };
 
 export const USER_ID = '00000000-0000-4000-8000-00000000000a';
@@ -94,6 +96,35 @@ export function withData(): Tables {
   ];
   tables.net_worth_by_month = [
     { user_id: USER_ID, month: thisMonth, assets_minor: 285450, liabilities_minor: -31000, net_worth_minor: 254450 },
+  ];
+  return tables;
+}
+
+// An account with a page of its own: detail pages only open real uuids.
+export const LEDGER_ACCOUNT = '0a000000-0000-4000-8000-000000000001';
+
+export function withLedger(): Tables {
+  const tables = withData();
+  tables.account_balances = [{ ...tables.account_balances[0], account_id: LEDGER_ACCOUNT, name: 'Everyday checking' }];
+  tables.account_month_flow = [];
+  const row = (n: number, day: string, description: string, amount: number, balance: number) => ({
+    user_id: USER_ID,
+    transaction_id: `0b000000-0000-4000-8000-00000000000${n}`,
+    account_id: LEDGER_ACCOUNT,
+    kind: 'expense',
+    occurred_on: `${thisMonth.slice(0, 8)}${day}`,
+    signed_amount_minor: -amount,
+    description,
+    category_id: 'cat-groceries',
+    from_account_id: LEDGER_ACCOUNT,
+    to_account_id: null,
+    balance_after_minor: balance,
+    created_at: '',
+  });
+  tables.account_ledger = [
+    row(1, '12', 'Utilities', 17900, 383900),
+    row(2, '11', 'Sparkling water', 400, 401800),
+    row(3, '10', 'Phone bill', 4400, 402200),
   ];
   return tables;
 }
