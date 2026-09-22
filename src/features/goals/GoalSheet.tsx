@@ -55,14 +55,16 @@ export function GoalSheet({ goal, onClose }: { goal?: GoalProgress; onClose: () 
     if (reason) return;
     const changes = {
       name: trimmed,
-      account_id: accountId,
       target_minor: parsedTarget && parsedTarget.ok ? parsedTarget.minor : null,
       target_date: targetDate === '' ? null : targetDate,
       monthly_plan_minor: parsedMonthly && parsedMonthly.ok ? parsedMonthly.minor : null,
     };
     try {
+      // The account is chosen once. A goal's progress is the transfers into
+      // its account, so the database refuses to move it, and sending it at
+      // all, even unchanged, would fail the whole save.
       if (goal) await update.mutateAsync({ id: goal.goal_id, changes });
-      else await create.mutateAsync(changes);
+      else await create.mutateAsync({ ...changes, account_id: accountId });
       onClose();
     } catch (cause) {
       const code = (cause as { code?: string } | null)?.code;
@@ -88,15 +90,23 @@ export function GoalSheet({ goal, onClose }: { goal?: GoalProgress; onClose: () 
             />
           </FormRow>
           <FormRow label="Account" htmlFor="goal-account">
-            <Select
-              id="goal-account"
-              label="Account"
-              placeholder="Choose an account"
-              value={accountId}
-              onChange={setAccountId}
-              options={available.map((a) => ({ value: a.account_id, label: a.name }))}
-              emptyText="Add a savings account first, in Accounts."
-            />
+            {goal ? (
+              <input
+                id="goal-account"
+                readOnly
+                value={(accounts.data ?? []).find((a) => a.account_id === goal.account_id)?.name ?? ''}
+              />
+            ) : (
+              <Select
+                id="goal-account"
+                label="Account"
+                placeholder="Choose an account"
+                value={accountId}
+                onChange={setAccountId}
+                options={available.map((a) => ({ value: a.account_id, label: a.name }))}
+                emptyText="Add a savings account first, in Accounts."
+              />
+            )}
           </FormRow>
           <FormRow label="Target" htmlFor="goal-target">
             <input
@@ -123,6 +133,7 @@ export function GoalSheet({ goal, onClose }: { goal?: GoalProgress; onClose: () 
         <p className="form-hint">
           The account holds the money; the goal is what you mean by it. Every transfer into that account counts as
           setting money aside, so nothing has to be recorded twice.
+          {goal && ' A goal stays with its account. To keep it in another one, remove this goal and add a new one there.'}
         </p>
 
         {error && <Notice tone="err">{error}</Notice>}
