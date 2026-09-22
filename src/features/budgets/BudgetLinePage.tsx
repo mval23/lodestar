@@ -293,6 +293,7 @@ function LineRows({ categoryId, from, to }: { categoryId: string; from: string; 
     detail: describeTransaction(row, (id) => names.get(id ?? '') ?? '—', () => null),
     amount: signedAmount(row),
     signed: false,
+    kind: row.kind,
   }));
   return (
     <ActivityRows

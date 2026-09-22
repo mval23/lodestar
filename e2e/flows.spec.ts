@@ -1,4 +1,4 @@
-import { emptyTables, expect, signIn, stubSupabase, test, withData } from './fixtures';
+import { emptyTables, expect, LEDGER_ACCOUNT, signIn, stubSupabase, test, withData, withLedger } from './fixtures';
 
 // The journeys that matter, driven through a real browser against the
 // production build, with the production security headers in force.
@@ -107,6 +107,40 @@ test.describe('the ledger', () => {
     await expect(page).toHaveURL(/kind=expense/);
     await page.reload();
     await expect(page.getByRole('button', { name: /^Kind, Expenses/ })).toBeVisible();
+  });
+});
+
+test.describe('editing in place', () => {
+  test('an amount is typed into its cell, saved with Enter, and the next row opens', async ({ page }) => {
+    const writes: { table: string; body: unknown }[] = [];
+    await signIn(page);
+    await stubSupabase(page, { tables: withLedger(), onWrite: (table, body) => writes.push({ table, body }) });
+    await page.goto(`/accounts/${LEDGER_ACCOUNT}`);
+
+    const table = page.getByRole('table', { name: /Expenses on this account/ });
+    await table.getByRole('button', { name: 'Amount, 179.00. Edit' }).click();
+    // The value is selected, so typing replaces it, as in a spreadsheet.
+    await page.keyboard.type('185.50');
+    await page.keyboard.press('Enter');
+
+    await expect(table.getByText('−$185.50')).toBeVisible();
+    await expect(table.getByRole('textbox', { name: 'Amount' })).toHaveValue('4.00');
+    expect(writes).toEqual([{ table: 'transactions', body: { amount_minor: 18550 } }]);
+  });
+
+  test('Escape puts a cell back and writes nothing', async ({ page }) => {
+    const writes: string[] = [];
+    await signIn(page);
+    await stubSupabase(page, { tables: withLedger(), onWrite: (table) => writes.push(table) });
+    await page.goto(`/accounts/${LEDGER_ACCOUNT}`);
+
+    const table = page.getByRole('table', { name: /Expenses on this account/ });
+    await table.getByRole('button', { name: 'Description, Utilities. Edit' }).click();
+    await page.keyboard.type('Something else');
+    await page.keyboard.press('Escape');
+
+    await expect(table.getByRole('button', { name: 'Description, Utilities. Edit' })).toBeFocused();
+    expect(writes).not.toContain('transactions');
   });
 });
 

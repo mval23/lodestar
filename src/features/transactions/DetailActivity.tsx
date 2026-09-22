@@ -1,7 +1,7 @@
 import { useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Plus } from 'lucide-react';
+import { Ellipsis, Plus } from 'lucide-react';
 import { useCurrency } from '../../lib/profile';
-import { parseMoney } from '../../lib/money';
+import { parseMoney, toAmountInput } from '../../lib/money';
 import { formatDateShort } from '../../lib/dates';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
@@ -10,7 +10,16 @@ import { dataErrorMessage } from '../auth/errors';
 import { useAccounts } from '../accounts/queries';
 import { sortForPicker, useCategories, useCategoryUsage } from '../categories/queries';
 import { TransactionSheet } from './TransactionSheet';
-import { directionProblem, useCreateTransaction, useTransaction, type Transaction, type TxnKind } from './queries';
+import { nextCell, parseCell, type Cell, type Field, type Move } from './cellEdit';
+import {
+  directionProblem,
+  useCreateTransaction,
+  useTransaction,
+  useUpdateTransaction,
+  type Transaction,
+  type TransactionUpdate,
+  type TxnKind,
+} from './queries';
 
 // The activity half of a detail page: tabs by kind, a quick-add row at the
 // top of each table, and the rows. The tab you are on decides the kind, so
@@ -18,6 +27,8 @@ import { directionProblem, useCreateTransaction, useTransaction, type Transactio
 
 export const KIND_LABEL: Record<TxnKind, string> = { income: 'Income', expense: 'Expenses', transfer: 'Transfers' };
 const KIND_SINGULAR: Record<TxnKind, string> = { income: 'income', expense: 'an expense', transfer: 'a transfer' };
+// What an emptied description falls back to when there is no category.
+const KIND_LABEL_SINGULAR: Record<TxnKind, string> = { income: 'Income', expense: 'Expense', transfer: 'Transfer' };
 export const KIND_ORDER: TxnKind[] = ['income', 'expense', 'transfer'];
 
 // A tab can carry its total and row count, or be just its name.
@@ -277,8 +288,20 @@ export type ActivityRow = {
   amount: number;
   signed: boolean;
   balance?: number;
+  // With a kind, the row edits in place, cell by cell. Without one, clicking
+  // it opens the full form.
+  kind?: TxnKind;
+  // Given, even as null, the line under the description becomes a category
+  // picker. Pages that fix the category leave it out.
+  category_id?: string | null;
 };
 
+type Draft = { cell: Cell; text: string };
+
+// A table of transactions you can edit like a spreadsheet: click a date,
+// description or amount and type; Enter saves and moves down, Tab saves and
+// moves along, Escape puts it back. Everything else (accounts, notes,
+// deleting) is in the full form, one click away at the end of the row.
 export function ActivityRows({
   rows,
   showBalance,
@@ -291,7 +314,183 @@ export function ActivityRows({
   caption: string;
 }) {
   const currency = useCurrency();
-  const [editing, setEditing] = useState<string | null>(null);
+  const update = useUpdateTransaction();
+  const categories = useCategories();
+  const usage = useCategoryUsage();
+  const [sheet, setSheet] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [announce, setAnnounce] = useState('');
+  // What was just saved, shown until the refreshed rows arrive, so a cell
+  // never flickers back to its old value.
+  const [pending, setPending] = useState<Record<string, TransactionUpdate>>({});
+  const cells = useRef(new Map<string, HTMLButtonElement | null>());
+  // Enter, Tab and Escape end an edit themselves; the blur that follows
+  // must not save it a second time.
+  const handled = useRef(false);
+
+  const signature = rows.map((r) => `${r.id}${r.occurred_on}${r.description}${r.amount}${r.category_id}`).join('|');
+  // When fresh rows arrive, what they show is what was saved.
+  const [seen, setSeen] = useState(signature);
+  if (seen !== signature) {
+    setSeen(signature);
+    setPending({});
+  }
+
+  const ids = rows.filter((row) => row.kind).map((row) => row.id);
+  const categoryName = (id: string | null | undefined) => (categories.data ?? []).find((c) => c.id === id)?.name;
+
+  const valuesOf = (row: ActivityRow) => {
+    const over = pending[row.id] ?? {};
+    const minor = over.amount_minor ?? Math.abs(row.amount);
+    return {
+      occurred_on: over.occurred_on ?? row.occurred_on,
+      description: over.description ?? row.description,
+      amount_minor: minor,
+      amount: row.amount < 0 ? -minor : minor,
+      category_id: over.category_id !== undefined ? over.category_id : row.category_id,
+    };
+  };
+
+  const textOf = (row: ActivityRow, field: Field) => {
+    const v = valuesOf(row);
+    if (field === 'date') return v.occurred_on;
+    if (field === 'description') return v.description;
+    return toAmountInput(v.amount_minor, currency);
+  };
+
+  const save = async (row: ActivityRow, changes: TransactionUpdate) => {
+    setError(null);
+    setPending((all) => ({ ...all, [row.id]: { ...all[row.id], ...changes } }));
+    try {
+      await update.mutateAsync({ id: row.id, changes });
+      setAnnounce(`Saved “${changes.description ?? valuesOf(row).description}”.`);
+    } catch (cause) {
+      setPending((all) => {
+        const next = { ...all };
+        delete next[row.id];
+        return next;
+      });
+      setError(dataErrorMessage(cause));
+    }
+  };
+
+  const begin = (row: ActivityRow, field: Field) => {
+    setError(null);
+    setDraft({ cell: { row: row.id, field }, text: textOf(row, field) });
+  };
+
+  const focusCell = (target: Cell) => cells.current.get(`${target.row}:${target.field}`)?.focus();
+
+  // Saves the draft if it changed. Returns false, keeping the editor open,
+  // when the value can't be saved as typed.
+  const commit = (current: Draft): boolean => {
+    const row = rows.find((r) => r.id === current.cell.row);
+    if (!row) return true;
+    const v = valuesOf(row);
+    const result = parseCell(current.cell.field, current.text, v, {
+      currency,
+      fallbackDescription: categoryName(v.category_id) ?? KIND_LABEL_SINGULAR[row.kind ?? 'expense'],
+    });
+    if (!result.ok) {
+      setError(result.message);
+      return false;
+    }
+    if (result.changes) void save(row, result.changes);
+    return true;
+  };
+
+  const finish = (move: Move) => {
+    if (!draft) return;
+    if (!commit(draft)) return;
+    handled.current = true;
+    const next = nextCell(ids, draft.cell, move);
+    const target = rows.find((r) => r.id === next?.row);
+    if (next && target) {
+      setDraft({ cell: next, text: textOf(target, next.field) });
+    } else {
+      const done = draft.cell;
+      setDraft(null);
+      requestAnimationFrame(() => focusCell(done));
+    }
+  };
+
+  const cancel = () => {
+    if (!draft) return;
+    handled.current = true;
+    const done = draft.cell;
+    setDraft(null);
+    setError(null);
+    requestAnimationFrame(() => focusCell(done));
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      finish(event.shiftKey ? 'up' : 'down');
+    } else if (event.key === 'Tab') {
+      event.preventDefault();
+      finish(event.shiftKey ? 'left' : 'right');
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      cancel();
+    }
+  };
+
+  const onBlur = () => {
+    if (handled.current) {
+      handled.current = false;
+      return;
+    }
+    // Clicking away saves, as a spreadsheet does. If the value can't be
+    // saved, the cell goes back and the reason stays on screen.
+    if (draft) commit(draft);
+    setDraft(null);
+  };
+
+  const cell = (row: ActivityRow, field: Field, shown: ReactNode, label: string) => {
+    if (draft && draft.cell.row === row.id && draft.cell.field === field) {
+      return (
+        <input
+          // A fresh input per cell, so moving along never carries a value over.
+          key={`${row.id}:${field}`}
+          autoFocus
+          className={`cell-input${field === 'amount' ? ' num' : ''}`}
+          type={field === 'date' ? 'date' : 'text'}
+          inputMode={field === 'amount' ? 'decimal' : undefined}
+          maxLength={field === 'description' ? 140 : undefined}
+          aria-label={label}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? 'activity-cell-error' : undefined}
+          value={draft.text}
+          onFocus={(event) => event.currentTarget.select?.()}
+          onChange={(event) => setDraft({ ...draft, text: event.target.value })}
+          onKeyDown={onKeyDown}
+          onBlur={onBlur}
+        />
+      );
+    }
+    return (
+      <button
+        type="button"
+        ref={(el) => {
+          cells.current.set(`${row.id}:${field}`, el);
+        }}
+        className={`cell-button${field === 'amount' ? ' num' : ''}`}
+        aria-label={`${label}, ${field === 'date' ? formatDateShort(textOf(row, field)) : textOf(row, field)}. Edit`}
+        onClick={() => begin(row, field)}
+      >
+        {shown}
+      </button>
+    );
+  };
+
+  const pickable = (kind: TxnKind) =>
+    sortForPicker(
+      (categories.data ?? []).filter((c) => !c.archived_at),
+      usage.data,
+    ).filter((c) => c.kind === (kind === 'income' ? 'income' : 'expense'));
 
   return (
     <>
@@ -312,32 +511,86 @@ export function ActivityRows({
                   Balance
                 </th>
               )}
+              <th scope="col" className="activity-full-col">
+                <span className="visually-hidden">Full form</span>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td className="secondary">{formatDateShort(row.occurred_on)}</td>
-                <td>
-                  <button type="button" className="link-button activity-open" onClick={() => setEditing(row.id)}>
-                    {row.description}
-                  </button>
-                  {row.detail && <small className="activity-detail">{row.detail}</small>}
-                </td>
-                <td className="num">
-                  <Amount minor={row.amount} currency={currency} signed={row.signed} />
-                </td>
-                {showBalance && (
-                  <td className="num secondary">
-                    <Amount minor={row.balance ?? 0} currency={currency} />
+            {rows.map((row) => {
+              const v = valuesOf(row);
+              const inPlace = Boolean(row.kind);
+              const choosesCategory = inPlace && row.kind !== 'transfer' && row.category_id !== undefined;
+              return (
+                <tr key={row.id} data-editing={draft?.cell.row === row.id || undefined}>
+                  <td className="secondary cell">
+                    {inPlace ? cell(row, 'date', formatDateShort(v.occurred_on), 'Date') : formatDateShort(v.occurred_on)}
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td className="cell">
+                    {inPlace ? (
+                      cell(row, 'description', v.description, 'Description')
+                    ) : (
+                      <button type="button" className="link-button activity-open" onClick={() => setSheet(row.id)}>
+                        {row.description}
+                      </button>
+                    )}
+                    {choosesCategory ? (
+                      <Select
+                        className="cell-category"
+                        label={`Category of “${v.description}”`}
+                        placeholder="No category"
+                        value={v.category_id ?? ''}
+                        onChange={(value) => {
+                          if (value !== (v.category_id ?? '')) void save(row, { category_id: value || null });
+                        }}
+                        emptyText="No categories of this kind yet."
+                        options={[
+                          { value: '', label: 'No category' },
+                          ...pickable(row.kind!).map((c) => ({ value: c.id, label: c.name })),
+                        ]}
+                      />
+                    ) : (
+                      row.detail && <small className="activity-detail">{row.detail}</small>
+                    )}
+                  </td>
+                  <td className="num cell">
+                    {inPlace ? (
+                      cell(row, 'amount', <Amount minor={v.amount} currency={currency} signed={row.signed} />, 'Amount')
+                    ) : (
+                      <Amount minor={v.amount} currency={currency} signed={row.signed} />
+                    )}
+                  </td>
+                  {showBalance && (
+                    <td className="num secondary">
+                      <Amount minor={row.balance ?? 0} currency={currency} />
+                    </td>
+                  )}
+                  <td className="activity-full-col">
+                    <button
+                      type="button"
+                      className="activity-full"
+                      aria-label={`Open “${v.description}” in the full form`}
+                      title="Accounts, notes and delete"
+                      onClick={() => setSheet(row.id)}
+                    >
+                      <Ellipsis strokeWidth={1.75} aria-hidden />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
-      {editing && <EditTransactionById id={editing} onClose={() => setEditing(null)} />}
+      {error && (
+        <p id="activity-cell-error" className="field-error activity-cell-error" role="alert">
+          {error}
+        </p>
+      )}
+      <p className="visually-hidden" role="status" aria-live="polite">
+        {announce}
+      </p>
+      {sheet && <EditTransactionById id={sheet} onClose={() => setSheet(null)} />}
     </>
   );
 }

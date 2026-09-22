@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
-import { expect, signIn, stubSupabase, test, withData } from './fixtures';
+import { expect, LEDGER_ACCOUNT, signIn, stubSupabase, test, withData, withLedger } from './fixtures';
 
 // WCAG 2.2 AA, checked automatically on every screen, in both themes and at
 // phone width. Automation catches perhaps half of what matters, so the manual
@@ -105,6 +105,19 @@ test.describe('leaving', () => {
     await page.goto('/settings');
     // Scanning before the count arrives would miss the fields entirely.
     await expect(page.getByLabel('Confirmation', { exact: true })).toBeVisible();
+    const results = await scan(page);
+    expect(results.violations).toEqual([]);
+  });
+});
+
+test.describe('editing in place', () => {
+  test('an account’s table, with a cell open, has no violations', async ({ page }) => {
+    await signIn(page);
+    await stubSupabase(page, { tables: withLedger() });
+    await page.goto(`/accounts/${LEDGER_ACCOUNT}`);
+    const table = page.getByRole('table', { name: /Expenses on this account/ });
+    await table.getByRole('button', { name: 'Amount, 179.00. Edit' }).click();
+    await expect(table.getByRole('textbox', { name: 'Amount' })).toBeFocused();
     const results = await scan(page);
     expect(results.violations).toEqual([]);
   });
