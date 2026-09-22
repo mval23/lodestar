@@ -5,7 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Lodestar is a private finance tracker. Know where you stand." />
-    <link rel="icon" type="image/svg+xml" href="/brand/logo/favicon.svg" />
+    <!-- Served from public/. brand/logo holds the working files, which are not
+         deployed, so the old path here reached nothing. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- iOS will not take an SVG for a home-screen icon: without this it
+         invents one from the page, which is where the plain "L" came from. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="Lodestar" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F5F4F1" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#12110F" />
     <title>Lodestar</title>
   </head>
   <body>
