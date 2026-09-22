@@ -272,11 +272,13 @@ function MonthPlan({ month, currency }: { month: string; currency: Currency }) {
 
   return (
     <section className="group figure-group overview-plan" aria-labelledby="overview-plan">
+      {/* The month leads here, and the way into Budgets sits at the end of
+          the line, where the other cards keep their figure. */}
       <div className="card-head">
-        <h2 className="caption" id="overview-plan">
+        <span className="caption">{formatMonth(month)}</span>
+        <h2 className="footnote" id="overview-plan">
           <TitleLink to={budgetMonthPath(month)}>Budgets</TitleLink>
         </h2>
-        <span className="footnote">{formatMonth(month)}</span>
       </div>
 
       {budgets.isPending ? (
