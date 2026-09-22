@@ -4,6 +4,11 @@
 **Deliverables (roadmap):** production on Supabase Pro with backups, a domain, headers, monitoring, a restore drill.
 **Accepted when:** a restore from backup succeeds, and the headers score A.
 
+**Amended 22 Sep 2026:** the owner decided not to buy Pro. Production stays
+on the free tier, which takes no backups, so Lodestar takes its own
+(`npm run backup`), and the drill proves those instead. Everything else in
+the phase stands, and "a restore from backup succeeds" is still the bar.
+
 Written 21 Sep 2026.
 
 ## Where it stands
@@ -13,8 +18,9 @@ Written 21 Sep 2026.
 | Headers score A | **Met: A+** on securityheaders.com (21 Sep): all six graded headers present, and no `unsafe-inline`. `Cross-Origin-Resource-Policy` added since. |
 | Monitoring | **Built:** a health check from the outside, every three hours, on staging and production. |
 | Production can't fall behind | **Built:** every merge now queues a production migration that waits for your approval. |
-| Restore drill | **Ready to run** once production is on Pro. The fingerprint that proves it is built and tested. |
-| Supabase Pro | **Yours to do** (step 4). |
+| Restore drill | **Ready to run:** back up production, restore into an emptied staging, and the restore checks itself row for row. |
+| Backups | **Built:** `npm run backup`, yours, on your machine. The free tier takes none. |
+| Supabase Pro | **Declined** (22 Sep 2026). See the limits below. |
 | Domain | **Waiting on trademark and domain clearance** (brand §10). |
 
 ## What the first check found
@@ -84,61 +90,89 @@ node scripts/health/cli.mjs https://lodestar-mari-s-org.vercel.app
 GitHub turns schedules off in a public repository after 60 days without a
 commit. If the emails stop, check that **Actions → Health** is still enabled.
 
+## Backups, on the free tier
+
+**Supabase takes no backups on the free tier.** The owner decided on 22 Sep
+2026 not to move production to Pro, so the only backup is the one you take.
+
+```bash
+VITE_SUPABASE_URL=https://<project>.supabase.co \
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_… \
+npm run backup
+```
+
+It asks for your email and password, signs in as you, and writes every row
+you own to `backups/lodestar-<when>.json`. It reads through Row Level
+Security exactly as the app does: no service-role key, no third party,
+nothing leaves your machine. `backups/` is ignored by git, because the file
+holds your real finances — keep it where you would keep a bank statement.
+
+**Take one before anything that changes a lot:** a migration that removes a
+column, the Notion import, a bulk delete. Otherwise once a month is a fair
+rhythm for a ledger that grows a few rows a day.
+
+What a backup holds: accounts, categories and their groups, transactions,
+budgets, goals, bills and subscriptions, import batches, and your profile
+settings. Ids are kept, so a restore rebuilds exactly what you had. The audit
+log is left out: nobody may write to it, and it says nothing about money.
+
+What it cannot do: bring back an account whose login is gone. The file holds
+your rows, not your Supabase account. If the project itself were deleted, you
+would make a new one, sign up, and restore into it.
+
 ## The restore drill
 
-A backup is only a backup once it has been restored. On Pro:
+A backup is only a backup once it has been restored. Free gives us no
+provider backup to restore, so the drill proves the one you take:
 
-1. Pick a quiet moment. Make no changes in production between the backup you
-   restore and step 3, or the drill will rightly report a difference.
-2. **Database → Backups**, choose the latest, **Restore to a new project**.
-   Never restore over production.
-3. When the new project is up, run the fingerprint on both, from this folder:
-
-   ```bash
-   psql "<production connection string>" -f supabase/checks/fingerprint.sql > production.txt
-   psql "<restored connection string>"   -f supabase/checks/fingerprint.sql > restored.txt
-   diff production.txt restored.txt
-   ```
-
-   **Silence means the restore is identical.** Each line is a table's row
-   count, an md5 over every row, and when the table last changed. No amount,
-   description or name appears, so the files are safe to keep. A difference
-   names the table, and `last_changed` says whether production simply moved
-   on after the backup.
-
-4. Run the isolation gate on the restore too. It must print nothing:
+1. **Back up production**, as above.
+2. **Empty the staging account.** Sign in to staging, use Settings → Delete
+   your Lodestar account, then sign up again with the same address. A restore
+   refuses an account that already holds anything, so nothing can collide.
+3. **Restore into staging**, pointing the variables at the staging project:
 
    ```bash
-   psql "<restored connection string>" -f supabase/checks/rls_gate.sql
+   VITE_SUPABASE_URL=https://<staging>.supabase.co \
+   VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_… \
+   npm run restore backups/lodestar-<when>.json
    ```
 
-5. Record the date and result at the bottom of this file. Then **pause and
-   delete the restored project**: it is a second copy of real data.
+   It says what it is about to do, asks you to type `restore`, writes the
+   tables in dependency order, then reads everything back and compares. **"Every
+   row matches the backup" is the drill passing.** Anything else names the
+   table and how many rows differ.
 
-The fingerprint runs in the schema check and, through `psql`, against the
-real Supabase stack in CI, so it will work on the day it's needed.
+4. **Check it in the app.** Open staging: the balances, budgets and goals
+   should read exactly as production does.
+5. **Record the date and result** at the bottom of this file, then delete the
+   staging account again (Phase 9, finding 2 — staging should not sit on real
+   data).
+
+You can also check a backup against the account it came from at any time,
+without writing anything:
+
+```bash
+npm run backup verify backups/lodestar-<when>.json
+```
+
+`supabase/checks/fingerprint.sql` remains the way to compare two databases
+directly with `psql`, if you ever have one to compare against.
 
 ## Your steps, in order
 
-1. **Require a reviewer on production.** GitHub → Settings → Environments →
-   **production** → tick **Required reviewers**, add yourself, **Save**.
-   Leave **Prevent self-review** unticked, or you can't approve your own runs.
-2. **Give the production token deploy rights.** The `production` environment
-   has its own `SUPABASE_ACCESS_TOKEN`. Like staging's, it needs **Edge
-   Functions: Read-write**. Make a new token if needed, and replace the
-   secret in the **production** environment.
-3. **Merge this phase's PR, then approve the production run** (Actions → the
-   run → **Review deployments** → approve). That applies the two missing
-   migrations, deploys `delete-account`, and ends with the health check,
-   which should print `healthy`.
-4. **Move production to Pro.** Then, in production's Authentication
-   settings, turn on **Prevent use of leaked passwords** (Phase 9, finding 4).
-   Pro keeps daily backups; the first one appears the day after upgrading.
-5. **Run the restore drill** above, once a backup exists.
-6. **Clear your real data out of staging** (Phase 9, finding 2): sign in
-   there and use Settings → Delete your Lodestar account. Notion still has
-   all of it.
-7. **The domain, once cleared** (brand §10). Then, in one sitting:
+Done on 21–22 Sep: production requires a reviewer, its token can deploy the
+function, and the run that applied the missing migrations ended `healthy`.
+What is left:
+
+1. **Take your first backup** (`npm run backup`), and keep it somewhere you
+   would keep a bank statement.
+2. **Run the restore drill** above. That is what accepts this phase.
+3. **Clear your real data out of staging** (Phase 9, finding 2). The drill
+   does this anyway: it empties staging before restoring, and you delete the
+   account again afterwards.
+4. **Approve production runs when they queue.** One waits after every merge,
+   and a waiting run holds up the next one.
+5. **The domain, once cleared** (brand §10). Then, in one sitting:
    - Vercel → Domains: add it to production.
    - Supabase production → Authentication → URL Configuration: the new
      **Site URL**, and `https://<domain>/auth/confirm` as a redirect URL.
@@ -148,6 +182,19 @@ real Supabase stack in CI, so it will work on the day it's needed.
      address, so the health check follows it.
    - Optionally, set `APP_ORIGINS` on the function
      (docs/phase-9/account-deletion.md).
+
+## What the free tier costs, knowingly
+
+Recorded so nobody has to rediscover it:
+
+- **No provider backups, and no point-in-time recovery.** Your own backups
+  are the whole of it, and they are only as recent as the last one you took.
+- **The project pauses when idle.** The health check pings it every three
+  hours, which should keep it awake.
+- **No leaked-password protection** (Phase 9, finding 4). It stays off.
+- **`CLAUDE.md` still says Pro before anyone else stores real data.** That
+  promise holds while Lodestar is the owner's alone. The day someone else
+  keeps their finances here, this decision has to be made again.
 
 ## Drill log
 

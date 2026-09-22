@@ -28,7 +28,7 @@ Many columns, formulas, views and pages in the Notion system exist only because 
 - **No custom backend.** Business rules live in Postgres (constraints, views with `security_invoker = true`, `SECURITY INVOKER` RPCs with `set search_path = ''`). The only Edge Function is `delete-account`. Storage is not used in the MVP.
 - Environments: local (Supabase CLI, synthetic seed), staging (synthetic data only, used by Vercel previews), production. Schema changes only through SQL migrations in git, applied by CI. Never edit production by hand.
 - Use custom SMTP for auth email. Supabase's built-in email is only for testing.
-- Move production to Supabase Pro (backups, no pausing) before anyone other than the owner stores real data.
+- Move production to Supabase Pro (backups, no pausing) before anyone other than the owner stores real data. **The owner declined Pro on Sep 22, 2026**, so production stays on the free tier while Lodestar is theirs alone: it has no provider backups, and `npm run backup` takes its own (docs/phase-10/production.md). The day a second person keeps real data here, Pro is required again.
 
 ## Money, currency and dates
 

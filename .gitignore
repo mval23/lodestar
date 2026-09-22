@@ -18,3 +18,6 @@ migration/
 /playwright-report/
 /test-results/
 /blob-report/
+
+# Your own backups: real financial data, never committed.
+/backups/
