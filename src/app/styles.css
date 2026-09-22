@@ -1687,16 +1687,28 @@ a:hover {
 .quick-add-fixed {
   margin-left: 0;
 }
+/* Borderless, like every other field in Lodestar: placeholders say what
+   each one is for, and focus shows as a ring rather than a permanent box. */
 .quick-add input,
 .quick-add .select-trigger {
   min-height: 36px;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
+  padding: 6px var(--space-2);
+  border: 0;
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: transparent;
   color: var(--ink);
   font: inherit;
   font-size: 14px;
+}
+.quick-add input::placeholder,
+.quick-add .select-placeholder {
+  color: var(--ink-3);
+}
+.quick-add input:focus,
+.quick-add .select-trigger:focus-visible {
+  outline: none;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--blue) 50%, transparent);
 }
 .quick-add-date {
   width: 150px;
@@ -1712,6 +1724,7 @@ a:hover {
 }
 .quick-add .select-trigger {
   width: 170px;
+  justify-content: space-between;
 }
 .quick-add-status:empty {
   display: none;
@@ -1846,9 +1859,52 @@ a:hover {
     padding-left: 0;
     border-left: 0;
   }
-  .quick-add .select-trigger,
-  .quick-add-date {
+  /* Five boxes stacked down the screen is not this app. On a phone the
+     quick-add is one grouped card, the way every other form here reads. */
+  /* The card is the only thing here: the strip it used to sit on goes away. */
+  .quick-add {
+    background: transparent;
+    border-bottom: 0;
+  }
+  .quick-add-fields {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 0;
+    margin: var(--space-3) var(--space-4) var(--space-4);
+    background: var(--ground);
+    border-radius: var(--radius-lg);
+  }
+  .quick-add-fields > input,
+  .quick-add-fields > .select-trigger {
     width: 100%;
+    min-height: 44px;
+    padding-inline: var(--space-4);
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    text-align: left;
+    justify-content: space-between;
+  }
+  .quick-add-fields > input:first-of-type {
+    border-top: 0;
+  }
+  .quick-add-fields > .quick-add-amount {
+    text-align: right;
+  }
+  /* The plus is a desktop affordance; on a phone the button says it. */
+  .quick-add-icon {
+    display: none;
+  }
+  .quick-add-fixed {
+    justify-self: start;
+    margin: var(--space-3) var(--space-4) 0;
+  }
+  /* A capsule, as everywhere else in the app. */
+  .quick-add-fields > .btn {
+    margin: var(--space-3) var(--space-3) var(--space-3);
+  }
+  .quick-add-status {
+    padding-inline: var(--space-4);
   }
   .kind-tab {
     padding-inline: var(--space-3);
