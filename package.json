@@ -17,7 +17,9 @@
     "db:types": "supabase gen types typescript --local --schema public > src/lib/database.types.ts",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",
-    "build:e2e": "vite build --mode e2e"
+    "build:e2e": "vite build --mode e2e",
+    "backup": "node scripts/backup/cli.mjs",
+    "restore": "node scripts/backup/cli.mjs restore"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

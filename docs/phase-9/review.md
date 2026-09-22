@@ -64,8 +64,8 @@ Checked by hand as well, because automation catches roughly half of what matters
 |---|---|---|
 | 1 | ~~High~~ **Fixed** | **Account deletion was not built.** Built on 20 Sep 2026: Settings asks for the password and the phrase typed out, and the `delete-account` Edge Function verifies both again on its own side before cascading every row. See [account-deletion.md](account-deletion.md). |
 | 2 | **High** | **Staging now holds real financial data.** The Phase 8 trial imported the owner's actual ledger into a Free-tier project with no backups, and preview deployments are unprotected. Either delete that data from staging, or treat staging as production-grade. |
-| 3 | Medium | **Production is on the Free tier**: no backups, and the project pauses when idle. Phase 10 moves it to Pro; nothing real should be stored until then. |
-| 4 | Medium | **Leaked-password protection is off** (a Pro feature) and **MFA is not enabled** (planned for Phase 12). Both are defences a finance app should want. |
+| 3 | Medium, **accepted** | **Production is on the Free tier**: no backups, and the project pauses when idle. The owner declined Pro on 22 Sep 2026. Lodestar now takes its own backups (`npm run backup`), and the health check keeps the project awake. The risk is the age of the last backup, and it is the owner's to carry while Lodestar is theirs alone. |
+| 4 | Medium, **open** | **Leaked-password protection is off** (a Pro feature, and Pro was declined) and **MFA is not enabled** (planned for Phase 12). Both are defences a finance app should want; MFA is the one still available to us. |
 | 5 | Medium | **No end-to-end test runs against a live Supabase**, so the seam between app and database — PostgREST behaviour around column grants, RPC argument shapes — is only covered by types and by hand. Two bugs have already come from exactly this seam. |
 | 6 | Low | **Export and bulk-delete auditing depends on the client** calling `log_event`, because both are ordinary reads and deletes. Only import is audited by the database itself. Known since the Phase 2 review. |
 | 7 | Low | **The privacy copy has not been through legal**, and the brand file still marks it as needing approval. It must not appear in the product until it has. |
@@ -89,7 +89,7 @@ Not in the product yet. Proposed wording, which needs legal sign-off before it a
 
 - [x] Build account deletion, with the `delete-account` Edge Function (finding 1). Done 20 Sep 2026.
 - [ ] Clear the owner's real data out of staging, or accept staging as production-grade (finding 2).
-- [ ] Move production to Supabase Pro, and run a restore drill (finding 3, and Phase 10).
-- [ ] Turn on leaked-password protection once on Pro (finding 4).
+- [x] ~~Move production to Supabase Pro~~ — declined 22 Sep 2026. Instead: own backups, and a restore drill that proves them (docs/phase-10/production.md).
+- [ ] ~~Turn on leaked-password protection~~ — needs Pro. Open, with MFA (Phase 12) as the answer instead.
 - [ ] Manual screen-reader pass, 200% zoom, 320 px reflow.
 - [ ] Legal sign-off on the privacy copy (finding 7).
