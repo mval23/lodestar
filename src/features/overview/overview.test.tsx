@@ -8,6 +8,7 @@ const useNetWorth = vi.fn();
 const useBudgets = vi.fn();
 const useBills = vi.fn();
 const useGoals = vi.fn();
+const useMonthSummary = vi.fn();
 const useMonthAccounts = vi.fn();
 
 vi.mock('../accounts/queries', async (importOriginal) => {
@@ -35,7 +36,10 @@ vi.mock('../../lib/media', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/media')>();
   return { ...actual, useMediaQuery: () => phone() };
 });
-vi.mock('../months/queries', () => ({ useMonthAccounts: () => useMonthAccounts() }));
+vi.mock('../months/queries', () => ({
+  useMonthAccounts: () => useMonthAccounts(),
+  useMonthSummary: () => useMonthSummary(),
+}));
 vi.mock('../../lib/profile', () => ({
   useCurrency: () => 'USD',
   useProfile: () => ({ data: { id: 'u1', timezone: 'UTC', currency: 'USD' } }),
@@ -60,6 +64,7 @@ beforeEach(() => {
   useBudgets.mockReturnValue({ data: [] });
   useBills.mockReturnValue({ data: [] });
   useGoals.mockReturnValue({ data: [] });
+  useMonthSummary.mockReturnValue({ data: { to_goals_minor: 0 } });
   useMonthAccounts.mockReturnValue({ data: [] });
   phone.mockReturnValue(false);
 });
@@ -317,6 +322,64 @@ describe('OverviewPage', () => {
     const debt = screen.getByRole('region', { name: 'Debt' });
     expect(within(debt).getAllByText('$989.64').length).toBeGreaterThan(0);
     expect(within(debt).getByText('Paid this month').closest('.wide-row')).toHaveTextContent('$400.00');
+  });
+});
+
+describe('what was saved this month', () => {
+  it('shows what went into the goals, beside what came in and went out', () => {
+    phone.mockReturnValue(false);
+    useCashFlow.mockReturnValue({
+      data: [{ month: THIS_MONTH, money_in_minor: 688200, money_out_minor: 443670, net_minor: 244530 }],
+    });
+    useAccounts.mockReturnValue({
+      data: [{ account_id: 'a', name: 'Everyday checking', type: 'checking', is_liability: false, archived_at: null, balance_minor: 100000, user_id: 'u1', sort_order: 0, opening_balance_minor: 0, money_in_minor: 0, money_out_minor: 0 }],
+      isSuccess: true,
+      isPending: false,
+      isError: false,
+    });
+    useMonthSummary.mockReturnValue({ data: { to_goals_minor: 70000 } });
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+
+    const month = screen.getByRole('heading', { name: 'This month' }).closest('.fig-cell')!;
+    expect(month).toHaveTextContent('$6,882.00 in');
+    expect(month).toHaveTextContent('$4,436.70 out');
+    expect(month).toHaveTextContent('$700.00 saved');
+  });
+
+  it('says nothing about saving in a month with none', () => {
+    phone.mockReturnValue(false);
+    useCashFlow.mockReturnValue({
+      data: [{ month: THIS_MONTH, money_in_minor: 688200, money_out_minor: 443670, net_minor: 244530 }],
+    });
+    useAccounts.mockReturnValue({
+      data: [{ account_id: 'a', name: 'Everyday checking', type: 'checking', is_liability: false, archived_at: null, balance_minor: 100000, user_id: 'u1', sort_order: 0, opening_balance_minor: 0, money_in_minor: 0, money_out_minor: 0 }],
+      isSuccess: true,
+      isPending: false,
+      isError: false,
+    });
+    useMonthSummary.mockReturnValue({ data: { to_goals_minor: 0 } });
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+
+    expect(screen.queryByText(/saved/)).not.toBeInTheDocument();
+  });
+
+  it('shows it as a row of its own on a phone', () => {
+    phone.mockReturnValue(true);
+    useCashFlow.mockReturnValue({
+      data: [{ month: THIS_MONTH, money_in_minor: 688200, money_out_minor: 443670, net_minor: 244530 }],
+    });
+    useAccounts.mockReturnValue({
+      data: [{ account_id: 'a', name: 'Everyday checking', type: 'checking', is_liability: false, archived_at: null, balance_minor: 100000, user_id: 'u1', sort_order: 0, opening_balance_minor: 0, money_in_minor: 0, money_out_minor: 0 }],
+      isSuccess: true,
+      isPending: false,
+      isError: false,
+    });
+    useMonthSummary.mockReturnValue({ data: { to_goals_minor: 70000 } });
+    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
+
+    const row = screen.getByText('Saved').closest('li')!;
+    expect(row).toHaveTextContent('Moved into your goals');
+    expect(row).toHaveTextContent('$700.00');
   });
 });
 
