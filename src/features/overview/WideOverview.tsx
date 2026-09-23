@@ -8,7 +8,7 @@ import { accountTypeLabel, netWorthOf, type AccountBalance } from '../accounts/q
 import { describeDue, dueStateOf, useBills } from '../bills/queries';
 import { totalsOf, useBudgets, type BudgetProgress } from '../budgets/queries';
 import { standingOf, useGoals } from '../goals/queries';
-import { useMonthAccounts } from '../months/queries';
+import { useMonthAccounts, useMonthSummary } from '../months/queries';
 import { useCashFlow, useNetWorth } from '../reports/queries';
 import { TitleLink } from './TitleLink';
 
@@ -65,6 +65,8 @@ function KeyFigures({ accounts, today, month, currency }: Props) {
   const budgets = useBudgets(month);
   const netWorth = useNetWorth(12);
   const cashFlow = useCashFlow(2);
+  // What went into the accounts that back goals: saving, as this app means it.
+  const summary = useMonthSummary(month);
   const bills = useBills();
 
   const plan = budgets.data ?? [];
@@ -77,6 +79,7 @@ function KeyFigures({ accounts, today, month, currency }: Props) {
   const points = (netWorth.data ?? []).map((row) => row.net_worth_minor);
   const current = (cashFlow.data ?? []).find((row) => row.month === month);
 
+  const saved = summary.data?.to_goals_minor ?? 0;
   const due = (bills.data ?? []).filter((bill) => !bill.archived_at && dueStateOf(bill.next_due_on, today) !== 'later');
   const dueTotal = due.reduce((sum, bill) => sum + bill.amount_minor, 0);
   const overdue = due.filter((bill) => dueStateOf(bill.next_due_on, today) === 'overdue').length;
@@ -150,6 +153,11 @@ function KeyFigures({ accounts, today, month, currency }: Props) {
             <p className="footnote flush">
               <Amount minor={current.money_out_minor} currency={currency} /> out
             </p>
+            {saved > 0 && (
+              <p className="footnote flush">
+                <Amount minor={saved} currency={currency} /> saved
+              </p>
+            )}
           </>
         ) : (
           <p className="footnote flush">Nothing recorded this month yet.</p>

@@ -25,6 +25,7 @@ export type Tables = {
   import_batches: Record<string, unknown>[];
   account_month_flow?: Record<string, unknown>[];
   account_ledger?: Record<string, unknown>[];
+  month_summary?: Record<string, unknown>[];
 };
 
 export const USER_ID = '00000000-0000-4000-8000-00000000000a';
@@ -90,6 +91,9 @@ export function withData(): Tables {
   ];
   tables.recurring_items = [
     { id: 'bill-1', user_id: USER_ID, name: 'Rent', label: 'bill', kind: 'expense', amount_minor: 120000, amount_is_variable: false, from_account_id: 'acc-chk', to_account_id: null, category_id: null, category_kind: 'expense', cadence_unit: 'month', cadence_interval: 1, anchor_on: today, next_due_on: today, ends_on: null, archived_at: null, created_at: '', updated_at: '' },
+  ];
+  tables.month_summary = [
+    { user_id: USER_ID, month: thisMonth, income_minor: 688200, income_count: 4, expense_minor: 443670, expense_count: 12, transfer_minor: 70000, transfer_count: 1, to_goals_minor: 70000, net_minor: 244530 },
   ];
   tables.monthly_cash_flow = [
     { user_id: USER_ID, month: thisMonth, money_in_minor: 250000, money_out_minor: 64550, net_minor: 185450 },

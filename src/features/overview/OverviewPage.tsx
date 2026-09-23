@@ -17,7 +17,7 @@ import { accountTypeLabel, netWorthOf, useAccounts, type AccountBalance } from '
 import { describeDue, dueStateOf, useBills } from '../bills/queries';
 import { totalsOf, useBudgets, type BudgetProgress } from '../budgets/queries';
 import { standingOf, useGoals } from '../goals/queries';
-import { useMonthAccounts } from '../months/queries';
+import { useMonthAccounts, useMonthSummary } from '../months/queries';
 import { useCashFlow, useNetWorth } from '../reports/queries';
 import { TransactionSheet } from '../transactions/TransactionSheet';
 import { PHONE, useMediaQuery } from '../../lib/media';
@@ -137,6 +137,8 @@ function MonthTotals({
 }) {
   const cashFlow = useCashFlow(2);
   const flows = useMonthAccounts(month);
+  // What went into the accounts that back goals: saving, as this app means it.
+  const saved = useMonthSummary(month).data?.to_goals_minor ?? 0;
   const current = (cashFlow.data ?? []).find((row) => row.month === month);
   const worth = netWorthOf(accounts);
   const liabilities = new Set(accounts.filter((a) => a.is_liability && !a.archived_at).map((a) => a.account_id));
@@ -170,6 +172,15 @@ function MonthTotals({
                   <Amount minor={current.money_out_minor} currency={currency} />
                 </li>
               </>
+            )}
+            {saved > 0 && (
+              <li>
+                <span className="row-label">
+                  Saved
+                  <small>Moved into your goals</small>
+                </span>
+                <Amount minor={saved} currency={currency} />
+              </li>
             )}
             {liabilities.size > 0 && (
               <li>
