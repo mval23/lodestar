@@ -4,8 +4,8 @@ import {
   ArrowDownUp,
   ChartPie,
   ChevronRight,
+  Compass,
   KeyRound,
-  ListChecks,
   LogOut,
   MonitorSmartphone,
   Trash2,
@@ -19,6 +19,7 @@ import { authErrorMessage, dataErrorMessage } from '../auth/errors';
 import { DeleteAccountPanel } from './DeleteAccountPanel';
 import { PasswordForm } from './PasswordForm';
 import { ProfileForm } from './ProfileForm';
+import { useTour } from '../tour/Tour';
 import { useProfile } from '../../lib/profile';
 
 // Settings in two columns on a wide screen: who you are and how amounts and
@@ -29,6 +30,7 @@ import { useProfile } from '../../lib/profile';
 export function SettingsPage() {
   const session = useSession();
   const profile = useProfile();
+  const tour = useTour();
   const email = session.user.email ?? '';
   const [sheet, setSheet] = useState<'password' | 'delete' | null>(null);
   const [passwordChanged, setPasswordChanged] = useState(false);
@@ -71,12 +73,16 @@ export function SettingsPage() {
                 label="Import & export"
                 hint="Bring in a CSV from your bank, or export everything"
               />
-              <SettingsLink
-                to="/welcome"
-                icon={ListChecks}
-                label="Setup guide"
-                hint="Walk through accounts, categories, bills, budgets and goals again"
-              />
+              <li>
+                <button type="button" className="row-button" data-tour="take-tour" onClick={tour.start}>
+                  <Compass className="row-icon" strokeWidth={1.75} aria-hidden />
+                  <span className="row-label row-grow">
+                    Take the tour
+                    <small>See where everything is, page by page</small>
+                  </span>
+                  <ChevronRight className="row-chevron" strokeWidth={1.75} aria-hidden />
+                </button>
+              </li>
             </ul>
           </section>
 

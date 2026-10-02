@@ -38,7 +38,9 @@ export function AccountsPage() {
             </p>
           )}
         </div>
-        <Button onClick={() => openSheet()}>Add account</Button>
+        <Button data-tour="add-account" onClick={() => openSheet()}>
+          Add account
+        </Button>
       </header>
 
       {accounts.isError && <Notice tone="err">{dataErrorMessage(accounts.error)}</Notice>}

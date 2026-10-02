@@ -16,9 +16,8 @@ import { totalsOf, useBudgets, useCopyBudgets, useSetBudget, type BudgetProgress
 // Left is allowed to go negative and is shown as "Over plan by", because a
 // number clamped at zero hides the thing you most need to see.
 // The month lives in the address (/budgets/2026-09), so a month can be linked
-// to from the Overview, a report or a month page. Without onMonth the list
-// stays on its one month, as the setup walkthrough shows it.
-export function BudgetList({ month, onMonth }: { month: string; onMonth?: (month: string) => void }) {
+// to from the Overview, a report or a month page.
+export function BudgetList({ month, onMonth }: { month: string; onMonth: (month: string) => void }) {
   const currency = useCurrency();
   const budgets = useBudgets(month);
   const categories = useCategories();
@@ -83,20 +82,16 @@ export function BudgetList({ month, onMonth }: { month: string; onMonth?: (month
   return (
     <section className="stack">
       <header className="page-head">
-        {onMonth ? (
-          <nav className="month-nav" aria-label="Month">
-            <Button variant="secondary" aria-label="Previous month" onClick={() => onMonth(addMonths(month, -1))}>
-              <ChevronLeft strokeWidth={1.75} aria-hidden />
-            </Button>
-            <h2 className="title-2">{formatMonth(month)}</h2>
-            <Button variant="secondary" aria-label="Next month" onClick={() => onMonth(addMonths(month, 1))}>
-              <ChevronRight strokeWidth={1.75} aria-hidden />
-            </Button>
-          </nav>
-        ) : (
+        <nav className="month-nav" aria-label="Month">
+          <Button variant="secondary" aria-label="Previous month" onClick={() => onMonth(addMonths(month, -1))}>
+            <ChevronLeft strokeWidth={1.75} aria-hidden />
+          </Button>
           <h2 className="title-2">{formatMonth(month)}</h2>
-        )}
-        {onMonth && planned === 0 && rows.length > 0 && (
+          <Button variant="secondary" aria-label="Next month" onClick={() => onMonth(addMonths(month, 1))}>
+            <ChevronRight strokeWidth={1.75} aria-hidden />
+          </Button>
+        </nav>
+        {planned === 0 && rows.length > 0 && (
           <Button
             variant="secondary"
             busy={copy.isPending}
@@ -156,10 +151,16 @@ export function BudgetList({ month, onMonth }: { month: string; onMonth?: (month
 
           {/* One list per group, headed by the group and what it has spent of
               its plan. The group used to repeat under every row instead. */}
-          {sections.map(({ label, items }) => {
+          {sections.map(({ label, items }, index) => {
             const subtotal = totalsOf(items.flatMap((item) => (item.progress ? [item.progress] : [])));
             return (
-              <section key={label} className="stack-tight" aria-label={label}>
+              // The tour lights the first group, where a plan starts.
+              <section
+                key={label}
+                className="stack-tight"
+                aria-label={label}
+                data-tour={index === 0 ? 'budget-plan' : undefined}
+              >
                 <div className="budget-group-head">
                   <h3 className="form-group-title flush">{label}</h3>
                   {subtotal.planned > 0 && (

@@ -20,10 +20,10 @@ import {
 
 type Values = { name: string; type: AccountType; amount: string; opening_date: string };
 
-function initialValues(account: Account | undefined, currency: Currency, defaultType: AccountType): Values {
+function initialValues(account: Account | undefined, currency: Currency): Values {
   return {
     name: account?.name ?? '',
-    type: account?.type ?? defaultType,
+    type: account?.type ?? 'checking',
     amount: account ? toAmountInput(account.opening_balance_minor, currency) : '',
     opening_date: account?.opening_date ?? '',
   };
@@ -37,17 +37,14 @@ function initialValues(account: Account | undefined, currency: Currency, default
 export function AccountSheet({
   onClose,
   account,
-  defaultType = 'checking',
 }: {
   onClose: () => void;
   account?: Account;
-  // Set when the sheet is opened for a purpose, such as a goal's savings.
-  defaultType?: AccountType;
 }) {
   const currency = useCurrency();
   const create = useCreateAccount();
   const update = useUpdateAccount();
-  const [values, setValues] = useState<Values>(() => initialValues(account, currency, defaultType));
+  const [values, setValues] = useState<Values>(() => initialValues(account, currency));
   const [error, setError] = useState<string | null>(null);
 
 

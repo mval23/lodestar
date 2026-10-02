@@ -69,6 +69,21 @@ test.describe('in the dark', () => {
   });
 });
 
+test.describe('the tour', () => {
+  test('a step that points at a page has no violations', async ({ page }) => {
+    await signIn(page);
+    await stubSupabase(page, { tables: withData() });
+    await page.goto('/settings');
+    await page.getByRole('button', { name: /Take the tour/ }).click();
+    const card = page.locator('.tour-card');
+    await card.getByRole('button', { name: 'Next', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Add your accounts' })).toBeVisible();
+    await expect(page.locator('.tour-ring').first()).toBeVisible();
+    const results = await scan(page);
+    expect(results.violations).toEqual([]);
+  });
+});
+
 test.describe('the sheets', () => {
   test('the add transaction sheet has no violations', async ({ page }) => {
     await signIn(page);

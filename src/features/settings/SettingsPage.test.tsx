@@ -44,7 +44,7 @@ describe('SettingsPage', () => {
     show();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Confirmation')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Setup guide/ })).toHaveAttribute('href', '/welcome');
+    expect(screen.getByRole('button', { name: /Take the tour/ })).toBeInTheDocument();
   });
 
   it('changes the password in a sheet, then closes it and says so', async () => {

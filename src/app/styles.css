@@ -500,8 +500,12 @@ a:hover {
 }
 
 @media (max-width: 767px) {
+  /* The top bar keeps its height and the page takes what's left. Without
+     the rows, a short page shared the spare height with the bar, which
+     stretched to fill the top of the screen. */
   .shell {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
   .sidebar {
     display: none;
@@ -2293,16 +2297,6 @@ a:hover {
   .budget-row > .footnote {
     grid-area: note;
   }
-  /* A form-width page (the setup walkthrough) is narrower than that one
-     line needs, so its rows keep the stacked layout and the plan stays in
-     view. */
-  .page-form .budget-row {
-    grid-template-columns: none;
-    grid-template-areas: none;
-  }
-  .page-form .budget-row > .budget-head {
-    display: flex;
-  }
 }
 
 /* Goals page: two across once each card can keep its line lengths. */
@@ -2638,150 +2632,6 @@ a:hover {
   color: var(--blue);
 }
 
-/* ---------- Setup walkthrough ---------- */
-.setup-hero {
-  display: grid;
-  gap: var(--space-3);
-  justify-items: start;
-}
-.setup-hero svg {
-  shape-rendering: crispEdges;
-}
-/* The steps in one row. Done steps carry a check and the current one is
-   filled ink, so where you are is never colour alone; blue stays for the
-   links themselves. */
-.setup-steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-4);
-}
-.setup-steps a {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 32px;
-  font-size: 13px;
-  line-height: 18px;
-  color: var(--ink-2);
-}
-.setup-steps a:hover {
-  color: var(--ink);
-}
-.setup-steps a[aria-current='step'] {
-  color: var(--ink);
-  font-weight: 600;
-}
-.setup-mark {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  width: 24px;
-  height: 24px;
-  border-radius: var(--radius-pill);
-  font-size: 12px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-2);
-  background: var(--sunk);
-}
-.setup-mark[data-current] {
-  background: var(--ink);
-  color: var(--surface);
-}
-.setup-mark svg {
-  width: 14px;
-  height: 14px;
-}
-/* A phone has room for the marks, not the six labels: only the current
-   step keeps its name. */
-@media (max-width: 767px) {
-  .setup-steps {
-    gap: var(--space-2);
-  }
-  .setup-steps li:not([data-current]) .setup-step-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-  .setup-steps a {
-    min-height: 44px;
-    min-width: 32px;
-  }
-}
-.setup-outline .row-button {
-  justify-content: flex-start;
-}
-.setup-foot {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--line);
-}
-.setup-card-foot {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-/* A row that only states something: no hover, no pointer. */
-.row-button.row-static {
-  cursor: default;
-}
-.row-button.row-static:hover {
-  background: transparent;
-}
-/* Starter categories: tap to pick, tap again to drop. */
-.choice-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.choice-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-height: 36px;
-  padding: 6px 14px;
-  font: inherit;
-  font-size: 14px;
-  line-height: 19px;
-  color: var(--ink);
-  background: var(--surface);
-  border: 0;
-  border-radius: var(--radius-pill);
-  cursor: pointer;
-  transition: background var(--dur-fast) var(--ease-spring), color var(--dur-fast) var(--ease-spring);
-}
-.choice-chip:hover {
-  background: var(--sunk);
-}
-.choice-chip[aria-pressed='true'] {
-  background: var(--blue-soft);
-  color: var(--blue);
-  font-weight: 600;
-}
-.choice-chip:disabled {
-  cursor: default;
-  background: var(--sunk);
-  color: var(--ink-2);
-  font-weight: 400;
-}
-.choice-chip svg {
-  width: 16px;
-  height: 16px;
-  margin-left: -2px;
-}
-
 /* ---------- Settings ---------- */
 /* One column at a reading measure; two side by side once the frame has room
    for both, so a wide screen isn't a narrow strip with the rest left empty. */
@@ -2817,4 +2667,131 @@ a:hover {
 .row-button.row-danger,
 .row-button.row-danger .row-icon {
   color: var(--err);
+}
+
+/* ---------- Tour ---------- */
+/* The page dims, with a hole cut around each thing the step points at and a
+   blue ring round it. Clicks pass through to the page, where the tour lets
+   only what's lit be used. The card sits above everything, the tab bar
+   included; the app's sheets open above the card. */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+.tour-scrim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.tour-shade {
+  fill: var(--scrim);
+}
+.tour-ring {
+  position: fixed;
+  border: 2px solid var(--blue);
+  border-radius: 12px;
+  pointer-events: none;
+  transition: top var(--dur) var(--ease-spring), left var(--dur) var(--ease-spring),
+    width var(--dur) var(--ease-spring), height var(--dur) var(--ease-spring);
+}
+.tour-card {
+  position: fixed;
+  pointer-events: auto;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-float);
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(4px);
+}
+.tour-card[data-ready] {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity var(--dur-fast) var(--ease-spring);
+}
+/* Centred cards set their own transform; keep it. */
+.tour-card[data-ready]:not([style*='translateY(-50%)']) {
+  transform: none;
+}
+.tour-card .callout {
+  color: var(--ink-2);
+}
+.tour-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+.tour-actions .actions {
+  margin-left: auto;
+  gap: var(--space-2);
+}
+.tour-actions .btn-plain {
+  padding-inline: 0;
+}
+/* What's been done on this step, in words with a check. */
+.tour-done {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 14px;
+  line-height: 19px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.tour-done svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+/* Starter categories in the tour: tap to add. */
+.choice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.choice-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 36px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--blue);
+  background: var(--sunk);
+  border: 0;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.choice-chip:hover {
+  filter: brightness(0.96);
+}
+.choice-chip:disabled {
+  cursor: default;
+  filter: none;
+}
+.choice-chip[aria-pressed='true'] {
+  color: var(--ink-2);
+  background: transparent;
+}
+.choice-chip svg {
+  width: 16px;
+  height: 16px;
+  margin-left: -2px;
+}
+@media (max-width: 767px) {
+  .choice-chip {
+    min-height: 44px;
+  }
 }
