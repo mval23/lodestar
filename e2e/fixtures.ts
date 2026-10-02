@@ -33,6 +33,12 @@ export const EMAIL = 'synthetic@example.test';
 
 const thisMonth = `${new Date().toISOString().slice(0, 7)}-01`;
 const today = new Date().toISOString().slice(0, 10);
+// Reports count complete months, so the data needs one before this month.
+const lastMonth = (() => {
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  return d.toISOString().slice(0, 10);
+})();
 
 export function emptyTables(): Tables {
   return {
@@ -95,11 +101,14 @@ export function withData(): Tables {
   tables.month_summary = [
     { user_id: USER_ID, month: thisMonth, income_minor: 688200, income_count: 4, expense_minor: 443670, expense_count: 12, transfer_minor: 70000, transfer_count: 1, to_goals_minor: 70000, net_minor: 244530 },
   ];
+  // Newest first, as the Overview asks for them; the stub doesn't sort.
   tables.monthly_cash_flow = [
     { user_id: USER_ID, month: thisMonth, money_in_minor: 250000, money_out_minor: 64550, net_minor: 185450 },
+    { user_id: USER_ID, month: lastMonth, money_in_minor: 250000, money_out_minor: 181200, net_minor: 68800 },
   ];
   tables.net_worth_by_month = [
     { user_id: USER_ID, month: thisMonth, assets_minor: 285450, liabilities_minor: -31000, net_worth_minor: 254450 },
+    { user_id: USER_ID, month: lastMonth, assets_minor: 216650, liabilities_minor: -31000, net_worth_minor: 185650 },
   ];
   return tables;
 }

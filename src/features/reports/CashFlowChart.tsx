@@ -24,16 +24,19 @@ const HEIGHT = 240;
 const INNER_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 
 // Money in is ink, money out is grey, and they are told apart by lightness
-// as well as position. Blue marks only the current month. Gains and losses
-// are never red against green.
+// as well as position. Blue marks only "now": on Reports, which counts
+// complete months, that is the latest complete month. Gains and losses are
+// never red against green.
 export function CashFlowChart({
   rows,
   currency,
   currentMonth,
+  nowLabel = 'This month',
 }: {
   rows: CashFlowMonth[];
   currency: Currency;
   currentMonth: string;
+  nowLabel?: string;
 }) {
   const { ref, width } = useChartWidth();
   const innerWidth = width - MARGIN.left - MARGIN.right;
@@ -61,7 +64,7 @@ export function CashFlowChart({
           items={[
             { className: 'swatch-in', label: 'Money in' },
             { className: 'swatch-out', label: 'Money out' },
-            { className: 'swatch-now', label: 'This month' },
+            { className: 'swatch-now', label: nowLabel },
           ]}
         />
       }
