@@ -103,6 +103,7 @@ test.describe('leaving', () => {
     await signIn(page);
     await stubSupabase(page, { tables: withData() });
     await page.goto('/settings');
+    await page.getByRole('button', { name: /Delete account/ }).click();
     // Scanning before the count arrives would miss the fields entirely.
     await expect(page.getByLabel('Confirmation', { exact: true })).toBeVisible();
     const results = await scan(page);
