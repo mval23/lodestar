@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router';
 import { Settings } from 'lucide-react';
 import { Wordmark } from '../ui/Logo';
+import { TourProvider } from '../features/tour/Tour';
+import { navTarget } from '../features/tour/steps';
 import { SIDEBAR_FOOT, SIDEBAR_MAIN, TAB_BAR, navOwnerOf, tabOwnerOf, type NavItem } from './nav';
 
 // Whether a nav item is lit: its own path matches (nested paths included,
@@ -22,6 +24,7 @@ function SidebarLink({ item, owned, collapsed }: { item: NavItem; owned: boolean
         to={item.to}
         className="nav-link"
         aria-current={lit ? 'page' : undefined}
+        data-tour={navTarget(item.to)}
         // Collapsed, the label is hidden from sight but not from a screen
         // reader; the tooltip gives it back to a pointer.
         title={collapsed ? item.label : undefined}
@@ -57,7 +60,7 @@ function TabLink({ item, owned }: { item: NavItem; owned: boolean }) {
   const Icon = item.icon;
   const lit = useLit(item.to, owned);
   return (
-    <Link to={item.to} className="tab-link" aria-current={lit ? 'page' : undefined}>
+    <Link to={item.to} className="tab-link" aria-current={lit ? 'page' : undefined} data-tour={navTarget(item.to)}>
       <Icon strokeWidth={1.75} aria-hidden />
       {item.label}
     </Link>
@@ -78,6 +81,7 @@ export function AppLayout() {
   };
 
   return (
+    <TourProvider>
     <div className={collapsed ? 'shell shell-collapsed' : 'shell'}>
       {/* A click on the sidebar's empty space opens or closes it; a click on
           a link or button keeps its own meaning. Empty space can't be reached
@@ -110,7 +114,7 @@ export function AppLayout() {
 
       <header className="mobile-bar">
         <Wordmark />
-        <NavLink to="/settings" className="icon-link" aria-label="Settings">
+        <NavLink to="/settings" className="icon-link" aria-label="Settings" data-tour={navTarget('/settings')}>
           <Settings strokeWidth={1.75} aria-hidden />
         </NavLink>
       </header>
@@ -125,5 +129,6 @@ export function AppLayout() {
         ))}
       </nav>
     </div>
+    </TourProvider>
   );
 }

@@ -1,4 +1,4 @@
-import { emptyTables, expect, LEDGER_ACCOUNT, signIn, stubSupabase, test, withData, withLedger } from './fixtures';
+import { emptyTables, expect, LEDGER_ACCOUNT, signIn, stubSupabase, test, USER_ID, withData, withLedger } from './fixtures';
 
 // The journeys that matter, driven through a real browser against the
 // production build, with the production security headers in force.
@@ -35,20 +35,109 @@ test.describe('signed out', () => {
 });
 
 test.describe('first run', () => {
-  test('walks through setup: a currency, then the first account', async ({ page }) => {
+  test('sets up on the real pages: currency, an account, categories, and the rest', async ({ page }, info) => {
+    const phone = info.project.name === 'phone';
+    const writes: { table: string; body: unknown }[] = [];
+    // The stub keeps what's written, as the database would, so the tour can
+    // see an account or a category appear.
+    const tables = emptyTables();
+    await signIn(page);
+    await stubSupabase(page, {
+      tables,
+      onWrite: (table, body) => {
+        writes.push({ table, body });
+        const row = (Array.isArray(body) ? body[0] : body) as Record<string, unknown>;
+        if (table === 'accounts') {
+          tables.account_balances.push({
+            user_id: USER_ID,
+            account_id: 'acc-new',
+            name: row.name,
+            type: row.type,
+            is_liability: false,
+            sort_order: 0,
+            archived_at: null,
+            opening_balance_minor: row.opening_balance_minor,
+            money_in_minor: 0,
+            money_out_minor: 0,
+            balance_minor: row.opening_balance_minor,
+          });
+        }
+        if (table === 'categories') {
+          tables.categories.push({ id: `cat-${tables.categories.length}`, user_id: USER_ID, group_id: null, archived_at: null, ...row });
+        }
+      },
+    });
+    await page.goto('/');
+
+    // Pages have buttons of their own ("Next month"), so look in the card.
+    const card = page.locator('.tour-card');
+    const tourButton = (name: string) => card.getByRole('button', { name, exact: true });
+
+    // The tour starts by itself on a first run, pointing at the currency,
+    // which can be chosen right there.
+    await expect(page.getByRole('dialog', { name: 'Welcome to Lodestar' })).toBeVisible();
+    await page.getByRole('radiogroup', { name: 'Currency' }).getByText('COP').click();
+    await expect.poll(() => writes.some((w) => w.table === 'profiles')).toBe(true);
+    await tourButton('Next').click();
+
+    // Accounts: Skip until there's one, then it says so and offers Next.
+    await expect(page.getByRole('dialog', { name: 'Add your accounts' })).toBeVisible();
+    await expect(page).toHaveURL(/\/accounts$/);
+    await expect(tourButton('Skip')).toBeVisible();
+    if (!phone) {
+      // What isn't lit does nothing while the tour is open.
+      await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Activity' }).click({ force: true });
+      await expect(page).toHaveURL(/\/accounts$/);
+    }
+    await page.getByRole('button', { name: 'Add account', exact: true }).click();
+    const sheet = page.getByRole('dialog', { name: 'Add account' });
+    await sheet.getByLabel('Name').fill('Everyday checking');
+    await sheet.getByLabel('Balance today').fill('1250');
+    await sheet.getByRole('button', { name: 'Add account' }).click();
+    await expect(card.getByText('1 account added. Add another, or go on.')).toBeVisible();
+    await tourButton('Next').click();
+
+    // Categories: a starter is one tap.
+    await expect(page.getByRole('dialog', { name: 'Name what money is for' })).toBeVisible();
+    await expect(page).toHaveURL(/\/categories$/);
+    await card.getByRole('button', { name: 'Groceries' }).click();
+    await expect(card.getByText('1 category so far.')).toBeVisible();
+    await tourButton('Next').click();
+
+    // Every other step can be skipped.
+    const rest: [title: string, url: RegExp][] = [
+      ['Add what comes round', /\/bills$/],
+      ['Plan this month', /\/budgets$/],
+      ['Save towards something', /\/goals$/],
+      ['Record your first expense', /\/activity$/],
+    ];
+    for (const [title, url] of rest) {
+      await expect(page.getByRole('dialog', { name: title })).toBeVisible();
+      await expect(page).toHaveURL(url);
+      await expect(page.locator('.tour-ring').first()).toBeVisible();
+      await tourButton('Skip').click();
+    }
+
+    await expect(page.getByRole('dialog', { name: 'Everything else' })).toBeVisible();
+    await expect(page.locator('.tour-ring').first()).toBeVisible();
+    await tourButton('Next').click();
+    await expect(page.getByRole('dialog', { name: 'You’re set up' })).toBeVisible();
+    await tourButton('Done').click();
+    await expect(card).toHaveCount(0);
+  });
+
+  test('offers the tour once, and again whenever asked', async ({ page }) => {
     await signIn(page);
     await stubSupabase(page, { tables: emptyTables() });
     await page.goto('/');
+    await page.getByRole('dialog', { name: 'Welcome to Lodestar' }).getByRole('button', { name: 'End tour' }).click();
 
-    await expect(page).toHaveURL(/\/welcome$/);
+    await page.reload();
     await expect(page.getByRole('heading', { name: 'Welcome to Lodestar' })).toBeVisible();
-    await expect(page.getByRole('radiogroup', { name: 'Currency' })).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
 
-    await page.getByRole('link', { name: 'Start' }).click();
-    await expect(page.getByRole('heading', { name: 'Where you stand today' })).toBeVisible();
-    await page.getByRole('button', { name: 'Add your first account' }).click();
-    await expect(page.getByRole('dialog', { name: 'Add account' })).toBeVisible();
-    await expect(page.getByText('Give the account a name.')).toBeVisible();
+    await page.getByRole('button', { name: 'Show me around' }).click();
+    await expect(page.getByRole('dialog', { name: 'Welcome to Lodestar' })).toBeVisible();
   });
 });
 

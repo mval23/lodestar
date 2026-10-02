@@ -44,7 +44,9 @@ export function GoalsPage() {
           <h1 className="large-title">Goals</h1>
           <p className="footnote flush">Each goal is one savings account. Every transfer into it counts.</p>
         </div>
-        <Button onClick={() => openSheet()}>Add goal</Button>
+        <Button data-tour="add-goal" onClick={() => openSheet()}>
+          Add goal
+        </Button>
       </header>
 
       {goals.isError && <Notice tone="err">{dataErrorMessage(goals.error)}</Notice>}

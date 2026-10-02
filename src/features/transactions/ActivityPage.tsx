@@ -108,10 +108,12 @@ export function ActivityPage() {
             {filtered && ' matching your filters'}
           </p>
         </div>
-        <Button onClick={() => openSheet()}>Add transaction</Button>
+        <Button data-tour="add-transaction" onClick={() => openSheet()}>
+          Add transaction
+        </Button>
       </header>
 
-      <section className="filters" aria-label="Filters">
+      <section className="filters" aria-label="Filters" data-tour="activity-filters">
         <input
           type="search"
           className="search-field"

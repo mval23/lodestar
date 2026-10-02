@@ -23,10 +23,12 @@ export function BudgetsPage() {
         <nav className="actions" aria-label="Related">
           {/* On a phone, Bills sits under Budgets (CLAUDE.md): the tab bar has
               no room for it. The sidebar lists it on a wide screen. */}
-          <Link className="mobile-only" to="/bills">
+          <Link className="mobile-only" to="/bills" data-tour="link-bills">
             Bills
           </Link>
-          <Link to="/categories">Categories</Link>
+          <Link to="/categories" data-tour="link-categories">
+            Categories
+          </Link>
         </nav>
       </header>
 

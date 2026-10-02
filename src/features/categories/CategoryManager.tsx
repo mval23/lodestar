@@ -64,7 +64,11 @@ export function CategoriesPage() {
         back={{ to: '/budgets', label: 'Budgets' }}
         title="Categories"
         subtitle="A category is what money was for. A budget plans one category for one month."
-        actions={<Button onClick={() => open()}>Add category</Button>}
+        actions={
+          <Button data-tour="add-category" onClick={() => open()}>
+            Add category
+          </Button>
+        }
       />
 
       {categories.isError && <Notice tone="err">{dataErrorMessage(categories.error)}</Notice>}

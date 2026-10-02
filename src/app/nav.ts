@@ -31,11 +31,10 @@ export const SIDEBAR_FOOT: NavItem[] = [
 
 // A detail page is somewhere you arrive from, so it keeps its list's item
 // lit. Most nest under their list (/accounts/:id), but categories sit with
-// Budgets, a month is reached from Reports, and setup starts on the Overview.
+// Budgets and a month is reached from Reports.
 const OWNED_BY: [prefix: string, owner: string][] = [
   ['/categories', '/budgets'],
   ['/months', '/reports'],
-  ['/welcome', '/'],
 ];
 
 export function navOwnerOf(pathname: string): string | null {
@@ -53,7 +52,6 @@ const TAB_OWNED_BY: [prefix: string, owner: string][] = [
   ['/reports', '/'],
   ['/months', '/'],
   ['/import-export', '/'],
-  ['/welcome', '/'],
 ];
 
 export function tabOwnerOf(pathname: string): string | null {

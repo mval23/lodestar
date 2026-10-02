@@ -12,7 +12,6 @@ function show(path = '/') {
           <Route path="/activity" element={<h1>Activity</h1>} />
           <Route path="/accounts/:id" element={<h1>An account</h1>} />
           <Route path="/categories" element={<h1>Categories</h1>} />
-          <Route path="/welcome/:step" element={<h1>Setup</h1>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -93,9 +92,4 @@ describe('which item is lit', () => {
     expect(lit('Tabs')).toEqual(['Budgets']);
   });
 
-  it('lights the Overview during setup, and only on its own page otherwise', () => {
-    show('/welcome/bills');
-    expect(lit('Main')).toEqual(['Overview']);
-    expect(lit('Tabs')).toEqual(['Overview']);
-  });
 });

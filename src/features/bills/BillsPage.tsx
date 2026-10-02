@@ -49,7 +49,9 @@ export function BillsPage() {
           <h1 className="large-title">Bills</h1>
           <p className="footnote flush">Bills and subscriptions, with what’s due next.</p>
         </div>
-        <Button onClick={() => setSheetOpen(true)}>Add bill</Button>
+        <Button data-tour="add-bill" onClick={() => setSheetOpen(true)}>
+          Add bill
+        </Button>
       </header>
 
       {bills.isError && <Notice tone="err">{dataErrorMessage(bills.error)}</Notice>}
