@@ -51,6 +51,14 @@ export function formatMonth(monthStart: string): string {
   }
 }
 
+export function formatMonthShort(monthStart: string): string {
+  try {
+    return format(parseISO(monthStart), 'MMM yyyy');
+  } catch {
+    return monthStart;
+  }
+}
+
 export function monthStartOf(isoDate: string): string {
   return `${isoDate.slice(0, 7)}-01`;
 }

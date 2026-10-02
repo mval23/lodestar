@@ -2163,6 +2163,13 @@ a:hover {
   gap: var(--space-2);
   margin-top: var(--space-4);
 }
+/* A link inside a sentence ("+$20.85 over 12 months · Reports") can't rely on
+   blue alone to stand apart from the words around it, so it is underlined. */
+.stand-trend .footnote a,
+.fig-cell .footnote a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .sparkline {
   position: relative;
   height: 48px;
