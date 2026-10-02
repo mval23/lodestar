@@ -26,6 +26,8 @@ function useTransactionCount() {
 // Deletion asks for two things: the password, so an unattended browser is not
 // enough, and the phrase typed out, so it cannot happen by a stray click. The
 // Edge Function insists on the first of those again on its own side.
+// Settings shows this in a sheet, opened from its own row, so the form is not
+// sitting open on a page visited for everything else.
 export function DeleteAccountPanel({ email }: { email: string }) {
   const navigate = useNavigate();
   const count = useTransactionCount();
@@ -67,8 +69,7 @@ export function DeleteAccountPanel({ email }: { email: string }) {
   };
 
   return (
-    <section className="stack">
-      <h2 className="form-group-title">Delete your Lodestar account</h2>
+    <div className="stack">
       <div className="group stack-tight">
         <p className="flush">
           This removes your account and everything in it — accounts, transactions, categories, budgets, goals and bills
@@ -104,12 +105,12 @@ export function DeleteAccountPanel({ email }: { email: string }) {
                 spellCheck={false}
                 value={typed}
                 aria-describedby="delete-confirm-hint"
-                placeholder={phrase}
+                placeholder="The words below"
                 onChange={(event) => setTyped(event.target.value)}
               />
             </FormRow>
           </div>
-          <p id="delete-confirm-hint" className="secondary flush">
+          <p id="delete-confirm-hint" className="form-hint flush">
             To confirm, type <strong>{phrase}</strong>
           </p>
 
@@ -129,6 +130,6 @@ export function DeleteAccountPanel({ email }: { email: string }) {
           </div>
         </>
       )}
-    </section>
+    </div>
   );
 }

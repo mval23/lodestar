@@ -14,9 +14,9 @@ export async function reauthenticate(email: string, password: string) {
   return db().auth.signInWithPassword({ email, password });
 }
 
-export function PasswordForm({ email }: { email: string }) {
+// Settings shows this in a sheet and closes it once the password is changed.
+export function PasswordForm({ email, onChanged }: { email: string; onChanged: () => void }) {
   const [serverError, setServerError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const {
     register,
     handleSubmit,
@@ -29,7 +29,6 @@ export function PasswordForm({ email }: { email: string }) {
 
   const onSubmit = handleSubmit(async ({ current, password }) => {
     setServerError(null);
-    setSaved(false);
     const check = await reauthenticate(email, current);
     if (check.error) {
       setServerError(
@@ -43,14 +42,14 @@ export function PasswordForm({ email }: { email: string }) {
       return;
     }
     reset();
-    setSaved(true);
+    onChanged();
   });
 
   return (
     <form onSubmit={onSubmit} noValidate className="stack">
       <input type="email" autoComplete="username" value={email} readOnly hidden />
       <div>
-        <FormGroup title="Password">
+        <FormGroup>
           <FormRow label="Current" htmlFor="current" invalid={Boolean(errors.current)}>
             <input
               id="current"
@@ -82,9 +81,8 @@ export function PasswordForm({ email }: { email: string }) {
         <FieldErrors messages={[errors.current?.message, errors.password?.message, errors.confirm?.message]} />
       </div>
       {serverError && <Notice tone="err">{serverError}</Notice>}
-      {saved && <Notice tone="ok">Your password is changed.</Notice>}
       <div className="actions">
-        <Button type="submit" variant="secondary" dimmed={!isValid} busy={isSubmitting}>
+        <Button type="submit" dimmed={!isValid} busy={isSubmitting}>
           {isSubmitting ? 'Changing…' : 'Change password'}
         </Button>
       </div>
