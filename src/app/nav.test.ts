@@ -5,6 +5,8 @@ describe('navOwnerOf', () => {
     // Categories are managed on Budgets, and a month is reached from Reports.
     expect(navOwnerOf('/categories/0a8f7b2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b')).toBe('/budgets');
     expect(navOwnerOf('/months/2026-09')).toBe('/reports');
+    // Setup starts on the Overview.
+    expect(navOwnerOf('/welcome/bills')).toBe('/');
   });
 
   it('leaves the rest to the router, which matches nested paths itself', () => {
@@ -28,6 +30,7 @@ describe('tabOwnerOf', () => {
     expect(tabOwnerOf('/reports')).toBe('/');
     expect(tabOwnerOf('/months/2026-09')).toBe('/');
     expect(tabOwnerOf('/import-export')).toBe('/');
+    expect(tabOwnerOf('/welcome')).toBe('/');
   });
 
   it('leaves the four tabs and Settings to the router', () => {

@@ -1,17 +1,16 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { Link, Navigate, useLocation } from 'react-router';
 import { ArrowDownUp, CalendarClock, ChartColumn, ChevronRight, type LucideIcon } from 'lucide-react';
-import { useCurrency, useProfile, useUpdateProfile } from '../../lib/profile';
-import { CURRENCIES, describeMoney, type Currency } from '../../lib/money';
+import { useCurrency, useProfile } from '../../lib/profile';
+import { describeMoney, type Currency } from '../../lib/money';
 import { formatDate, formatMonth, monthStartInZone, todayInZone } from '../../lib/dates';
-import { accountPath, billPath, budgetLinePath, budgetMonthPath, goalPath, monthPath } from '../../lib/routes';
+import { accountPath, billPath, budgetLinePath, budgetMonthPath, goalPath, monthPath, setupPath } from '../../lib/routes';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
 import { SectionHead } from '../../ui/Detail';
 import { Notice } from '../../ui/Notice';
 import { Sparkline } from '../../ui/Sparkline';
 import { dataErrorMessage } from '../auth/errors';
-import { AccountSheet } from '../accounts/AccountSheet';
 import { NetWorthGroup } from '../accounts/NetWorthGroup';
 import { accountTypeLabel, netWorthOf, useAccounts, type AccountBalance } from '../accounts/queries';
 import { describeDue, dueStateOf, useBills } from '../bills/queries';
@@ -20,6 +19,7 @@ import { standingOf, useGoals } from '../goals/queries';
 import { useMonthAccounts, useMonthSummary } from '../months/queries';
 import { useCashFlow, useNetWorth } from '../reports/queries';
 import { TransactionSheet } from '../transactions/TransactionSheet';
+import { STEPS, useSetupProgress } from '../setup/progress';
 import { PHONE, useMediaQuery } from '../../lib/media';
 import { TitleLink } from './TitleLink';
 import { WideOverview } from './WideOverview';
@@ -34,23 +34,27 @@ export function OverviewPage() {
   const currency = useCurrency();
   const profile = useProfile();
   const accounts = useAccounts();
-  const [accountSheet, setAccountSheet] = useState(false);
   const [txnSheet, setTxnSheet] = useState(false);
   const phone = useMediaQuery(PHONE);
 
   const today = todayInZone(profile.data?.timezone);
   const thisMonth = monthStartInZone(profile.data?.timezone);
   const rows = accounts.data ?? [];
-  const firstRun = accounts.isSuccess && rows.length === 0;
+  // Someone with no accounts yet has nothing to stand on here, so they start
+  // with the setup walkthrough, carrying any notice (such as "Your email is
+  // confirmed") along with them.
+  if (accounts.isSuccess && rows.length === 0) {
+    return <Navigate to={setupPath()} replace state={notice ? { notice } : null} />;
+  }
 
   return (
     <div className="page">
       <header className="page-head">
         <div>
           <h1 className="large-title">Overview</h1>
-          {!firstRun && <p className="footnote flush">{formatDate(today)}</p>}
+          <p className="footnote flush">{formatDate(today)}</p>
         </div>
-        {!firstRun && !accounts.isPending && (
+        {!accounts.isPending && (
           <div className="actions">
             <Button onClick={() => setTxnSheet(true)}>Add transaction</Button>
           </div>
@@ -66,9 +70,9 @@ export function OverviewPage() {
           be wrong. */}
       {accounts.isPending && <p className="secondary">Working out where you stand…</p>}
 
-      {firstRun ? (
-        <FirstRun onAddAccount={() => setAccountSheet(true)} />
-      ) : accounts.isPending ? null : (
+      {!accounts.isPending && <SetupCard />}
+
+      {accounts.isPending ? null : (
         !phone ? (
           <WideOverview accounts={rows} today={today} month={thisMonth} currency={currency} />
         ) : (
@@ -92,7 +96,6 @@ export function OverviewPage() {
         )
       )}
 
-      {accountSheet && <AccountSheet onClose={() => setAccountSheet(false)} />}
       {txnSheet && <TransactionSheet onClose={() => setTxnSheet(false)} />}
     </div>
   );
@@ -467,59 +470,33 @@ function GoalsStrip({ currency, month }: { currency: Currency; month: string }) 
   );
 }
 
-// First run: choose the currency, then add the first account. The choice is
-// offered here because it can only be changed until the first transaction.
-function FirstRun({ onAddAccount }: { onAddAccount: () => void }) {
-  const profile = useProfile();
-  const update = useUpdateProfile();
-  const currency = useCurrency();
-
-  const choose = (next: Currency) => {
-    if (!profile.data || next === currency) return;
-    update.mutate({ id: profile.data.id, changes: { currency: next } });
-  };
+// Until the first transaction, setup isn't finished: say how far along it is
+// and offer the next step. Once anything is recorded the card goes away for
+// good, since nothing about it is stored.
+function SetupCard() {
+  const progress = useSetupProgress();
+  if (progress.isPending || progress.done.expense) return null;
+  const next = STEPS.find((step) => step.slug === progress.next);
+  const share = Math.round((progress.doneCount / STEPS.length) * 100);
 
   return (
-    <section className="group stack">
-      <div>
-        <h2 className="title-2">Welcome to Lodestar</h2>
-        <p className="secondary flush">
-          Let’s start with where you are today: add an account and its current balance. Budgets, bills and goals can
-          come later, whenever you’re ready.
-        </p>
+    <section className="group stack-tight" aria-labelledby="overview-setup">
+      <div className="card-head">
+        <h2 className="caption" id="overview-setup">
+          Finish setting up
+        </h2>
+        <span className="footnote">
+          {progress.doneCount} of {STEPS.length} steps done
+        </span>
       </div>
-
-      <div>
-        <h3 className="form-group-title">Your currency</h3>
-        <div className="form-group">
-          <div className="form-row">
-            <span className="form-label">Currency</span>
-            <div className="segmented" role="radiogroup" aria-label="Currency">
-              {(Object.keys(CURRENCIES) as Currency[]).map((code) => (
-                <label key={code}>
-                  <input
-                    type="radio"
-                    name="first-run-currency"
-                    value={code}
-                    checked={currency === code}
-                    onChange={() => choose(code)}
-                  />
-                  {code}
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
-        <p className="form-hint">
-          Every account and amount uses {CURRENCIES[currency].label}, and nothing is ever converted. You can change this
-          until you record your first transaction.
-        </p>
+      <div className="prog" role="presentation">
+        <i style={{ width: `${share}%` }} />
       </div>
-
-      {update.isError && <Notice tone="err">That didn’t save. Try again in a moment.</Notice>}
-
-      <div className="actions">
-        <Button onClick={onAddAccount}>Add your first account</Button>
+      <div className="setup-card-foot">
+        {next && <p className="footnote flush">Next: {next.title.toLowerCase()}.</p>}
+        <Link className="btn btn-secondary" to={setupPath(progress.next ?? undefined)}>
+          Continue setup
+        </Link>
       </div>
     </section>
   );

@@ -27,6 +27,8 @@ export const accountPath = (id: string) => `/accounts/${id}`;
 export const categoryPath = (id: string) => `/categories/${id}`;
 export const goalPath = (id: string) => `/goals/${id}`;
 export const billPath = (id: string) => `/bills/${id}`;
+// The setup walkthrough: /welcome is the welcome, then one address per step.
+export const setupPath = (step?: string) => (step ? `/welcome/${step}` : '/welcome');
 export const monthPath = (monthStart: string) => `/months/${monthParam(monthStart)}`;
 export const budgetMonthPath = (monthStart: string) => `/budgets/${monthParam(monthStart)}`;
 export const budgetLinePath = (monthStart: string, categoryId: string) =>

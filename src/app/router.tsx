@@ -22,6 +22,7 @@ import { ReportsPage } from '../features/reports/ReportsPage';
 import { OverviewPage } from '../features/overview/OverviewPage';
 import { ActivityPage } from '../features/transactions/ActivityPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
+import { SetupPage } from '../features/setup/SetupPage';
 import { AppLayout } from './AppLayout';
 import { ForwardStrayAuthLink, RedirectIfSignedIn, RequireAuth } from './guards';
 import { NotFoundPage } from './pages';
@@ -71,6 +72,10 @@ export const routes: RouteObject[] = [
               { path: '/categories', element: <CategoriesPage /> },
               { path: '/categories/:id', element: <CategoryDetailPage /> },
               { path: '/settings', element: <SettingsPage /> },
+              // The setup walkthrough. A first run lands here from the
+              // Overview; Settings offers it again.
+              { path: '/welcome', element: <SetupPage /> },
+              { path: '/welcome/:step', element: <SetupPage /> },
               { path: '*', element: <NotFoundPage /> },
             ],
           },

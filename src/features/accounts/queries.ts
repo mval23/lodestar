@@ -46,10 +46,10 @@ export type AccountUpdate = Database['public']['Tables']['accounts']['Update'];
 export const ACCOUNT_TYPES: { value: AccountType; label: string; hint: string }[] = [
   { value: 'checking', label: 'Checking', hint: 'Everyday money in a bank' },
   { value: 'savings', label: 'Savings', hint: 'Set aside, including funds behind a goal' },
-  { value: 'credit_card', label: 'Credit card', hint: 'What you owe. Enter the balance as a negative amount' },
+  { value: 'credit_card', label: 'Credit card', hint: 'What you owe' },
   { value: 'cash', label: 'Cash', hint: 'Notes and coins you hold' },
   { value: 'investment', label: 'Investment', hint: 'A balance you update by hand' },
-  { value: 'loan', label: 'Loan', hint: 'What you owe. Enter the balance as a negative amount' },
+  { value: 'loan', label: 'Loan', hint: 'What you owe' },
   { value: 'other_asset', label: 'Other asset', hint: 'Anything else you own, such as money owed to you' },
 ];
 

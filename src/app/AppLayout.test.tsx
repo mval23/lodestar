@@ -3,13 +3,16 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { AppLayout } from './AppLayout';
 
-function show() {
+function show(path = '/') {
   return render(
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route element={<AppLayout />}>
           <Route path="/" element={<h1>Overview</h1>} />
           <Route path="/activity" element={<h1>Activity</h1>} />
+          <Route path="/accounts/:id" element={<h1>An account</h1>} />
+          <Route path="/categories" element={<h1>Categories</h1>} />
+          <Route path="/welcome/:step" element={<h1>Setup</h1>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -68,5 +71,31 @@ describe('the collapsible sidebar', () => {
 
     const { container } = show();
     expect(shell(container)).toHaveClass('shell-collapsed');
+  });
+});
+
+describe('which item is lit', () => {
+  const lit = (nav: string) =>
+    within(screen.getByRole('navigation', { name: nav }))
+      .getAllByRole('link')
+      .filter((link) => link.getAttribute('aria-current') === 'page')
+      .map((link) => link.textContent);
+
+  it('lights the item whose path matches, nested paths included', () => {
+    show('/accounts/0a8f7b2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b');
+    expect(lit('Main')).toEqual(['Accounts']);
+    expect(lit('Tabs')).toEqual(['Overview']);
+  });
+
+  it('lights the owner of a page that does not nest under it', () => {
+    show('/categories');
+    expect(lit('Main')).toEqual(['Budgets']);
+    expect(lit('Tabs')).toEqual(['Budgets']);
+  });
+
+  it('lights the Overview during setup, and only on its own page otherwise', () => {
+    show('/welcome/bills');
+    expect(lit('Main')).toEqual(['Overview']);
+    expect(lit('Tabs')).toEqual(['Overview']);
   });
 });

@@ -35,14 +35,17 @@ test.describe('signed out', () => {
 });
 
 test.describe('first run', () => {
-  test('asks for a currency, then the first account', async ({ page }) => {
+  test('walks through setup: a currency, then the first account', async ({ page }) => {
     await signIn(page);
     await stubSupabase(page, { tables: emptyTables() });
     await page.goto('/');
 
+    await expect(page).toHaveURL(/\/welcome$/);
     await expect(page.getByRole('heading', { name: 'Welcome to Lodestar' })).toBeVisible();
     await expect(page.getByRole('radiogroup', { name: 'Currency' })).toBeVisible();
 
+    await page.getByRole('link', { name: 'Start' }).click();
+    await expect(page.getByRole('heading', { name: 'Where you stand today' })).toBeVisible();
     await page.getByRole('button', { name: 'Add your first account' }).click();
     await expect(page.getByRole('dialog', { name: 'Add account' })).toBeVisible();
     await expect(page.getByText('Give the account a name.')).toBeVisible();
