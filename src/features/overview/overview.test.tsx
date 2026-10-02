@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { OverviewPage } from './OverviewPage';
 
 const useAccounts = vi.fn();
@@ -10,6 +10,7 @@ const useBills = vi.fn();
 const useGoals = vi.fn();
 const useMonthSummary = vi.fn();
 const useMonthAccounts = vi.fn();
+const useSetupProgress = vi.fn();
 
 vi.mock('../accounts/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../accounts/queries')>();
@@ -40,6 +41,10 @@ vi.mock('../months/queries', () => ({
   useMonthAccounts: () => useMonthAccounts(),
   useMonthSummary: () => useMonthSummary(),
 }));
+vi.mock('../setup/progress', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../setup/progress')>();
+  return { ...actual, useSetupProgress: () => useSetupProgress() };
+});
 vi.mock('../../lib/profile', () => ({
   useCurrency: () => 'USD',
   useProfile: () => ({ data: { id: 'u1', timezone: 'UTC', currency: 'USD' } }),
@@ -52,10 +57,15 @@ const TODAY = new Date().toISOString().slice(0, 10);
 function show() {
   render(
     <MemoryRouter>
-      <OverviewPage />
+      <Routes>
+        <Route path="/" element={<OverviewPage />} />
+        <Route path="/welcome" element={<p>Setup walkthrough</p>} />
+      </Routes>
     </MemoryRouter>,
   );
 }
+
+const ALL_DONE = { accounts: true, categories: true, bills: true, budgets: true, goals: true, expense: true };
 
 beforeEach(() => {
   useAccounts.mockReturnValue({ data: [], isSuccess: true, isPending: false, isError: false });
@@ -67,14 +77,49 @@ beforeEach(() => {
   useMonthSummary.mockReturnValue({ data: { to_goals_minor: 0 } });
   useMonthAccounts.mockReturnValue({ data: [] });
   phone.mockReturnValue(false);
+  useSetupProgress.mockReturnValue({ isPending: false, done: ALL_DONE, doneCount: 6, next: null });
 });
 
+const ACCOUNT = {
+  account_id: 'a',
+  name: 'Everyday checking',
+  type: 'checking',
+  is_liability: false,
+  archived_at: null,
+  balance_minor: 100000,
+  user_id: 'u1',
+  sort_order: 0,
+  opening_balance_minor: 100000,
+  money_in_minor: 0,
+  money_out_minor: 0,
+};
+
 describe('OverviewPage', () => {
-  it('asks for a currency and a first account before anything else', () => {
+  it('sends a first run, with no accounts yet, to the setup walkthrough', () => {
     show();
-    expect(screen.getByText('Welcome to Lodestar')).toBeInTheDocument();
-    expect(screen.getByRole('radiogroup', { name: 'Currency' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add your first account' })).toBeInTheDocument();
+    expect(screen.getByText('Setup walkthrough')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Overview' })).not.toBeInTheDocument();
+  });
+
+  it('offers the next setup step until the first transaction', () => {
+    useAccounts.mockReturnValue({ data: [ACCOUNT], isSuccess: true, isPending: false, isError: false });
+    useSetupProgress.mockReturnValue({
+      isPending: false,
+      done: { ...ALL_DONE, bills: false, budgets: false, goals: false, expense: false },
+      doneCount: 2,
+      next: 'bills',
+    });
+    show();
+    const card = screen.getByRole('region', { name: 'Finish setting up' });
+    expect(within(card).getByText('2 of 6 steps done')).toBeInTheDocument();
+    expect(within(card).getByText('Next: what comes round regularly.')).toBeInTheDocument();
+    expect(within(card).getByRole('link', { name: 'Continue setup' })).toHaveAttribute('href', '/welcome/bills');
+  });
+
+  it('drops the setup card once anything is recorded', () => {
+    useAccounts.mockReturnValue({ data: [ACCOUNT], isSuccess: true, isPending: false, isError: false });
+    show();
+    expect(screen.queryByRole('region', { name: 'Finish setting up' })).not.toBeInTheDocument();
   });
 
   it('leads with net worth once there are accounts', () => {

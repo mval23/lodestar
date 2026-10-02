@@ -1,25 +1,34 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router';
+import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router';
 import { Settings } from 'lucide-react';
 import { Wordmark } from '../ui/Logo';
 import { SIDEBAR_FOOT, SIDEBAR_MAIN, TAB_BAR, navOwnerOf, tabOwnerOf, type NavItem } from './nav';
 
+// Whether a nav item is lit: its own path matches (nested paths included,
+// except for the Overview at "/"), or the page belongs to it (nav.ts).
+// NavLink can't do the second: it only ever sets aria-current when its own
+// path matches, so an owned page such as /categories lit nothing.
+function useLit(to: string, owned: boolean): boolean {
+  const match = useMatch({ path: to, end: to === '/' });
+  return owned || match !== null;
+}
+
 function SidebarLink({ item, owned, collapsed }: { item: NavItem; owned: boolean; collapsed: boolean }) {
   const Icon = item.icon;
+  const lit = useLit(item.to, owned);
   return (
     <li>
-      <NavLink
+      <Link
         to={item.to}
-        end={item.to === '/'}
         className="nav-link"
-        aria-current={owned ? 'page' : undefined}
+        aria-current={lit ? 'page' : undefined}
         // Collapsed, the label is hidden from sight but not from a screen
         // reader; the tooltip gives it back to a pointer.
         title={collapsed ? item.label : undefined}
       >
         <Icon strokeWidth={1.75} aria-hidden />
         <span className="nav-label">{item.label}</span>
-      </NavLink>
+      </Link>
     </li>
   );
 }
@@ -42,6 +51,17 @@ function writeCollapsed(collapsed: boolean) {
   } catch {
     // Nothing to do: the choice just won't outlive the tab.
   }
+}
+
+function TabLink({ item, owned }: { item: NavItem; owned: boolean }) {
+  const Icon = item.icon;
+  const lit = useLit(item.to, owned);
+  return (
+    <Link to={item.to} className="tab-link" aria-current={lit ? 'page' : undefined}>
+      <Icon strokeWidth={1.75} aria-hidden />
+      {item.label}
+    </Link>
+  );
 }
 
 export function AppLayout() {
@@ -100,17 +120,8 @@ export function AppLayout() {
       </main>
 
       <nav className="tab-bar" aria-label="Tabs">
-        {TAB_BAR.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            className="tab-link"
-            aria-current={tabOwner === to ? 'page' : undefined}
-          >
-            <Icon strokeWidth={1.75} aria-hidden />
-            {label}
-          </NavLink>
+        {TAB_BAR.map((item) => (
+          <TabLink key={item.to} item={item} owned={tabOwner === item.to} />
         ))}
       </nav>
     </div>

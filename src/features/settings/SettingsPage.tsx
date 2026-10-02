@@ -52,6 +52,14 @@ export function SettingsPage() {
               </span>
             </Link>
           </li>
+          <li>
+            <Link className="row-button" to="/welcome">
+              <span className="row-label">
+                Setup guide
+                <small>Walk through accounts, categories, bills, budgets and goals again</small>
+              </span>
+            </Link>
+          </li>
         </ul>
       </section>
 
