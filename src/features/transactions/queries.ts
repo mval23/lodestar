@@ -4,6 +4,8 @@ import { accountsKey } from '../accounts/queries';
 import { budgetsKey } from '../budgets/queries';
 import { categoryUsageKey } from '../categories/queries';
 import { goalsKey } from '../goals/queries';
+import { overviewKey } from '../overview/queries';
+import { reportsKey } from '../reports/queries';
 import type { Database } from '../../lib/database.types';
 
 export type TxnKind = Database['public']['Enums']['txn_kind'];
@@ -88,6 +90,9 @@ function useInvalidateLedger() {
     // Spent-this-month and contributed-this-month move with every edit.
     void queryClient.invalidateQueries({ queryKey: budgetsKey });
     void queryClient.invalidateQueries({ queryKey: goalsKey });
+    // The month so far and the reports are sums over the same rows.
+    void queryClient.invalidateQueries({ queryKey: overviewKey });
+    void queryClient.invalidateQueries({ queryKey: reportsKey });
   };
 }
 

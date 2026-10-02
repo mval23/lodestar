@@ -8,7 +8,18 @@ import { lineDomain } from './chartDomain';
 // The line stretches to its box, so its stroke is kept from stretching with
 // it, and the fix (the blue square that marks "now") is placed in the page
 // rather than the SVG so it stays square.
-export function Sparkline({ values, label, small }: { values: number[]; label: string; small?: boolean }) {
+// `tiny` fits a list row: the line beside a subtotal, about 72 px wide.
+export function Sparkline({
+  values,
+  label,
+  small,
+  tiny,
+}: {
+  values: number[];
+  label: string;
+  small?: boolean;
+  tiny?: boolean;
+}) {
   if (values.length < 2) return null;
 
   const { low, high } = lineDomain(values);
@@ -21,7 +32,11 @@ export function Sparkline({ values, label, small }: { values: number[]; label: s
   const nowTop = (y(values[values.length - 1]!) / height) * 100;
 
   return (
-    <div className={small ? 'sparkline sparkline-small' : 'sparkline'} role="img" aria-label={label}>
+    <div
+      className={tiny ? 'sparkline sparkline-tiny' : small ? 'sparkline sparkline-small' : 'sparkline'}
+      role="img"
+      aria-label={label}
+    >
       <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
         <polyline className="sparkline-line" points={points} vectorEffect="non-scaling-stroke" />
       </svg>

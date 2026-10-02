@@ -2,35 +2,29 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { ArrowDownUp, CalendarClock, ChartColumn, ChevronRight, type LucideIcon } from 'lucide-react';
 import { useCurrency, useProfile, useUpdateProfile } from '../../lib/profile';
-import { CURRENCIES, describeMoney, type Currency } from '../../lib/money';
-import { formatDate, formatMonth, monthStartInZone, todayInZone } from '../../lib/dates';
-import { accountPath, billPath, budgetLinePath, budgetMonthPath, goalPath, monthPath } from '../../lib/routes';
+import { CURRENCIES, type Currency } from '../../lib/money';
+import { formatDate, monthStartInZone, todayInZone } from '../../lib/dates';
+import { billPath } from '../../lib/routes';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
 import { SectionHead } from '../../ui/Detail';
 import { Notice } from '../../ui/Notice';
-import { Sparkline } from '../../ui/Sparkline';
 import { dataErrorMessage } from '../auth/errors';
 import { AccountSheet } from '../accounts/AccountSheet';
-import { NetWorthGroup } from '../accounts/NetWorthGroup';
-import { accountTypeLabel, netWorthOf, useAccounts, type AccountBalance } from '../accounts/queries';
+import { useAccounts } from '../accounts/queries';
 import { describeDue, dueStateOf, useBills } from '../bills/queries';
-import { totalsOf, useBudgets, type BudgetProgress } from '../budgets/queries';
-import { standingOf, useGoals } from '../goals/queries';
-import { useMonthAccounts, useMonthSummary } from '../months/queries';
-import { useCashFlow, useNetWorth } from '../reports/queries';
 import { TransactionSheet } from '../transactions/TransactionSheet';
+import { GoalsGroup, NeedsALook, OverviewStandsOut, ThisMonthBand, WhereYouStand } from './Dashboard';
 import { hasSeenTour, useTour } from '../tour/Tour';
 import { navTarget } from '../tour/steps';
 import { PHONE, useMediaQuery } from '../../lib/media';
 import { TitleLink } from './TitleLink';
 import { WideOverview } from './WideOverview';
 
-// Where you stand, in one screen. A wide screen gets WideOverview: the key
-// figures in a band, then two columns. A phone gets the stack below: the
-// month's plan first, then net worth, the bills due this week, the month's
-// income, expenses and debt, the accounts and the goals. Every block links to
-// the page that explains it.
+// Where you stand, in one screen. A wide screen gets WideOverview: what
+// stands out, this month in one band, then three columns. A phone gets the
+// same parts stacked, with Where you stand and Coming up folded. Every block
+// links to the page that explains it.
 export function OverviewPage() {
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
   const currency = useCurrency();
@@ -80,20 +74,24 @@ export function OverviewPage() {
           <WideOverview accounts={rows} today={today} month={thisMonth} currency={currency} />
         ) : (
           <>
-            <div className="overview-layout">
-              <MonthPlan month={thisMonth} currency={currency} />
-
-              <div className="overview-side">
-                <NetWorthGroup accounts={rows} compact>
-                  <Trend currency={currency} />
-                </NetWorthGroup>
-                <DueThisWeek today={today} currency={currency} />
-                <MonthTotals month={thisMonth} currency={currency} accounts={rows} />
+            {/* The same parts as a wide screen, stacked: this month first, and
+                the rest folded so the month's figures fit on one screen. */}
+            <OverviewStandsOut month={thisMonth} currency={currency} />
+            <ThisMonthBand accounts={rows} month={thisMonth} currency={currency} />
+            <NeedsALook month={thisMonth} currency={currency} />
+            <details className="fold">
+              <summary className="fold-summary">Where you stand</summary>
+              <div className="fold-body">
+                <WhereYouStand accounts={rows} month={thisMonth} currency={currency} />
+                <GoalsGroup currency={currency} />
               </div>
-            </div>
-
-            <AccountsSection accounts={rows} currency={currency} />
-            <GoalsStrip currency={currency} month={thisMonth} />
+            </details>
+            <details className="fold">
+              <summary className="fold-summary">Coming up</summary>
+              <div className="fold-body">
+                <DueThisWeek today={today} currency={currency} />
+              </div>
+            </details>
             <MoreOnPhone />
           </>
         )
@@ -102,120 +100,6 @@ export function OverviewPage() {
       {accountSheet && <AccountSheet onClose={() => setAccountSheet(false)} />}
       {txnSheet && <TransactionSheet onClose={() => setTxnSheet(false)} />}
     </div>
-  );
-}
-
-// Which way net worth has moved over the year, as a line and in words. The
-// words carry the number; the line only shows the shape.
-function Trend({ currency }: { currency: Currency }) {
-  const netWorth = useNetWorth(12);
-  const points = (netWorth.data ?? []).map((row) => row.net_worth_minor);
-  if (points.length < 2) return null;
-
-  const first = points[0]!;
-  const last = points[points.length - 1]!;
-  const label = `Net worth over the last ${points.length} months, from ${describeMoney(first, currency)} to ${describeMoney(last, currency)}.`;
-
-  return (
-    <div className="stand-trend">
-      <Sparkline values={points} label={label} small />
-      <p className="footnote flush">
-        <Amount minor={last - first} currency={currency} signed /> over {points.length} months ·{' '}
-        <Link to="/reports">Reports</Link>
-      </p>
-    </div>
-  );
-}
-
-// The month in three totals: what came in, what went out, and where the debt
-// stands. Income and expenses come from the month's cash flow, so transfers
-// between your own accounts are left out of both. Debt is what is owed on
-// cards and loans now, with what was paid towards it this month: a payment
-// is a transfer into one of those accounts, so it is in neither of the lines
-// above it.
-function MonthTotals({
-  month,
-  currency,
-  accounts,
-}: {
-  month: string;
-  currency: Currency;
-  accounts: AccountBalance[];
-}) {
-  const cashFlow = useCashFlow(2);
-  const flows = useMonthAccounts(month);
-  // What went into the accounts that back goals: saving, as this app means it.
-  const saved = useMonthSummary(month).data?.to_goals_minor ?? 0;
-  const current = (cashFlow.data ?? []).find((row) => row.month === month);
-  const worth = netWorthOf(accounts);
-  const liabilities = new Set(accounts.filter((a) => a.is_liability && !a.archived_at).map((a) => a.account_id));
-  // Already-summed monthly flows of a few accounts, added for display.
-  const paid = (flows.data ?? [])
-    .filter((flow) => liabilities.has(flow.account_id))
-    .reduce((sum, flow) => sum + flow.transfer_in_minor, 0);
-
-  return (
-    <section className="group overview-card" aria-labelledby="overview-month">
-      <div className="card-head">
-        <h2 className="caption" id="overview-month">
-          <TitleLink to={monthPath(month)}>This month</TitleLink>
-        </h2>
-        {current && <Amount minor={current.net_minor} currency={currency} signed className="card-total" />}
-      </div>
-      {cashFlow.isPending ? (
-        <p className="footnote flush">Loading…</p>
-      ) : (
-        <>
-          {!current && <p className="footnote flush">Nothing recorded this month yet.</p>}
-          <ul className="mini-list">
-            {current && (
-              <>
-                <li>
-                  <span>Income</span>
-                  <Amount minor={current.money_in_minor} currency={currency} />
-                </li>
-                <li>
-                  <span>Expenses</span>
-                  <Amount minor={current.money_out_minor} currency={currency} />
-                </li>
-              </>
-            )}
-            {saved > 0 && (
-              <li>
-                <span className="row-label">
-                  Saved
-                  <small>Moved into your goals</small>
-                </span>
-                <Amount minor={saved} currency={currency} />
-              </li>
-            )}
-            {liabilities.size > 0 && (
-              <li>
-                <span className="row-label">
-                  Debt
-                  <small>
-                    {paid > 0 ? (
-                      <>
-                        <Amount minor={paid} currency={currency} /> paid this month
-                      </>
-                    ) : (
-                      'Owed on cards and loans'
-                    )}
-                  </small>
-                </span>
-                {worth.owed < 0 ? (
-                  <span>
-                    <Amount minor={-worth.owed} currency={currency} /> in credit
-                  </span>
-                ) : (
-                  <Amount minor={worth.owed} currency={currency} />
-                )}
-              </li>
-            )}
-          </ul>
-        </>
-      )}
-    </section>
   );
 }
 
@@ -261,215 +145,6 @@ function DueThisWeek({ today, currency }: { today: string; currency: Currency })
           <Link to="/bills">{due.length - 4} more due this week</Link>
         </p>
       )}
-    </section>
-  );
-}
-
-// This month's plan, as the Overview's large block. The figure is what is
-// left to spend, or by how much the month is over plan, in words rather than
-// as a negative. Under it, each planned category against its plan: the ones
-// past their plan first, since those need you, then the rest by how much of
-// their plan is used.
-const PLAN_ROWS_SHOWN = 8;
-
-function shareUsed(row: BudgetProgress): number {
-  return row.planned_minor > 0 ? row.spent_minor / row.planned_minor : 0;
-}
-
-function MonthPlan({ month, currency }: { month: string; currency: Currency }) {
-  const budgets = useBudgets(month);
-  const rows = budgets.data ?? [];
-  const totals = totalsOf(rows);
-  const ordered = [...rows].sort((a, b) => {
-    const overA = a.left_minor < 0;
-    const overB = b.left_minor < 0;
-    if (overA !== overB) return overA ? -1 : 1;
-    if (overA) return a.left_minor - b.left_minor;
-    return shareUsed(b) - shareUsed(a);
-  });
-
-  return (
-    <section className="group figure-group overview-plan" aria-labelledby="overview-plan">
-      {/* The month leads here, and the way into Budgets sits at the end of
-          the line, where the other cards keep their figure. */}
-      <div className="card-head">
-        <span className="caption">{formatMonth(month)}</span>
-        <h2 className="footnote" id="overview-plan">
-          <TitleLink to={budgetMonthPath(month)}>Budgets</TitleLink>
-        </h2>
-      </div>
-
-      {budgets.isPending ? (
-        <p className="footnote flush">Loading…</p>
-      ) : rows.length === 0 ? (
-        <p className="footnote flush">
-          <span>No plan for this month yet.</span> <Link to={budgetMonthPath(month)}>Plan this month</Link>
-        </p>
-      ) : (
-        <>
-          <p className="caption flush">{totals.left < 0 ? 'Over plan by' : 'Left to spend'}</p>
-          <p className="fig flush">
-            <span className="bracket">
-              <Amount minor={Math.abs(totals.left)} currency={currency} />
-            </span>
-          </p>
-          <p className="footnote flush">
-            <Amount minor={totals.spent} currency={currency} /> spent of{' '}
-            <Amount minor={totals.planned} currency={currency} /> planned
-          </p>
-
-          <ul className="plan-list">
-            {ordered.slice(0, PLAN_ROWS_SHOWN).map((row) => {
-              const over = row.left_minor < 0;
-              const share = row.planned_minor > 0 ? Math.min(100, Math.round(shareUsed(row) * 100)) : 100;
-              return (
-                <li key={row.category_id}>
-                  <div className="plan-list-row">
-                    <Link to={budgetLinePath(month, row.category_id)}>{row.category_name}</Link>
-                    <span className="footnote">
-                      {over ? (
-                        <>
-                          over by <Amount minor={-row.left_minor} currency={currency} />
-                        </>
-                      ) : (
-                        <>
-                          <Amount minor={row.left_minor} currency={currency} /> left
-                        </>
-                      )}
-                    </span>
-                  </div>
-                  {/* Hatched past the plan, so the state is never colour alone. */}
-                  <div className={`prog spend${over ? ' over' : ''}`} role="presentation">
-                    <i style={{ width: `${share}%` }} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-          {ordered.length > PLAN_ROWS_SHOWN && (
-            <p className="footnote flush">
-              <Link to={budgetMonthPath(month)}>All {ordered.length} planned categories</Link>
-            </p>
-          )}
-        </>
-      )}
-
-    </section>
-  );
-}
-
-// The accounts behind the figure, with the assets and the cards and loans
-// kept apart and each side totalled. A liability keeps the sign it has on
-// every other screen, so its side is named for what it holds rather than
-// "owed", which read as a double negative beside a minus sign.
-function AccountsSection({ accounts, currency }: { accounts: AccountBalance[]; currency: Currency }) {
-  const open = accounts.filter((a) => !a.archived_at);
-  if (open.length === 0) return null;
-  const worth = netWorthOf(accounts);
-  const assets = open.filter((a) => !a.is_liability);
-  const liabilities = open.filter((a) => a.is_liability);
-
-  return (
-    <section className="stack-tight" aria-labelledby="overview-accounts">
-      {/* Always offered: on a phone this is the way to Accounts, which has no
-          tab of its own. */}
-      <SectionHead
-        id="overview-accounts"
-        title="Accounts"
-        link={{ to: '/accounts', label: open.length > 1 ? `All ${open.length} accounts` : 'All accounts' }}
-      />
-      <div className="account-columns">
-        {assets.length > 0 && (
-          <AccountGroup title="Assets" total={worth.assets} rows={assets} currency={currency} />
-        )}
-        {liabilities.length > 0 && (
-          <AccountGroup title="Cards and loans" total={worth.liabilities} rows={liabilities} currency={currency} />
-        )}
-      </div>
-    </section>
-  );
-}
-
-const ACCOUNTS_SHOWN = 5;
-
-function AccountGroup({
-  title,
-  total,
-  rows,
-  currency,
-}: {
-  title: string;
-  total: number;
-  rows: AccountBalance[];
-  currency: Currency;
-}) {
-  return (
-    <div>
-      <div className="group-subtotal">
-        <h3 className="form-group-title flush">{title}</h3>
-        <Amount minor={total} currency={currency} className="footnote" />
-      </div>
-      <ul className="rows-list">
-        {rows.slice(0, ACCOUNTS_SHOWN).map((row) => (
-          <li key={row.account_id}>
-            <Link className="row-button row-compact" to={accountPath(row.account_id)}>
-              <span className="row-label">
-                {row.name}
-                <small>{accountTypeLabel(row.type)}</small>
-              </span>
-              <Amount minor={row.balance_minor} currency={currency} />
-            </Link>
-          </li>
-        ))}
-      </ul>
-      {rows.length > ACCOUNTS_SHOWN && (
-        <p className="form-hint">
-          <Link to="/accounts">{rows.length - ACCOUNTS_SHOWN} more</Link>
-        </p>
-      )}
-    </div>
-  );
-}
-
-// The goals being saved for, each with its bar. A goal without a target has
-// nothing to measure against, so it shows its balance alone.
-function GoalsStrip({ currency, month }: { currency: Currency; month: string }) {
-  const goals = useGoals();
-  const rows = (goals.data ?? []).filter((goal) => !goal.archived_at).slice(0, 4);
-  if (goals.isPending || rows.length === 0) return null;
-
-  return (
-    <section className="stack-tight" aria-labelledby="overview-goals">
-      <SectionHead id="overview-goals" title="Goals" link={{ to: '/goals', label: 'All goals' }} />
-      <ul className="goal-strip">
-        {rows.map((goal) => {
-          const standing = standingOf(goal, month);
-          return (
-            <li key={goal.goal_id} className="group goal-chip">
-              <div className="goal-chip-head">
-                <Link to={goalPath(goal.goal_id)}>{goal.name}</Link>
-                <Amount minor={goal.balance_minor} currency={currency} />
-              </div>
-              {goal.target_minor !== null && (
-                <div className="prog" role="presentation">
-                  <i style={{ width: `${standing.share}%` }} />
-                </div>
-              )}
-              <p className="footnote flush">
-                {goal.target_minor === null ? (
-                  'No target'
-                ) : standing.reached ? (
-                  'Target reached'
-                ) : (
-                  <>
-                    {standing.share}% saved of <Amount minor={goal.target_minor} currency={currency} />
-                  </>
-                )}
-              </p>
-            </li>
-          );
-        })}
-      </ul>
     </section>
   );
 }
