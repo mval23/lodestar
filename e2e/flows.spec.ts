@@ -323,6 +323,35 @@ test.describe('import and export', () => {
     await page.getByLabel('Password').fill('synthetic-password');
     await expect(button).not.toHaveAttribute('aria-disabled', 'true');
   });
+
+  test('exports everything entered, one CSV per kind, and names what was empty', async ({ page }) => {
+    const calls: string[] = [];
+    await signIn(page);
+    await stubSupabase(page, {
+      tables: withData(),
+      password: 'synthetic-password',
+      onWrite: (table) => calls.push(table),
+    });
+    await page.goto('/import-export');
+
+    const downloads: string[] = [];
+    page.on('download', (download) => downloads.push(download.suggestedFilename()));
+    await page.getByLabel('Password').fill('synthetic-password');
+    await page.getByRole('button', { name: 'Export all data' }).click();
+
+    // withData has a profile, two accounts, a group, two categories, two
+    // transactions and a bill; no budget rows, goals or imports of its own.
+    await expect(page.getByText('9 rows exported as 6 CSV files. Nothing to export yet for budgets, goals and import history.')).toBeVisible();
+    await expect.poll(() => [...downloads].sort()).toEqual([
+      'lodestar-accounts.csv',
+      'lodestar-categories.csv',
+      'lodestar-category_groups.csv',
+      'lodestar-profiles.csv',
+      'lodestar-recurring_items.csv',
+      'lodestar-transactions.csv',
+    ]);
+    expect(calls).toContain('rpc:log_event');
+  });
 });
 
 test.describe('the shell', () => {

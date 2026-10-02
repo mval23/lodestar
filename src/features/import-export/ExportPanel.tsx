@@ -9,8 +9,19 @@ import { FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
 import { authErrorMessage, dataErrorMessage } from '../auth/errors';
 import { toCsv } from './csv';
+import { EXPORT_LABELS, exportAll, type ReadPage } from './exportData';
 
-type Table = 'accounts' | 'categories' | 'transactions';
+// "budgets, goals and bills": the app's lists have no comma before "and".
+function list(items: string[]): string {
+  return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+// One page of a table, in a stable order, for exportAll.
+const readPage: ReadPage = async (table, from, to) => {
+  const { data, error } = await db().from(table).select('*').order('id').range(from, to);
+  if (error) throw error;
+  return data as Record<string, unknown>[];
+};
 
 // Export re-authenticates first: a signed-in browser left unattended should
 // not be able to walk away with the whole ledger. The database records the
@@ -40,21 +51,20 @@ export function ExportPanel() {
         return;
       }
 
-      const files = await Promise.all(
-        (['accounts', 'categories', 'transactions'] as Table[]).map(async (table) => ({
-          table,
-          rows: await readAll(table),
-        })),
-      );
-
-      for (const file of files) download(`lodestar-${file.table}.csv`, file.rows);
+      const result = await exportAll(readPage);
+      for (const file of result.files) download(file.filename, file.rows);
 
       // Audited by name and count only.
-      const total = files.reduce((sum, file) => sum + Math.max(0, file.rows.length - 1), 0);
-      await db().rpc('log_event', { p_event: 'export', p_row_count: total });
+      await db().rpc('log_event', { p_event: 'export', p_row_count: result.rowCount });
 
       setPassword('');
-      setDone(`${total} rows exported as ${files.length} CSV files.`);
+      const rows = `${result.rowCount.toLocaleString('en-US')} ${result.rowCount === 1 ? 'row' : 'rows'}`;
+      const files = `${result.files.length} CSV ${result.files.length === 1 ? 'file' : 'files'}`;
+      const empty =
+        result.empty.length > 0
+          ? ` Nothing to export yet for ${list(result.empty.map((table) => EXPORT_LABELS[table]))}.`
+          : '';
+      setDone(`${rows} exported as ${files}.${empty}`);
     } catch (cause) {
       setError(dataErrorMessage(cause));
     } finally {
@@ -62,35 +72,15 @@ export function ExportPanel() {
     }
   };
 
-  const readAll = async (table: Table): Promise<string[][]> => {
-    const { data, error } = await db().from(table).select('*');
-    if (error) throw error;
-    const rows = data as Record<string, unknown>[];
-    if (rows.length === 0) return [[`No ${table}`]];
-    const headers = Object.keys(rows[0]!);
-    return [
-      headers,
-      ...rows.map((row) =>
-        headers.map((header) => {
-          const value = row[header];
-          // Amounts are written twice: the exact minor units a re-import
-          // needs, and a readable form for a spreadsheet.
-          if (typeof value === 'number' && header.endsWith('_minor')) {
-            return `${value}`;
-          }
-          return value === null || value === undefined ? '' : String(value);
-        }),
-      ),
-    ];
-  };
-
   return (
     <section className="stack">
       <h2 className="title-2">Export</h2>
       <p className="secondary flush">
-        Your accounts, categories and transactions as CSV files. Amounts are written in {currency} minor units (
-        {formatMoney(123450, currency)} is written as 123450), which is what an import reads back exactly.
+        Everything you’ve entered, as one CSV file each: your profile, accounts, categories and their groups,
+        transactions, budgets, goals, bills and subscriptions, and your import history. Amounts are written in{' '}
+        {currency} minor units ({formatMoney(123450, currency)} is written as 123450), exactly as they’re stored.
       </p>
+      <p className="form-hint flush">Your browser may ask once to allow several downloads.</p>
 
       <FormGroup title="Confirm it’s you">
         <FormRow label="Password" htmlFor="export-password">

@@ -237,7 +237,12 @@ export async function stubSupabase(page: Page, options: Options = {}) {
       return json([{ id: 'new-row', user_id: USER_ID, ...(row ?? {}) }]);
     }
 
-    if (table === 'profiles') return json(rows ?? {});
+    // PostgREST answers with one object only when asked for one (.single());
+    // otherwise even the one profile comes back as a list, as the export reads it.
+    if (table === 'profiles') {
+      const single = (request.headers()['accept'] ?? '').includes('vnd.pgrst.object');
+      return json(single ? (rows ?? {}) : [rows]);
+    }
     const list = Array.isArray(rows) ? rows : [];
     // PostgREST answers a HEAD count request with a Content-Range header.
     // The stub is on another origin, as the real project is, so the header
