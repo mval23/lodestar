@@ -23,6 +23,8 @@ export type AccountBalance = {
   money_in_minor: number;
   money_out_minor: number;
   balance_minor: number;
+  // False when the person has left the account out of net worth.
+  include_in_net_worth: boolean;
 };
 
 export function normalizeBalance(row: AccountBalanceRow): AccountBalance {
@@ -38,6 +40,7 @@ export function normalizeBalance(row: AccountBalanceRow): AccountBalance {
     money_in_minor: row.money_in_minor ?? 0,
     money_out_minor: row.money_out_minor ?? 0,
     balance_minor: row.balance_minor ?? 0,
+    include_in_net_worth: row.include_in_net_worth ?? true,
   };
 }
 export type AccountInsert = Database['public']['Tables']['accounts']['Insert'];
@@ -157,12 +160,16 @@ export function netWorthOf(accounts: AccountBalance[]): NetWorth {
   let liabilities = 0;
   for (const account of accounts) {
     if (account.archived_at) continue;
+    // Left out of net worth by the person's choice, as net_worth_by_month
+    // leaves it out.
+    if (!account.include_in_net_worth) continue;
     // Split by account type, exactly as net_worth_by_month does, so the
     // Overview figure and the report can never disagree.
     if (account.is_liability) liabilities += account.balance_minor;
     else assets += account.balance_minor;
   }
-  return { assets, liabilities, owed: -liabilities, net: assets + liabilities };
+  // With nothing owed, -0 would be a "negative zero"; keep it a plain zero.
+  return { assets, liabilities, owed: liabilities === 0 ? 0 : -liabilities, net: assets + liabilities };
 }
 
 // ---------------------------------------------------------------------------

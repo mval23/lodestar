@@ -243,6 +243,48 @@ a:hover {
 .form-row input::placeholder {
   color: var(--ink-3);
 }
+
+/* ---------- Switch ---------- */
+/* A toggle: blue when on, a white knob that slides. The track keeps a 3:1
+   border when off, so it is visible without colour. */
+.switch {
+  position: relative;
+  flex: none;
+  width: 51px;
+  height: 31px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--sunk);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-spring);
+}
+.switch[aria-checked='true'] {
+  background: var(--blue);
+  box-shadow: none;
+}
+.switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-raised);
+  transition: transform var(--dur) var(--ease-spring);
+}
+.switch[aria-checked='true'] .switch-knob {
+  transform: translateX(20px);
+}
+.switch:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.form-row .switch {
+  justify-self: end;
+}
 .form-row input:focus,
 .form-row select:focus {
   outline: none;
@@ -1429,24 +1471,6 @@ a:hover {
 }
 
 /* ---------- Overview ---------- */
-/* The picture on the left, what may need you on the right. The right column
-   needs room for a name and an amount side by side, so the split waits for
-   a frame wide enough to give it that. */
-.overview-layout {
-  display: grid;
-  gap: var(--space-4);
-  align-items: start;
-}
-.overview-side {
-  display: grid;
-  gap: var(--space-4);
-  align-content: start;
-}
-@media (min-width: 1180px) {
-  .overview-layout {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  }
-}
 .overview-card {
   display: grid;
   gap: var(--space-2);
@@ -2156,16 +2180,8 @@ a:hover {
 
 /* ---------- Phase 2: layout ---------- */
 
-/* Where you stand: the trend and this month sit inside the net worth group,
-   under the figure, each set off by a hairline. */
-.stand-trend {
-  display: grid;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-}
 /* A link inside a sentence ("+$20.85 over 12 months · Reports") can't rely on
    blue alone to stand apart from the words around it, so it is underlined. */
-.stand-trend .footnote a,
 .fig-cell .footnote a {
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -2209,17 +2225,6 @@ a:hover {
   font-weight: 600;
 }
 
-/* Accounts on the Overview: assets beside cards and loans, each totalled. */
-.account-columns {
-  display: grid;
-  gap: var(--space-4);
-  align-items: start;
-}
-@media (min-width: 900px) {
-  .account-columns {
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  }
-}
 .group-subtotal {
   display: flex;
   align-items: baseline;
@@ -2234,28 +2239,6 @@ a:hover {
 .row-button.row-compact {
   min-height: 44px;
   padding-block: var(--space-2);
-}
-
-/* Goals on the Overview: a short card each, side by side. */
-.goal-strip {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-}
-.goal-chip {
-  display: grid;
-  gap: var(--space-2);
-  align-content: start;
-}
-.goal-chip-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  font-variant-numeric: tabular-nums;
 }
 
 /* Categories: each group is a short list, so groups sit side by side. */
@@ -2354,32 +2337,8 @@ a:hover {
   }
 }
 
-/* ---------- Overview: the month's plan leads ---------- */
-.overview-plan .card-head {
-  margin-bottom: var(--space-2);
-}
-/* Each planned category against its plan, two across in the large block. */
-.plan-list {
-  list-style: none;
-  margin: var(--space-4) 0 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-4) var(--space-6);
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-}
-.plan-list li {
-  display: grid;
-  gap: var(--space-2);
-}
-.plan-list-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-  font-size: 14px;
-  line-height: 19px;
-}
-/* Net worth's line on the side card: the direction only. */
+/* ---------- Overview: small lines ---------- */
+/* Net worth's line in the band: the direction only. */
 .sparkline.sparkline-small {
   height: 32px;
 }
@@ -2564,34 +2523,11 @@ a:hover {
   }
 }
 
-/* Two columns that end together: the plan beside what is coming and owed. */
-.wide-columns {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-6);
-  align-items: stretch;
-}
-.wide-bottom {
-  align-items: start;
-}
-@media (max-width: 1099px) {
-  .wide-columns {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-.wide-stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
 .group.wide-group {
   display: flex;
   flex-direction: column;
   padding: 0;
   overflow: hidden;
-}
-.wide-grow {
-  flex-grow: 1;
 }
 .wide-head {
   display: flex;
@@ -2609,20 +2545,6 @@ a:hover {
   padding: var(--space-1) var(--space-5);
   border-top: 1px solid var(--line);
 }
-/* One line per item: name, bar, and what is left or how far along. */
-.wide-bar-row {
-  display: grid;
-  grid-template-columns: minmax(110px, 160px) minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-5);
-  min-height: 48px;
-  padding: 0 var(--space-5);
-  border-top: 1px solid var(--line);
-}
-.wide-end {
-  text-align: right;
-  white-space: nowrap;
-}
 .wide-foot {
   min-height: 44px;
   margin-top: auto;
@@ -2637,6 +2559,194 @@ a:hover {
 }
 .plain-link:hover {
   color: var(--blue);
+}
+
+/* ---------- Overview dashboard ---------- */
+/* What stands out: one or two sentences, only when something is unusual. */
+.stands-out {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--ink);
+}
+.stands-out > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--ink-2);
+}
+.stands-out strong {
+  font-weight: 600;
+}
+
+/* The band holds five figures; left to spend gets a little more room. */
+.group.fig-band.fig-band-5 {
+  grid-template-columns: minmax(0, 1.3fr) repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 1179px) {
+  .group.fig-band.fig-band-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .group.fig-band.fig-band-5 > :first-child {
+    grid-column: span 2;
+  }
+}
+
+/* A capsule with the pace tick: blue marks where spending would be today. */
+.pace-capsule {
+  position: relative;
+}
+.pace-tick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--fix);
+}
+/* A goal with no target has nothing to measure against: a dotted track. */
+.prog.prog-none {
+  display: block;
+  background: repeating-linear-gradient(90deg, var(--sunk) 0 6px, transparent 6px 10px);
+}
+
+/* A state in words with its icon: never colour alone. */
+.status-line {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+}
+.status-line svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.status-line.status-strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Budgets that need a look, where you stand, and goals. */
+.wide-three {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: stretch;
+}
+@media (max-width: 1279px) {
+  .wide-three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1099px) {
+  .wide-three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* A row that opens its page: names in ink, the whole row is the link. */
+.need-row,
+.stand-row {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+}
+.need-row:hover,
+.stand-row:hover {
+  text-decoration: none;
+  background: var(--ground);
+}
+.need-top,
+.need-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: 14px;
+  line-height: 19px;
+}
+.need-name {
+  font-weight: 600;
+}
+.need-note {
+  margin: 0;
+  padding: var(--space-2) var(--space-5) var(--space-4);
+}
+.stand-row {
+  grid-template-columns: minmax(0, 1fr) 72px auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  min-height: 60px;
+}
+.stand-name,
+.stand-amount {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 19px;
+}
+.stand-name small,
+.stand-amount small {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+}
+.stand-name small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stand-amount {
+  justify-items: end;
+  text-align: right;
+}
+.sparkline.sparkline-tiny {
+  height: 26px;
+}
+
+/* On a phone, the parts after this month fold away. */
+.fold {
+  display: grid;
+}
+.fold-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0 var(--space-1);
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+.fold-summary::-webkit-details-marker {
+  display: none;
+}
+.fold-summary::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--ink-2);
+  border-bottom: 2px solid var(--ink-2);
+  transform: rotate(45deg);
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+.fold[open] > .fold-summary::after {
+  transform: rotate(-135deg);
+}
+.fold-body {
+  display: grid;
+  gap: var(--space-4);
 }
 
 /* ---------- Settings ---------- */

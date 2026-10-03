@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { db } from '../../lib/supabase';
 import { accountsKey } from '../accounts/queries';
+import { budgetsKey } from '../budgets/queries';
 import { categoryUsageKey } from '../categories/queries';
+import { overviewKey } from '../overview/queries';
+import { reportsKey } from '../reports/queries';
 import { transactionsKey } from '../transactions/queries';
 import type { Database } from '../../lib/database.types';
 
@@ -63,6 +66,10 @@ function useInvalidateBills() {
     void queryClient.invalidateQueries({ queryKey: transactionsKey });
     void queryClient.invalidateQueries({ queryKey: accountsKey });
     void queryClient.invalidateQueries({ queryKey: categoryUsageKey });
+    // A payment moves this month's spending, its pace and the reports.
+    void queryClient.invalidateQueries({ queryKey: budgetsKey });
+    void queryClient.invalidateQueries({ queryKey: overviewKey });
+    void queryClient.invalidateQueries({ queryKey: reportsKey });
   };
 }
 

@@ -54,6 +54,7 @@ export type Database = {
           sort_order: number;
           archived_at: string | null;
           source_ref: string | null;
+          include_in_net_worth: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -66,6 +67,7 @@ export type Database = {
           sort_order?: number;
           archived_at?: string | null;
           source_ref?: string | null;
+          include_in_net_worth?: boolean;
         };
         Update: {
           name?: string;
@@ -74,6 +76,7 @@ export type Database = {
           opening_date?: string | null;
           sort_order?: number;
           archived_at?: string | null;
+          include_in_net_worth?: boolean;
         };
         Relationships: [];
       };
@@ -364,6 +367,7 @@ export type Database = {
           money_in_minor: number | null;
           money_out_minor: number | null;
           balance_minor: number | null;
+          include_in_net_worth: boolean | null;
         };
         Relationships: [];
       };
@@ -441,6 +445,25 @@ export type Database = {
       };
     };
     Functions: {
+      budget_pace: {
+        Args: { p_month: string; p_today?: string };
+        Returns: {
+          budget_id: string;
+          category_id: string;
+          category_name: string;
+          group_id: string | null;
+          month: string;
+          planned_minor: number;
+          spent_minor: number;
+          bills_month_minor: number;
+          bills_due_minor: number;
+          pace_minor: number;
+          gap_minor: number;
+          days_left: number;
+          per_day_minor: number | null;
+          status: 'over' | 'ahead' | 'on_pace';
+        }[];
+      };
       category_top_descriptions: {
         Args: { p_category_id: string; p_from: string; p_to: string; p_limit?: number };
         Returns: { description: string; total_minor: number; txn_count: number }[];
@@ -468,6 +491,22 @@ export type Database = {
       merge_categories: {
         Args: { p_source_id: string; p_target_id: string };
         Returns: number;
+      };
+      month_to_date: {
+        Args: { p_month: string; p_today?: string };
+        Returns: {
+          month: string;
+          today: string;
+          day_of_month: number;
+          days_in_month: number;
+          money_in_minor: number;
+          money_out_minor: number;
+          to_goals_minor: number;
+          typical_in_minor: number;
+          typical_out_minor: number;
+          typical_to_goals_minor: number;
+          typical_months: number;
+        }[];
       };
     };
     Enums: {

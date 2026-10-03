@@ -197,6 +197,54 @@ type Options = {
   password?: string;
 };
 
+// The Overview's two RPCs, answered from the stub's own tables in the shape
+// Postgres returns. The real arithmetic is tested against Postgres in the
+// schema check; here the figures only need to be consistent with the rows.
+const dayOfMonth = Number(today.slice(8, 10));
+const daysInMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).getUTCDate();
+
+function budgetPaceOf(tables: Tables) {
+  return tables.budget_progress
+    .filter((row) => row.month === thisMonth)
+    .map((row) => {
+      const planned = Number(row.planned_minor), spent = Number(row.spent_minor);
+      const pace = Math.round((planned * dayOfMonth) / daysInMonth);
+      const daysLeft = daysInMonth - dayOfMonth;
+      return {
+        ...row,
+        bills_month_minor: 0,
+        bills_due_minor: 0,
+        pace_minor: pace,
+        gap_minor: spent - pace,
+        days_left: daysLeft,
+        per_day_minor: daysLeft > 0 ? Math.floor(Math.max(planned - spent, 0) / daysLeft) : null,
+        status: spent > planned ? 'over' : spent > pace ? 'ahead' : 'on_pace',
+      };
+    });
+}
+
+function monthToDateOf(tables: Tables) {
+  const flowOf = (month: string) => tables.monthly_cash_flow.find((row) => row.month === month);
+  const now = flowOf(thisMonth);
+  const before = flowOf(lastMonth);
+  const goals = (tables.month_summary ?? []).find((row) => row.month === thisMonth);
+  return [
+    {
+      month: thisMonth,
+      today,
+      day_of_month: dayOfMonth,
+      days_in_month: daysInMonth,
+      money_in_minor: Number(now?.money_in_minor ?? 0),
+      money_out_minor: Number(now?.money_out_minor ?? 0),
+      to_goals_minor: Number(goals?.to_goals_minor ?? 0),
+      typical_in_minor: Number(before?.money_in_minor ?? 0),
+      typical_out_minor: Number(before?.money_out_minor ?? 0),
+      typical_to_goals_minor: 0,
+      typical_months: before ? 1 : 0,
+    },
+  ];
+}
+
 export async function stubSupabase(page: Page, options: Options = {}) {
   const tables = options.tables ?? emptyTables();
 
@@ -232,6 +280,8 @@ export async function stubSupabase(page: Page, options: Options = {}) {
       if (name === 'copy_budgets') return json(2);
       if (name === 'mark_bill_paid') return json([{ transaction_id: 'txn-new', next_due_on: today }]);
       if (name === 'merge_categories') return json(1);
+      if (name === 'budget_pace') return json(budgetPaceOf(tables));
+      if (name === 'month_to_date') return json(monthToDateOf(tables));
       return json(null);
     }
 

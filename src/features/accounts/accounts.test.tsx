@@ -37,6 +37,7 @@ function balance(over: Partial<AccountBalance>): AccountBalance {
     money_in_minor: 0,
     money_out_minor: 0,
     balance_minor: 0,
+    include_in_net_worth: true,
     ...over,
   };
 }
@@ -58,6 +59,14 @@ describe('netWorthOf', () => {
       balance({ account_id: 'd', balance_minor: 999, archived_at: '2026-01-01T00:00:00Z' }),
     ]);
     expect(worth).toEqual({ assets: 335450, liabilities: -31000, owed: 31000, net: 304450 });
+  });
+
+  it('leaves out an account the person keeps out of net worth, as net_worth_by_month does', () => {
+    const worth = netWorthOf([
+      balance({ account_id: 'a', balance_minor: 285450 }),
+      balance({ account_id: 'h', balance_minor: 14800, include_in_net_worth: false }),
+    ]);
+    expect(worth).toEqual({ assets: 285450, liabilities: 0, owed: 0, net: 285450 });
   });
 
   it('keeps an overpaid card on the liability side', () => {
@@ -128,6 +137,17 @@ describe('AccountsPage', () => {
     expect(footnote.textContent).not.toContain('owed');
   });
 
+  it('says which accounts are not in net worth', () => {
+    useAccounts.mockReturnValue({
+      data: [balance({ account_id: 'h', name: 'Held for a friend', type: 'investment', include_in_net_worth: false })],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+    });
+    render(<MemoryRouter><AccountsPage /></MemoryRouter>);
+    expect(screen.getByText('Investment · Not in net worth')).toBeInTheDocument();
+  });
+
   it('keeps archived accounts out of the main list', () => {
     useAccounts.mockReturnValue({
       data: [balance({ account_id: 'z', name: 'Old savings', archived_at: '2026-01-01T00:00:00Z' })],
@@ -173,5 +193,40 @@ describe('AccountSheet', () => {
     await userEvent.type(screen.getByLabelText('Amount owed'), '310');
     await userEvent.click(screen.getByRole('button', { name: 'Add account' }));
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ opening_balance_minor: -31000 }));
+  });
+
+  it('counts a new account in net worth unless switched off, and says what switching off means', async () => {
+    render(<AccountSheet onClose={vi.fn()} />);
+    const toggle = screen.getByRole('switch', { name: 'Count in net worth' });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await userEvent.type(screen.getByLabelText('Name'), 'Held for a friend');
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByText(/Left out of net worth, including its history/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Add account' }));
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ include_in_net_worth: false }));
+  });
+
+  it('shows an account left out of net worth as switched off, and can bring it back', async () => {
+    const account = {
+      id: 'a1',
+      user_id: 'u1',
+      name: 'Astro dollars',
+      type: 'investment' as const,
+      opening_balance_minor: 14800,
+      opening_date: null,
+      sort_order: 0,
+      archived_at: null,
+      source_ref: null,
+      include_in_net_worth: false,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    };
+    render(<AccountSheet account={account} onClose={vi.fn()} />);
+    const toggle = screen.getByRole('switch', { name: 'Count in net worth' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await userEvent.click(toggle);
+    await userEvent.click(screen.getByRole('button', { name: 'Save account' }));
+    expect(update).toHaveBeenCalledWith({ id: 'a1', changes: expect.objectContaining({ include_in_net_worth: true }) });
   });
 });

@@ -915,6 +915,116 @@ await test('log_event requires a signed-in caller', async () => {
 });
 
 // ===========================================================================
+group('Overview dashboard: month_to_date and budget_pace (hand-computed)');
+
+// A third person with a fixed calendar, so every figure can be worked out by
+// hand: today is Tue 10 March 2026 (day 10 of 31).
+//   Sep 2025 - Feb 2026, except an empty November: salary 3,000.00 on the 1st,
+//   1,000.00 into the goal fund on the 2nd, groceries 100.00 on the 5th and
+//   200.00 on the 20th (after day 10, so not counted at that day).
+//   March 2026: salary 3,000.00 on the 1st, rent 1,500.00 on the 1st, 50.00
+//   into the fund on the 2nd, a lesson 20.00 on the 3rd, groceries 70.00 on
+//   the 4th and 99.99 on the 15th, fun 15.00 on the 6th.
+const C = '00000000-0000-4000-8000-00000000000c';
+const c = {};
+const TODAY = '2026-03-10';
+
+await test('user C sets up a fixed six months of history', async () => {
+  await sql(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'user-c@example.test', '{}')`, [C]);
+  c.chk = (await insertAs(C, 'accounts', { name: 'C Checking', type: 'checking' })).id;
+  c.fund = (await insertAs(C, 'accounts', { name: 'C Fund', type: 'savings' })).id;
+  await insertAs(C, 'goals', { account_id: c.fund, name: 'C goal' });
+  c.salary = (await insertAs(C, 'categories', { name: 'C salary', kind: 'income' })).id;
+  c.rent = (await insertAs(C, 'categories', { name: 'C rent', kind: 'expense' })).id;
+  c.groceries = (await insertAs(C, 'categories', { name: 'C groceries', kind: 'expense' })).id;
+  c.lessons = (await insertAs(C, 'categories', { name: 'C lessons', kind: 'expense' })).id;
+  c.fun = (await insertAs(C, 'categories', { name: 'C fun', kind: 'expense' })).id;
+  const t = (row) => insertAs(C, 'transactions', { description: 'Synthetic', ...row });
+  for (const m of ['2025-09', '2025-10', '2025-12', '2026-01', '2026-02']) {
+    await t({ kind: 'income', occurred_on: `${m}-01`, amount_minor: 300000, to_account_id: c.chk, category_id: c.salary });
+    await t({ kind: 'transfer', occurred_on: `${m}-02`, amount_minor: 100000, from_account_id: c.chk, to_account_id: c.fund });
+    await t({ kind: 'expense', occurred_on: `${m}-05`, amount_minor: 10000, from_account_id: c.chk, category_id: c.groceries });
+    await t({ kind: 'expense', occurred_on: `${m}-20`, amount_minor: 20000, from_account_id: c.chk, category_id: c.groceries });
+  }
+  c.rentBill = (await insertAs(C, 'recurring_items', {
+    name: 'C rent', label: 'bill', kind: 'expense', amount_minor: 150000, from_account_id: c.chk, category_id: c.rent,
+    cadence_unit: 'month', anchor_on: '2025-09-01', next_due_on: '2026-04-01' })).id;
+  // Weekly, on Tuesdays: Mar 3, 10, 17, 24 and 31.
+  await insertAs(C, 'recurring_items', {
+    name: 'C lesson', label: 'subscription', kind: 'expense', amount_minor: 2000, from_account_id: c.chk,
+    category_id: c.lessons, cadence_unit: 'week', anchor_on: '2026-02-24', next_due_on: '2026-03-10' });
+  await t({ kind: 'income', occurred_on: '2026-03-01', amount_minor: 300000, to_account_id: c.chk, category_id: c.salary });
+  await t({ kind: 'expense', occurred_on: '2026-03-01', amount_minor: 150000, from_account_id: c.chk, category_id: c.rent, recurring_item_id: c.rentBill });
+  await t({ kind: 'transfer', occurred_on: '2026-03-02', amount_minor: 5000, from_account_id: c.chk, to_account_id: c.fund });
+  await t({ kind: 'expense', occurred_on: '2026-03-03', amount_minor: 2000, from_account_id: c.chk, category_id: c.lessons });
+  await t({ kind: 'expense', occurred_on: '2026-03-04', amount_minor: 7000, from_account_id: c.chk, category_id: c.groceries });
+  await t({ kind: 'expense', occurred_on: '2026-03-15', amount_minor: 9999, from_account_id: c.chk, category_id: c.groceries });
+  await t({ kind: 'expense', occurred_on: '2026-03-06', amount_minor: 1500, from_account_id: c.chk, category_id: c.fun });
+  for (const [category_id, amount_minor] of [[c.rent, 150000], [c.groceries, 40000], [c.lessons, 10000], [c.fun, 1000]]) {
+    await insertAs(C, 'budgets', { category_id, month: '2026-03-01', amount_minor });
+  }
+});
+
+await test('month_to_date cuts this month and the typical month at the same day', async () => {
+  const r = await one(asUser(C, `select *, month::text as month_text from public.month_to_date('2026-03-01', $1)`, [TODAY]));
+  eq([r.month_text, r.day_of_month, r.days_in_month], ['2026-03-01', 10, 31], 'day of month');
+  // March to day 10: salary in; rent, lesson, groceries 70.00 and fun out (not the 99.99 on the 15th).
+  eq([num(r.money_in_minor), num(r.money_out_minor), num(r.to_goals_minor)], [300000, 160500, 5000], 'so far');
+  // Five active months, each to day 10: salary, groceries 100.00, 1,000.00 into the fund. November is left out.
+  eq([num(r.typical_in_minor), num(r.typical_out_minor), num(r.typical_to_goals_minor), r.typical_months],
+     [300000, 10000, 100000, 5], 'typical');
+});
+
+await test('month_to_date compares a past month whole, and a future month at day 0', async () => {
+  const past = await one(asUser(C, `select * from public.month_to_date('2026-02-01', $1)`, [TODAY]));
+  eq([past.day_of_month, past.days_in_month, num(past.money_out_minor)], [28, 28, 30000], 'February whole');
+  const future = await one(asUser(C, `select * from public.month_to_date('2026-04-01', $1)`, [TODAY]));
+  eq([future.day_of_month, num(future.money_in_minor), num(future.money_out_minor)], [0, 0, 0], 'April not begun');
+});
+
+await test('budget_pace counts bills on their due dates and spreads the rest of the plan', async () => {
+  const rows = (await asUser(C, `select category_name, planned_minor, spent_minor, bills_month_minor, bills_due_minor,
+                                        pace_minor, gap_minor, days_left, per_day_minor, status
+                                   from public.budget_pace('2026-03-01', $1)`, [TODAY])).rows
+    .map((x) => [x.category_name, num(x.planned_minor), num(x.spent_minor), num(x.bills_month_minor),
+      num(x.bills_due_minor), num(x.pace_minor), num(x.gap_minor), x.days_left, num(x.per_day_minor), x.status]);
+  eq(rows, [
+    // Plan 10.00, spent 15.00: over plan, nothing left per day.
+    ['C fun', 1000, 1500, 0, 0, 323, 1177, 21, 0, 'over'],
+    // No bills: 400.00 x 10/31 = 129.03 on pace; 169.99 spent (the 15th is in the month already).
+    ['C groceries', 40000, 16999, 0, 0, 12903, 4096, 21, 1095, 'ahead'],
+    // Five Tuesdays at 20.00; two are due by the 10th.
+    ['C lessons', 10000, 2000, 10000, 4000, 4000, -2000, 21, 380, 'on_pace'],
+    // Rent paid on the 1st, as the bill says: on pace, not 1,016.13 ahead.
+    ['C rent', 150000, 150000, 150000, 150000, 150000, 0, 21, 0, 'on_pace'],
+  ], 'March 2026 on the 10th');
+});
+
+await test('an account left out of net worth leaves it, history and all, but stays in account_balances', async () => {
+  const latest = `select net_worth_minor from public.net_worth_by_month order by month desc limit 1`;
+  const held = (await insertAs(C, 'accounts', { name: 'C held for someone', type: 'other_asset', opening_balance_minor: 50000 })).id;
+  const withIt = num((await one(asUser(C, latest))).net_worth_minor);
+  await asUser(C, `update public.accounts set include_in_net_worth = false where id = $1`, [held]);
+  const without = num((await one(asUser(C, latest))).net_worth_minor);
+  eq(withIt - without, 50000, 'net worth falls by exactly its balance');
+  const row = await one(asUser(C, `select include_in_net_worth, balance_minor from public.account_balances where account_id = $1`, [held]));
+  eq([row.include_in_net_worth, num(row.balance_minor)], [false, 50000], 'still listed, with its balance');
+  // A new account can start out left out.
+  const outside = await insertAs(C, 'accounts', { name: 'C outside', type: 'cash', opening_balance_minor: 700, include_in_net_worth: false });
+  eq(outside.include_in_net_worth, false, 'insert grant');
+  eq(num((await one(asUser(C, latest))).net_worth_minor), without, 'the new one is left out too');
+});
+
+await test("month_to_date and budget_pace show A nothing of C's", async () => {
+  // A's only rows in these months are its bill payments (Jan 31, Feb 27), so
+  // none of C's salary, rent or goal transfers may show up.
+  const mtd = await one(asUser(A, `select * from public.month_to_date('2026-03-01', $1)`, [TODAY]));
+  eq([num(mtd.money_in_minor), num(mtd.money_out_minor), num(mtd.to_goals_minor), num(mtd.typical_in_minor),
+      num(mtd.typical_to_goals_minor)], [0, 0, 0, 0, 0], "A's March and typical month");
+  eq((await asUser(A, `select * from public.budget_pace('2026-03-01', $1)`, [TODAY])).rows.length, 0, "A has no March budgets");
+});
+
+// ===========================================================================
 group('anon sees nothing');
 
 const relations = ['currencies', 'profiles', 'accounts', 'category_groups', 'categories', 'import_batches',
@@ -938,6 +1048,8 @@ await test('anon cannot call any RPC', async () => {
     `select public.merge_categories(gen_random_uuid(), gen_random_uuid())`,
     `select public.recurrence_next('2026-01-01', 'month', 1, '2026-01-01')`,
     `select * from public.category_top_descriptions(gen_random_uuid(), '2026-01-01', '2026-02-01')`,
+    `select * from public.month_to_date('2026-03-01')`,
+    `select * from public.budget_pace('2026-03-01')`,
   ]) {
     await expectError(asAnon(call), /permission denied/, call);
   }

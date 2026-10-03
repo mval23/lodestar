@@ -6,6 +6,7 @@ import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
 import { Select } from '../../ui/Select';
 import { Sheet } from '../../ui/Sheet';
+import { Switch } from '../../ui/Switch';
 import { dataErrorMessage } from '../auth/errors';
 import {
   ACCOUNT_TYPES,
@@ -18,7 +19,7 @@ import {
   type AccountType,
 } from './queries';
 
-type Values = { name: string; type: AccountType; amount: string; opening_date: string };
+type Values = { name: string; type: AccountType; amount: string; opening_date: string; inNetWorth: boolean };
 
 function initialValues(account: Account | undefined, currency: Currency): Values {
   return {
@@ -26,6 +27,7 @@ function initialValues(account: Account | undefined, currency: Currency): Values
     type: account?.type ?? 'checking',
     amount: account ? toAmountInput(account.opening_balance_minor, currency) : '',
     opening_date: account?.opening_date ?? '',
+    inNetWorth: account?.include_in_net_worth ?? true,
   };
 }
 
@@ -70,6 +72,7 @@ export function AccountSheet({
       type: values.type,
       opening_balance_minor: opening,
       opening_date: values.opening_date === '' ? null : values.opening_date,
+      include_in_net_worth: values.inNetWorth,
     };
     try {
       if (account) await update.mutateAsync({ id: account.id, changes });
@@ -123,10 +126,18 @@ export function AccountSheet({
               onChange={(e) => set('opening_date', e.target.value)}
             />
           </FormRow>
+          <FormRow label="Count in net worth" htmlFor="account-net-worth">
+            <Switch id="account-net-worth" checked={values.inNetWorth} onChange={(next) => set('inNetWorth', next)} />
+          </FormRow>
         </FormGroup>
         <p className="form-hint">
           {typeHint}. {isLiability ? 'Enter what you owe as a positive number; Lodestar keeps it as a negative balance.' : 'This is the balance the account holds today, before any transactions you add.'}
         </p>
+        {!values.inNetWorth && (
+          <p className="form-hint">
+            Left out of net worth, including its history. Its transactions still count in cash flow, budgets and Activity.
+          </p>
+        )}
 
         {error && <Notice tone="err">{error}</Notice>}
         <FieldErrors messages={[reason]} />

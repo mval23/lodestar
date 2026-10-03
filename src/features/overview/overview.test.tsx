@@ -1,15 +1,18 @@
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { addMonths } from '../../lib/dates';
+import type { AccountBalance } from '../accounts/queries';
+import type { BudgetPace, MonthToDate } from './queries';
+import { restNote } from './Dashboard';
 import { OverviewPage } from './OverviewPage';
 
 const useAccounts = vi.fn();
-const useCashFlow = vi.fn();
 const useNetWorth = vi.fn();
-const useBudgets = vi.fn();
 const useBills = vi.fn();
 const useGoals = vi.fn();
-const useMonthSummary = vi.fn();
-const useMonthAccounts = vi.fn();
+const useMonthToDate = vi.fn();
+const useBudgetPace = vi.fn();
+const useAccountClosings = vi.fn();
 
 vi.mock('../accounts/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../accounts/queries')>();
@@ -17,11 +20,7 @@ vi.mock('../accounts/queries', async (importOriginal) => {
 });
 vi.mock('../reports/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../reports/queries')>();
-  return { ...actual, useCashFlow: () => useCashFlow(), useNetWorth: () => useNetWorth() };
-});
-vi.mock('../budgets/queries', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../budgets/queries')>();
-  return { ...actual, useBudgets: () => useBudgets() };
+  return { ...actual, useNetWorth: () => useNetWorth() };
 });
 vi.mock('../bills/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../bills/queries')>();
@@ -31,15 +30,20 @@ vi.mock('../goals/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../goals/queries')>();
   return { ...actual, useGoals: () => useGoals() };
 });
+vi.mock('./queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./queries')>();
+  return {
+    ...actual,
+    useMonthToDate: () => useMonthToDate(),
+    useBudgetPace: () => useBudgetPace(),
+    useAccountClosings: () => useAccountClosings(),
+  };
+});
 const phone = vi.fn(() => false);
 vi.mock('../../lib/media', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/media')>();
   return { ...actual, useMediaQuery: () => phone() };
 });
-vi.mock('../months/queries', () => ({
-  useMonthAccounts: () => useMonthAccounts(),
-  useMonthSummary: () => useMonthSummary(),
-}));
 const startTour = vi.fn();
 vi.mock('../tour/Tour', () => ({
   useTour: () => ({ active: false, start: startTour }),
@@ -53,7 +57,7 @@ vi.mock('../../lib/profile', () => ({
 }));
 
 const THIS_MONTH = `${new Date().toISOString().slice(0, 7)}-01`;
-const TODAY = new Date().toISOString().slice(0, 10);
+const LAST_MONTH = addMonths(THIS_MONTH, -1);
 
 function show() {
   render(
@@ -63,22 +67,81 @@ function show() {
   );
 }
 
+function account(id: string, name: string, type: AccountBalance['type'], balance: number): AccountBalance {
+  return {
+    account_id: id,
+    name,
+    type,
+    is_liability: type === 'credit_card' || type === 'loan',
+    archived_at: null,
+    balance_minor: balance,
+    user_id: 'u1',
+    sort_order: 0,
+    opening_balance_minor: 0,
+    money_in_minor: 0,
+    money_out_minor: 0,
+    include_in_net_worth: true,
+  };
+}
+
+function pace(name: string, planned: number, spent: number, onPace: number, daysLeft = 6): BudgetPace {
+  return {
+    budget_id: `b-${name}`,
+    category_id: `c-${name}`,
+    category_name: name,
+    month: THIS_MONTH,
+    planned_minor: planned,
+    spent_minor: spent,
+    bills_month_minor: 0,
+    bills_due_minor: 0,
+    pace_minor: onPace,
+    gap_minor: spent - onPace,
+    days_left: daysLeft,
+    per_day_minor: null,
+    status: spent > planned ? 'over' : spent > onPace ? 'ahead' : 'on_pace',
+  };
+}
+
+const soFar: MonthToDate = {
+  month: THIS_MONTH,
+  today: THIS_MONTH,
+  day_of_month: 24,
+  days_in_month: 30,
+  money_in_minor: 305000,
+  money_out_minor: 318507,
+  to_goals_minor: 125000,
+  typical_in_minor: 283333,
+  typical_out_minor: 363990,
+  typical_to_goals_minor: 125000,
+  typical_months: 6,
+};
+
+const accounts = [
+  account('chk', 'Everyday checking', 'checking', 543797),
+  account('wal', 'Wallet', 'cash', 56842),
+  account('fund', 'Emergency fund', 'savings', 1235000),
+  account('visa', 'Visa card', 'credit_card', -105265),
+  account('loan', 'Car loan', 'loan', -556000),
+];
+
+function loaded() {
+  useAccounts.mockReturnValue({ data: accounts, isSuccess: true, isPending: false, isError: false });
+}
 
 beforeEach(() => {
   useAccounts.mockReturnValue({ data: [], isSuccess: true, isPending: false, isError: false });
-  useCashFlow.mockReturnValue({ data: [] });
   useNetWorth.mockReturnValue({ data: [] });
-  useBudgets.mockReturnValue({ data: [] });
   useBills.mockReturnValue({ data: [] });
   useGoals.mockReturnValue({ data: [] });
-  useMonthSummary.mockReturnValue({ data: { to_goals_minor: 0 } });
-  useMonthAccounts.mockReturnValue({ data: [] });
+  useMonthToDate.mockReturnValue({ data: null, isPending: false });
+  useBudgetPace.mockReturnValue({ data: [], isPending: false });
+  useAccountClosings.mockReturnValue({ data: [] });
   phone.mockReturnValue(false);
   startTour.mockReset();
   seenTour.mockReturnValue(false);
 });
 
-describe('OverviewPage', () => {
+describe('OverviewPage, first run', () => {
   it('asks for a currency and a first account before anything else', () => {
     show();
     expect(screen.getByText('Welcome to Lodestar')).toBeInTheDocument();
@@ -98,159 +161,6 @@ describe('OverviewPage', () => {
     expect(screen.getByRole('button', { name: 'Show me around' })).toBeInTheDocument();
   });
 
-  it('leads with net worth once there are accounts', () => {
-    useAccounts.mockReturnValue({
-      data: [
-        {
-          account_id: 'a',
-          name: 'Everyday checking',
-          type: 'checking',
-          is_liability: false,
-          archived_at: null,
-          balance_minor: 285450,
-          user_id: 'u1',
-          sort_order: 0,
-          opening_balance_minor: 0,
-          money_in_minor: 0,
-          money_out_minor: 0,
-        },
-        {
-          account_id: 'c',
-          name: 'Blue card',
-          type: 'credit_card',
-          is_liability: true,
-          archived_at: null,
-          balance_minor: -31000,
-          user_id: 'u1',
-          sort_order: 1,
-          opening_balance_minor: 0,
-          money_in_minor: 0,
-          money_out_minor: 0,
-        },
-      ],
-      isSuccess: true,
-      isPending: false,
-      isError: false,
-    });
-    show();
-    // 285450 − 31000 = 254450
-    expect(screen.getAllByText('$2,544.50').length).toBeGreaterThan(0);
-    expect(screen.getByText('Everyday checking')).toBeInTheDocument();
-    // On a wide screen what is owned and what is owed are separate groups,
-    // each with its total: owed is said as a positive amount.
-    expect(screen.getByRole('region', { name: 'Accounts' })).toHaveTextContent('$2,854.50');
-    expect(screen.getByRole('region', { name: 'Debt' })).toHaveTextContent('$310.00');
-    expect(screen.getByRole('region', { name: 'Debt' })).toHaveTextContent('Blue card');
-  });
-
-  it('says plainly when each card has nothing to show', () => {
-    useAccounts.mockReturnValue({
-      data: [
-        {
-          account_id: 'a',
-          name: 'Everyday checking',
-          type: 'checking',
-          is_liability: false,
-          archived_at: null,
-          balance_minor: 1000,
-          user_id: 'u1',
-          sort_order: 0,
-          opening_balance_minor: 1000,
-          money_in_minor: 0,
-          money_out_minor: 0,
-        },
-      ],
-      isSuccess: true,
-      isPending: false,
-      isError: false,
-    });
-    show();
-    expect(screen.getByText('Nothing recorded this month yet.')).toBeInTheDocument();
-    expect(screen.getByText('No plan for this month yet.')).toBeInTheDocument();
-    expect(screen.getByText('Nothing due in the next week.')).toBeInTheDocument();
-    // With no goals there is nothing to show, so the strip stays away.
-    expect(screen.queryByRole('heading', { name: 'Goals' })).not.toBeInTheDocument();
-  });
-
-  it('summarises the month, the budget, what is due and what is saved', () => {
-    useAccounts.mockReturnValue({
-      data: [
-        {
-          account_id: 'a',
-          name: 'Everyday checking',
-          type: 'checking',
-          is_liability: false,
-          archived_at: null,
-          balance_minor: 100000,
-          user_id: 'u1',
-          sort_order: 0,
-          opening_balance_minor: 100000,
-          money_in_minor: 0,
-          money_out_minor: 0,
-        },
-      ],
-      isSuccess: true,
-      isPending: false,
-      isError: false,
-    });
-    useCashFlow.mockReturnValue({
-      data: [{ month: THIS_MONTH, money_in_minor: 250000, money_out_minor: 100000, net_minor: 150000 }],
-    });
-    useBudgets.mockReturnValue({
-      data: [
-        {
-          budget_id: 'b1',
-          category_id: 'groceries',
-          category_name: 'Groceries',
-          group_id: null,
-          month: THIS_MONTH,
-          planned_minor: 20000,
-          spent_minor: 25550,
-          left_minor: -5550,
-        },
-      ],
-    });
-    useBills.mockReturnValue({
-      data: [
-        {
-          id: 'bill1',
-          name: 'Rent',
-          next_due_on: TODAY,
-          amount_minor: 120000,
-          archived_at: null,
-          label: 'bill',
-          kind: 'expense',
-        },
-      ],
-    });
-    useGoals.mockReturnValue({
-      data: [{ goal_id: 'g1', name: 'Emergency fund', balance_minor: 50000, target_minor: 100000, archived_at: null }],
-    });
-
-    show();
-
-    expect(screen.getAllByText('+$1,500.00').length).toBeGreaterThan(0); // the month's net
-    expect(screen.getByText(/Over plan by/)).toBeInTheDocument();
-    // The category past its plan is named, and leads to its budget line.
-    expect(screen.getByRole('link', { name: 'Groceries' })).toBeInTheDocument();
-    expect(screen.getByText('Due today')).toBeInTheDocument();
-    expect(screen.getByText(/50% saved/)).toBeInTheDocument();
-  });
-
-  const checking = {
-    account_id: 'a',
-    name: 'Everyday checking',
-    type: 'checking',
-    is_liability: false,
-    archived_at: null,
-    balance_minor: 100000,
-    user_id: 'u1',
-    sort_order: 0,
-    opening_balance_minor: 100000,
-    money_in_minor: 0,
-    money_out_minor: 0,
-  };
-
   // The page used to render its whole dashboard from an empty list while the
   // accounts loaded, so the first thing it said was $0.00.
   it('says nothing about net worth until the accounts have arrived', () => {
@@ -260,219 +170,202 @@ describe('OverviewPage', () => {
     expect(screen.queryByText('Net worth')).not.toBeInTheDocument();
     expect(screen.queryByText('$0.00')).not.toBeInTheDocument();
   });
+});
 
-  it('shows which way net worth has moved, in words as well as a line', () => {
-    useAccounts.mockReturnValue({ data: [checking], isSuccess: true, isPending: false, isError: false });
+describe('This month', () => {
+  it('leads with left to spend, its pace, and the month so far against a typical month', () => {
+    loaded();
+    useBudgetPace.mockReturnValue({
+      data: [pace('Rent', 165000, 165000, 165000), pace('Groceries', 55000, 38043, 44000)],
+      isPending: false,
+    });
+    useMonthToDate.mockReturnValue({ data: soFar, isPending: false });
+    show();
+
+    const band = screen.getByRole('region', { name: 'This month' });
+    // 220,000 planned − 203,043 spent: the one bracketed figure.
+    expect(within(band).getAllByText('$169.57').length).toBeGreaterThan(0);
+    expect(band.querySelector('.bracket')).toHaveTextContent('$169.57');
+    // 209,000 on pace − 203,043 spent.
+    expect(band).toHaveTextContent('$59.57 under pace');
+    expect(band).toHaveTextContent('6 days left');
+    expect(band.querySelector('.pace-tick')).not.toBeNull();
+    // Money in and out, each against a typical month cut at the same day.
+    expect(band).toHaveTextContent('$3,050.00');
+    expect(band).toHaveTextContent('+$216.67');
+    expect(band).toHaveTextContent('$216.67 vs a typical');
+    // "Oct 1–24" is held on one line by a word joiner after the dash.
+    expect(band).toHaveTextContent(/1–\u2060?24/);
+    expect(band).toHaveTextContent('minus $454.83 vs a typical');
+  });
+
+  it('says plainly when there is no plan and nothing to compare with', () => {
+    loaded();
+    useMonthToDate.mockReturnValue({ data: { ...soFar, typical_months: 0 }, isPending: false });
+    show();
+    const band = screen.getByRole('region', { name: 'This month' });
+    expect(band).toHaveTextContent('No plan for this month yet.');
+    expect(within(band).getAllByText('No earlier months to compare yet')).toHaveLength(2);
+    expect(band).toHaveTextContent('No monthly plans set');
+  });
+
+  it('compares what went into goals with their monthly plans', () => {
+    loaded();
+    useMonthToDate.mockReturnValue({ data: { ...soFar, to_goals_minor: 100000 }, isPending: false });
+    useGoals.mockReturnValue({
+      data: [
+        { goal_id: 'g1', name: 'Emergency fund', monthly_plan_minor: 75000, archived_at: null, target_minor: null, balance_minor: 0, this_month_contributed_minor: 75000 },
+        { goal_id: 'g2', name: 'Travel', monthly_plan_minor: 50000, archived_at: null, target_minor: null, balance_minor: 0, this_month_contributed_minor: 25000 },
+      ],
+    });
+    show();
+    const band = screen.getByRole('region', { name: 'This month' });
+    expect(band).toHaveTextContent('$250.00 to go of');
+    expect(band).toHaveTextContent('$1,250.00 planned');
+  });
+
+  it('says how net worth has moved since last month end', () => {
+    loaded();
     useNetWorth.mockReturnValue({
-      data: [
-        { month: '2026-08-01', assets_minor: 90000, liabilities_minor: 0, net_worth_minor: 90000 },
-        { month: THIS_MONTH, assets_minor: 100000, liabilities_minor: 0, net_worth_minor: 100000 },
-      ],
+      data: [{ month: LAST_MONTH, assets_minor: 0, liabilities_minor: 0, net_worth_minor: 1000000 }],
     });
     show();
-    expect(screen.getByRole('img', { name: /Net worth over the last 2 months/ })).toBeInTheDocument();
-    expect(screen.getByText(/over 2 months/)).toBeInTheDocument();
-    expect(screen.getAllByText('+$100.00').length).toBeGreaterThan(0);
-  });
-
-  // The four figures checked every time, in one band: left to spend (the
-  // page's one bracket), net worth, this month, and what is due this week.
-  it('leads a wide screen with the key figures in one band', () => {
-    useAccounts.mockReturnValue({ data: [checking], isSuccess: true, isPending: false, isError: false });
-    useCashFlow.mockReturnValue({
-      data: [{ month: THIS_MONTH, money_in_minor: 250000, money_out_minor: 100000, net_minor: 150000 }],
-    });
-    useBudgets.mockReturnValue({
-      data: [
-        {
-          budget_id: 'b1',
-          category_id: 'groceries',
-          category_name: 'Groceries',
-          group_id: null,
-          month: THIS_MONTH,
-          planned_minor: 60000,
-          spent_minor: 45000,
-          left_minor: 15000,
-        },
-      ],
-    });
-    useBills.mockReturnValue({
-      data: [
-        { id: 'bill1', name: 'Phone', next_due_on: TODAY, amount_minor: 4500, archived_at: null, label: 'bill', kind: 'expense' },
-        { id: 'bill2', name: 'Salary', next_due_on: '2099-01-01', amount_minor: 285000, archived_at: null, label: 'income', kind: 'income' },
-      ],
-    });
-    show();
-
-    const band = screen.getByRole('region', { name: 'Key figures' });
-    expect(within(band).getByRole('link', { name: /Left to spend/ })).toBeInTheDocument();
-    expect(band.querySelectorAll('.bracket')).toHaveLength(1);
-    expect(within(band).getAllByText('$150.00').length).toBeGreaterThan(0);
-    expect(within(band).getAllByText('+$1,500.00').length).toBeGreaterThan(0);
-    expect(within(band).getByText('Next: Phone, due today')).toBeInTheDocument();
-
-    // Coming up lists what comes round next, money in included.
-    const coming = screen.getByRole('region', { name: 'Coming up' });
-    expect(within(coming).getByRole('link', { name: 'Salary' })).toBeInTheDocument();
-    expect(within(coming).getAllByText('+$2,850.00').length).toBeGreaterThan(0);
-
-    // The phone's stack is not drawn beside it.
-    expect(screen.queryByRole('navigation', { name: 'More' })).not.toBeInTheDocument();
-  });
-
-  // A card payment is a transfer into the card, so it is in neither income
-  // nor expenses: it shows under the debt it paid down.
-  it('shows what was paid towards debt this month, counting only cards and loans', () => {
-    useAccounts.mockReturnValue({
-      data: [
-        checking,
-        { ...checking, account_id: 'c', name: 'Blue card', type: 'credit_card', is_liability: true, balance_minor: -98964 },
-      ],
-      isSuccess: true,
-      isPending: false,
-      isError: false,
-    });
-    useMonthAccounts.mockReturnValue({
-      data: [
-        { account_id: 'c', transfer_in_minor: 40000 },
-        { account_id: 'a', transfer_in_minor: 12345 },
-      ],
-    });
-    show();
-
-    const debt = screen.getByRole('region', { name: 'Debt' });
-    expect(within(debt).getAllByText('$989.64').length).toBeGreaterThan(0);
-    expect(within(debt).getByText('Paid this month').closest('.wide-row')).toHaveTextContent('$400.00');
+    const band = screen.getByRole('region', { name: 'This month' });
+    // 543,797 + 56,842 + 1,235,000 − 105,265 − 556,000 = 1,174,374.
+    expect(within(band).getAllByText('$11,743.74').length).toBeGreaterThan(0);
+    expect(band).toHaveTextContent('+$1,743.74');
+    expect(band).toHaveTextContent('$1,743.74 since');
   });
 });
 
-describe('what was saved this month', () => {
-  it('shows what went into the goals, beside what came in and went out', () => {
-    phone.mockReturnValue(false);
-    useCashFlow.mockReturnValue({
-      data: [{ month: THIS_MONTH, money_in_minor: 688200, money_out_minor: 443670, net_minor: 244530 }],
-    });
-    useAccounts.mockReturnValue({
-      data: [{ account_id: 'a', name: 'Everyday checking', type: 'checking', is_liability: false, archived_at: null, balance_minor: 100000, user_id: 'u1', sort_order: 0, opening_balance_minor: 0, money_in_minor: 0, money_out_minor: 0 }],
-      isSuccess: true,
-      isPending: false,
-      isError: false,
-    });
-    useMonthSummary.mockReturnValue({ data: { to_goals_minor: 70000 } });
-    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
-
-    const month = screen.getByRole('heading', { name: 'This month' }).closest('.fig-cell')!;
-    expect(month).toHaveTextContent('$6,882.00 in');
-    expect(month).toHaveTextContent('$4,436.70 out');
-    expect(month).toHaveTextContent('$700.00 saved');
+describe('What stands out', () => {
+  it('names the budget furthest over plan, and money out against a typical month', () => {
+    loaded();
+    useBudgetPace.mockReturnValue({ data: [pace('Subscriptions', 8000, 8247, 6400)], isPending: false });
+    useMonthToDate.mockReturnValue({ data: soFar, isPending: false });
+    show();
+    const line = screen.getByText(/What stands out/).closest('p')!;
+    expect(line).toHaveTextContent('Subscriptions is over plan by');
+    expect(line).toHaveTextContent('below a typical');
   });
 
-  it('says nothing about saving in a month with none', () => {
-    phone.mockReturnValue(false);
-    useCashFlow.mockReturnValue({
-      data: [{ month: THIS_MONTH, money_in_minor: 688200, money_out_minor: 443670, net_minor: 244530 }],
-    });
-    useAccounts.mockReturnValue({
-      data: [{ account_id: 'a', name: 'Everyday checking', type: 'checking', is_liability: false, archived_at: null, balance_minor: 100000, user_id: 'u1', sort_order: 0, opening_balance_minor: 0, money_in_minor: 0, money_out_minor: 0 }],
-      isSuccess: true,
-      isPending: false,
-      isError: false,
-    });
-    useMonthSummary.mockReturnValue({ data: { to_goals_minor: 0 } });
-    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
-
-    expect(screen.queryByText(/saved/)).not.toBeInTheDocument();
-  });
-
-  it('shows it as a row of its own on a phone', () => {
-    phone.mockReturnValue(true);
-    useCashFlow.mockReturnValue({
-      data: [{ month: THIS_MONTH, money_in_minor: 688200, money_out_minor: 443670, net_minor: 244530 }],
-    });
-    useAccounts.mockReturnValue({
-      data: [{ account_id: 'a', name: 'Everyday checking', type: 'checking', is_liability: false, archived_at: null, balance_minor: 100000, user_id: 'u1', sort_order: 0, opening_balance_minor: 0, money_in_minor: 0, money_out_minor: 0 }],
-      isSuccess: true,
-      isPending: false,
-      isError: false,
-    });
-    useMonthSummary.mockReturnValue({ data: { to_goals_minor: 70000 } });
-    render(<MemoryRouter><OverviewPage /></MemoryRouter>);
-
-    const row = screen.getByText('Saved').closest('li')!;
-    expect(row).toHaveTextContent('Moved into your goals');
-    expect(row).toHaveTextContent('$700.00');
+  it('says nothing when the month is unremarkable', () => {
+    loaded();
+    useBudgetPace.mockReturnValue({ data: [pace('Rent', 165000, 165000, 165000)], isPending: false });
+    useMonthToDate.mockReturnValue({ data: { ...soFar, money_out_minor: 360000 }, isPending: false });
+    show();
+    expect(screen.queryByText(/What stands out/)).not.toBeInTheDocument();
   });
 });
 
-// A phone keeps the stacked Overview: the month's plan first, then the cards.
+describe('Budgets that need a look', () => {
+  it('lists over plan first, then ahead of pace, three at most, each opening its budget line', () => {
+    loaded();
+    useBudgetPace.mockReturnValue({
+      data: [
+        pace('Rent', 165000, 165000, 165000),
+        pace('Health', 10000, 9216, 8000),
+        pace('Dining out', 30000, 29977, 24000),
+        pace('Subscriptions', 8000, 8247, 6400),
+        pace('Groceries', 55000, 38043, 44000),
+      ],
+      isPending: false,
+    });
+    show();
+    const group = screen.getByRole('region', { name: 'Budgets that need a look' });
+    const rows = within(group).getAllByRole('link').filter((link) => link.classList.contains('need-row'));
+    expect(rows.map((row) => row.querySelector('.need-name')?.textContent)).toEqual(['Subscriptions', 'Dining out', 'Health']);
+    expect(rows[0]).toHaveTextContent('Over plan by');
+    expect(rows[1]).toHaveTextContent('ahead of pace');
+    expect(rows[0]).toHaveAttribute('href', expect.stringContaining('c-Subscriptions'));
+    expect(group).toHaveTextContent('2 more, all on pace or under.');
+    expect(within(group).getByRole('link', { name: 'All 5' })).toBeInTheDocument();
+  });
+});
+
+describe('restNote', () => {
+  it('says how the budgets not shown stand', () => {
+    expect(restNote(2, 0)).toBe('2 more, all on pace or under.');
+    expect(restNote(6, 6)).toBe('6 more, all ahead of pace or over.');
+    expect(restNote(6, 2)).toBe('6 more: 2 ahead of pace or over, 4 on pace or under.');
+  });
+});
+
+describe('Where you stand', () => {
+  it('groups the accounts, with a subtotal and the change since last month end', () => {
+    loaded();
+    useAccountClosings.mockReturnValue({
+      data: [
+        { account_id: 'chk', month: LAST_MONTH, closing_balance_minor: 761875 },
+        { account_id: 'wal', month: LAST_MONTH, closing_balance_minor: 56842 },
+        { account_id: 'visa', month: LAST_MONTH, closing_balance_minor: -182313 },
+        { account_id: 'loan', month: LAST_MONTH, closing_balance_minor: -556000 },
+      ],
+    });
+    show();
+    const group = screen.getByRole('region', { name: 'Where you stand' });
+    const cash = within(group).getByText('Cash').closest('a')!;
+    // 543,797 + 56,842 now, 818,717 at last month end.
+    expect(cash).toHaveTextContent('$6,006.39');
+    expect(cash).toHaveTextContent('minus $2,180.78 since');
+    const debt = within(group).getByText('Cards and loans').closest('a')!;
+    expect(debt).toHaveTextContent('−$6,612.65');
+    // −661,265 now against −738,313: owed less, said in words, not by sign.
+    expect(debt).toHaveTextContent('$770.48 less owed than');
+    expect(within(group).getByText('Savings')).toBeInTheDocument();
+  });
+
+  it('names an account left out of net worth instead of counting it in a subtotal', () => {
+    useAccounts.mockReturnValue({
+      data: [...accounts, { ...account('astro', 'Astro dollars', 'investment', 14800), include_in_net_worth: false }],
+      isSuccess: true,
+      isPending: false,
+      isError: false,
+    });
+    show();
+    const group = screen.getByRole('region', { name: 'Where you stand' });
+    // Savings is the Emergency fund alone: 12,350.00, without the 148.00.
+    expect(within(group).getByText('Savings').closest('a')).toHaveTextContent('$12,350.00');
+    expect(group).toHaveTextContent('Not in net worth: Astro dollars');
+    // Net worth in the band leaves it out too: still 11,743.74.
+    expect(within(screen.getByRole('region', { name: 'This month' })).getAllByText('$11,743.74').length).toBeGreaterThan(0);
+  });
+});
+
+describe('Goals', () => {
+  it('shows each goal against its target and this month against its plan', () => {
+    loaded();
+    useGoals.mockReturnValue({
+      data: [
+        { goal_id: 'g1', name: 'Travel', target_minor: 400000, monthly_plan_minor: 20000, archived_at: null, balance_minor: 260000, this_month_contributed_minor: 20000 },
+        { goal_id: 'g2', name: 'Home deposit', target_minor: 4000000, monthly_plan_minor: 50000, archived_at: null, balance_minor: 1500000, this_month_contributed_minor: 10000 },
+        { goal_id: 'g3', name: 'Retirement', target_minor: null, monthly_plan_minor: null, archived_at: null, balance_minor: 2450000, this_month_contributed_minor: 0 },
+      ],
+    });
+    show();
+    const group = screen.getByRole('region', { name: 'Goals' });
+    const travel = within(group).getByText('Travel').closest('a')!;
+    expect(travel).toHaveTextContent('On plan · ');
+    expect(travel).toHaveTextContent('65%');
+    expect(within(group).getByText('Home deposit').closest('a')).toHaveTextContent('$400.00 to go this month');
+    const retirement = within(group).getByText('Retirement').closest('a')!;
+    expect(retirement).toHaveTextContent('No monthly plan');
+    expect(retirement).toHaveTextContent('No target');
+  });
+});
+
 describe('OverviewPage on a phone', () => {
   beforeEach(() => phone.mockReturnValue(true));
 
-  const checking = {
-    account_id: 'a',
-    name: 'Everyday checking',
-    type: 'checking',
-    is_liability: false,
-    archived_at: null,
-    balance_minor: 100000,
-    user_id: 'u1',
-    sort_order: 0,
-    opening_balance_minor: 100000,
-    money_in_minor: 0,
-    money_out_minor: 0,
-  };
-
-  it('keeps the stack, with assets and liabilities apart and the More list', () => {
-    useAccounts.mockReturnValue({
-      data: [
-        checking,
-        { ...checking, account_id: 'c', name: 'Blue card', type: 'credit_card', is_liability: true, balance_minor: -31000 },
-      ],
-      isSuccess: true,
-      isPending: false,
-      isError: false,
-    });
+  it('puts this month first and folds where you stand and what is coming up', () => {
+    loaded();
+    useBudgetPace.mockReturnValue({ data: [pace('Groceries', 55000, 38043, 44000)], isPending: false });
     show();
-    expect(screen.queryByRole('region', { name: 'Key figures' })).not.toBeInTheDocument();
-    expect(screen.getByText(/in assets/)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Assets' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Cards and loans' })).toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: 'More' })).toBeInTheDocument();
-  });
-
-  // The month's income, expenses and debt, side by side. A card payment is a
-  // transfer into the card, so it is in neither income nor expenses: it shows
-  // under the debt it paid down.
-  it('totals the month: income, expenses, and the debt with what was paid towards it', () => {
-    useAccounts.mockReturnValue({
-      data: [
-        checking,
-        { ...checking, account_id: 'c', name: 'Blue card', type: 'credit_card', is_liability: true, balance_minor: -98964 },
-      ],
-      isSuccess: true,
-      isPending: false,
-      isError: false,
-    });
-    useCashFlow.mockReturnValue({
-      data: [{ month: THIS_MONTH, money_in_minor: 688200, money_out_minor: 363190, net_minor: 325010 }],
-    });
-    useMonthAccounts.mockReturnValue({
-      data: [
-        { account_id: 'c', transfer_in_minor: 40000 },
-        { account_id: 'a', transfer_in_minor: 12345 },
-      ],
-    });
-    show();
-
-    const card = screen.getByRole('region', { name: 'This month' });
-    expect(within(card).getByText('Income')).toBeInTheDocument();
-    expect(within(card).getAllByText('$6,882.00').length).toBeGreaterThan(0);
-    expect(within(card).getByText('Expenses')).toBeInTheDocument();
-    expect(within(card).getAllByText('$3,631.90').length).toBeGreaterThan(0);
-    // Owed, as a positive amount, the way it is said.
-    expect(within(card).getAllByText('$989.64').length).toBeGreaterThan(0);
-    // Only transfers into a card or loan count as paying it down.
-    expect(within(card).getByText(/paid this month/)).toHaveTextContent('$400.00');
-    expect(within(card).getAllByText('+$3,250.10').length).toBeGreaterThan(0);
+    expect(screen.getByRole('region', { name: 'This month' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Budgets that need a look' })).toBeInTheDocument();
+    const folds = Array.from(document.querySelectorAll('details.fold'));
+    expect(folds.map((fold) => fold.querySelector('summary')?.textContent)).toEqual(['Where you stand', 'Coming up']);
+    for (const fold of folds) expect(fold).not.toHaveAttribute('open');
+    expect(screen.getAllByRole('link', { name: /Reports/ }).length).toBeGreaterThan(0);
   });
 });
