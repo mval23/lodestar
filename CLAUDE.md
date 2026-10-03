@@ -82,7 +82,7 @@ Non-negotiables:
 - **Numbers:** `tabular-nums` on every amount, a true minus sign (U+2212), right-aligned amount columns.
 - **Charts:** money in is ink and money out is grey; blue marks only "now." Never show gains and losses as red versus green.
 - **Voice:** calm, specific, never shaming. No "financial freedom," "guaranteed," "get rich," "bank-grade security," or "workspace."
-- **Navigation:** desktop sidebar (Overview, Activity, Accounts, Budgets, Bills, Goals, Reports; Import & export and Settings at the bottom). Mobile tab bar (Overview, Activity, Accounts, Budgets); Bills sits under Budgets, and Goals and Reports are reached from Overview.
+- **Navigation:** desktop sidebar (Overview, Activity, Accounts, Budgets, Bills, Goals, Reports; Import & export and Settings at the bottom). Mobile tab bar (Overview, Activity, Accounts, Budgets, Reports); Bills sits under Budgets, and Goals is reached from Overview.
 - Rejected directions (don't bring them back): spruce/brass palette, vivid multi-color palettes, the name Constella.
 
 ## Development

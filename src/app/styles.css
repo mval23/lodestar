@@ -595,7 +595,7 @@ a:hover {
     bottom: 0;
     z-index: 5;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     padding: var(--space-2) 0 calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
     background: var(--glass);
     -webkit-backdrop-filter: var(--glass-filter);
@@ -912,35 +912,6 @@ a:hover {
 }
 
 /* ---------- Filters ---------- */
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  align-items: center;
-}
-.filters select {
-  font: inherit;
-  font-size: 13px;
-  padding: 7px 10px;
-  min-height: 36px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--ink);
-}
-.search-field {
-  font: inherit;
-  font-size: 14px;
-  flex: 1 1 220px;
-  min-width: 180px;
-  min-height: 36px;
-  padding: 7px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--ink);
-}
-
 /* ---------- Ledger table ---------- */
 /* No overflow on a wide screen, on purpose. `overflow-x: auto` makes this a
    scroll container on both axes, and a sticky header then anchors to a box
@@ -1201,18 +1172,6 @@ a:hover {
 }
 
 /* Filter bar triggers look like controls, not table cells. */
-.filters .select-trigger {
-  width: auto;
-  min-width: 140px;
-  justify-content: space-between;
-  min-height: 36px;
-  padding: 6px 10px;
-  font-size: 13px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-}
-
 /* The generic `.form-row input` width would stretch the toggle across the row. */
 .form-row input.toggle {
   width: 44px;
@@ -2100,19 +2059,6 @@ a:hover {
   color: var(--ink);
   white-space: nowrap;
 }
-.group.fig-band.fig-band-6 {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-@media (max-width: 1279px) {
-  .group.fig-band.fig-band-6 {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-@media (max-width: 767px) {
-  .group.fig-band.fig-band-6 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 /* Two parts side by side on a wide screen, stacked otherwise. */
 .report-pair {
   display: grid;
@@ -2349,18 +2295,6 @@ a:hover {
 }
 
 /* The From and To pair wraps as one unit. */
-.filter-dates {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-/* A date filter with its name on screen. */
-.filter-date {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 /* A picker standing on its own, outside a form row or the filter bar. */
 .control-select .select-trigger {
   width: auto;
@@ -4108,4 +4042,186 @@ a:hover {
   color: var(--ink-2);
   font-size: 14px;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Activity filters: kind switch, search, Filters, chips ---------- */
+.activity-filters {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px var(--space-3);
+  align-items: center;
+}
+.segmented.segmented-pill {
+  border-radius: var(--radius-pill);
+  padding: 3px;
+}
+.segmented.segmented-pill label {
+  border-radius: var(--radius-pill);
+  justify-content: center;
+  font-size: 15px;
+  padding: 7px 16px;
+  min-height: 36px;
+}
+.kind-switch {
+  justify-self: start;
+}
+.filter-line {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.search-capsule {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 42px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--sunk);
+  color: var(--ink-3);
+  cursor: text;
+}
+.search-capsule svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.search-capsule input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  padding: 0;
+  outline: none;
+}
+.search-capsule input::placeholder {
+  color: var(--ink-3);
+}
+.search-capsule:focus-within {
+  outline: 3px solid color-mix(in srgb, var(--blue) 50%, transparent);
+}
+.capsule-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 42px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--sunk);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+.capsule-button svg {
+  width: 18px;
+  height: 18px;
+}
+.capsule-button:focus-visible,
+.filter-chip:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--blue) 50%, transparent);
+}
+.capsule-count {
+  color: var(--blue);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.filter-chips {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px 0 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  color: var(--ground);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+.filter-chip svg {
+  width: 16px;
+  height: 16px;
+}
+@media (max-width: 767px) {
+  .activity-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .kind-switch {
+    display: flex;
+    justify-self: stretch;
+  }
+  .kind-switch label {
+    flex: 1;
+    padding-inline: 4px;
+  }
+}
+
+/* The filters sheet holds short values, so even a narrow phone keeps each
+   row on one line instead of stacking the value under its label. */
+@media (max-width: 420px) {
+  .filters-sheet .form-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-3);
+    padding-block: 0;
+  }
+}
+
+/* ---------- Reports hub: net worth, then the period in pairs ---------- */
+/* One card divided by hairlines, like the Overview's month band. */
+.group.fig-band.hub-figures {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.group.fig-band.hub-figures > .hub-hero,
+.group.fig-band.hub-figures > .hub-wide {
+  grid-column: 1 / -1;
+}
+.group.fig-band.hub-figures > .hub-wide {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+}
+.hub-wide .card-figure {
+  white-space: nowrap;
+}
+@media (min-width: 1180px) {
+  .group.fig-band.hub-figures {
+    grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
+  }
+  .group.fig-band.hub-figures > .hub-hero {
+    grid-column: 1;
+    grid-row: span 2;
+    justify-content: center;
+  }
+}
+/* The report filters, summed up in one capsule that opens their sheet. */
+.report-filter-summary {
+  max-width: 100%;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.report-filter-summary span:not(.visually-hidden) {
+  color: var(--ink-2);
+}
+.report-filter-summary strong {
+  font-weight: 600;
 }

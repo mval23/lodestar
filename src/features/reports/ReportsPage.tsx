@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { CalendarClock, ChartColumn, ChartColumnStacked, ChartLine, ChevronRight, Hourglass, ListChecks, PiggyBank, TrendingDown } from 'lucide-react';
+import { PHONE, useMediaQuery } from '../../lib/media';
 import { useCurrency } from '../../lib/profile';
 import { addMonths, formatDate } from '../../lib/dates';
 import { Amount } from '../../ui/Amount';
@@ -52,6 +53,9 @@ export function ReportsPage() {
   const error = summary.error ?? flow.error ?? worth.error;
   // A comparison period with nothing in it says so, rather than "+everything".
   const comparable = Boolean(before && before.active_months > 0);
+  // A phone tile has room for "vs before", not the comparison period's dates.
+  const phone = useMediaQuery(PHONE);
+  const versus = phone ? 'vs before' : against;
 
   return (
     <div className="page">
@@ -60,7 +64,7 @@ export function ReportsPage() {
         subtitle={
           report.nothingYet
             ? 'Every figure is summed in the database from the same rows as Activity.'
-            : `${rangeLabel(range)} · complete months, summed in the database from the same rows as Activity`
+            : `${rangeLabel(range)} · complete months`
         }
       />
 
@@ -77,65 +81,10 @@ export function ReportsPage() {
 
       {report.ready && !report.nothingYet && (
         <>
-          <section className="group fig-band fig-band-6" aria-label="This period">
-            <div className="fig-cell">
-              <h2 className="caption">Money in</h2>
-              <p className="card-figure flush">
-                <Amount minor={totals?.money_in_minor ?? 0} currency={currency} />
-              </p>
-              {totals && before && (
-                <p className="footnote flush">
-                  {comparable ? (
-                    <Comparison delta={totals.money_in_minor - before.money_in_minor} currency={currency} against={against} />
-                  ) : (
-                    'Nothing earlier to compare with'
-                  )}
-                </p>
-              )}
-            </div>
-            <div className="fig-cell">
-              <h2 className="caption">Money out</h2>
-              <p className="card-figure flush">
-                <Amount minor={totals?.money_out_minor ?? 0} currency={currency} />
-              </p>
-              {totals && before && (
-                <p className="footnote flush">
-                  {comparable ? (
-                    <Comparison delta={totals.money_out_minor - before.money_out_minor} currency={currency} against={against} />
-                  ) : (
-                    'Nothing earlier to compare with'
-                  )}
-                </p>
-              )}
-            </div>
-            <div className="fig-cell">
-              <h2 className="caption">Net cash flow</h2>
-              <p className="card-figure flush">
-                <Amount minor={totals?.net_minor ?? 0} currency={currency} signed />
-              </p>
-              {totals && before && (
-                <p className="footnote flush">
-                  {comparable ? (
-                    <Comparison delta={totals.net_minor - before.net_minor} currency={currency} against={against} />
-                  ) : (
-                    'Nothing earlier to compare with'
-                  )}
-                </p>
-              )}
-            </div>
-            <div className="fig-cell">
-              <h2 className="caption">Saved into goals</h2>
-              <p className="card-figure flush">
-                <Amount minor={saved} currency={currency} />
-              </p>
-              {totals && (
-                <p className="footnote flush">
-                  {share(saved, totals.money_in_minor)} of money in
-                  {comparable && before && before.money_in_minor > 0 && ` · ${share(savedBefore, before.money_in_minor)} before`}
-                </p>
-              )}
-            </div>
-            <div className="fig-cell">
+          {/* Net worth leads, as the one bracketed figure; the period's four
+              flows sit under it in pairs, and debt closes them on one line. */}
+          <section className="group fig-band hub-figures" aria-label="This period">
+            <div className="fig-cell hub-hero">
               <h2 className="caption">{end ? `Net worth, ${monthEnd(end.month)}` : 'Net worth'}</h2>
               <p className="fig flush">
                 <span className="bracket">
@@ -153,15 +102,74 @@ export function ReportsPage() {
               )}
             </div>
             <div className="fig-cell">
-              <h2 className="caption">Debt</h2>
+              <h2 className="caption">Money in</h2>
+              <p className="card-figure flush">
+                <Amount minor={totals?.money_in_minor ?? 0} currency={currency} />
+              </p>
+              {totals && before && (
+                <p className="footnote flush">
+                  {comparable ? (
+                    <Comparison delta={totals.money_in_minor - before.money_in_minor} currency={currency} against={versus} />
+                  ) : (
+                    'Nothing earlier to compare with'
+                  )}
+                </p>
+              )}
+            </div>
+            <div className="fig-cell">
+              <h2 className="caption">Money out</h2>
+              <p className="card-figure flush">
+                <Amount minor={totals?.money_out_minor ?? 0} currency={currency} />
+              </p>
+              {totals && before && (
+                <p className="footnote flush">
+                  {comparable ? (
+                    <Comparison delta={totals.money_out_minor - before.money_out_minor} currency={currency} against={versus} />
+                  ) : (
+                    'Nothing earlier to compare with'
+                  )}
+                </p>
+              )}
+            </div>
+            <div className="fig-cell">
+              <h2 className="caption">Net cash flow</h2>
+              <p className="card-figure flush">
+                <Amount minor={totals?.net_minor ?? 0} currency={currency} signed />
+              </p>
+              {totals && before && (
+                <p className="footnote flush">
+                  {comparable ? (
+                    <Comparison delta={totals.net_minor - before.net_minor} currency={currency} against={versus} />
+                  ) : (
+                    'Nothing earlier to compare with'
+                  )}
+                </p>
+              )}
+            </div>
+            <div className="fig-cell">
+              <h2 className="caption">Saved into goals</h2>
+              <p className="card-figure flush">
+                <Amount minor={saved} currency={currency} />
+              </p>
+              {totals && (
+                <p className="footnote flush">
+                  {share(saved, totals.money_in_minor)} of money in
+                  {!phone && comparable && before && before.money_in_minor > 0 && ` · ${share(savedBefore, before.money_in_minor)} before`}
+                </p>
+              )}
+            </div>
+            <div className="fig-cell hub-wide">
+              <div>
+                <h2 className="caption">Debt</h2>
+                {end && start && (
+                  <p className="footnote flush">
+                    <Amount minor={start.liabilities_minor} currency={currency} /> at {monthEnd(start.month)}
+                  </p>
+                )}
+              </div>
               <p className="card-figure flush">
                 <Amount minor={end?.liabilities_minor ?? 0} currency={currency} />
               </p>
-              {end && start && (
-                <p className="footnote flush">
-                  <Amount minor={start.liabilities_minor} currency={currency} /> at {monthEnd(start.month)}
-                </p>
-              )}
             </div>
           </section>
 
