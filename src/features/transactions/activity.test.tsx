@@ -7,10 +7,15 @@ import type { Transaction } from './queries';
 // Synthetic data only.
 const useTransactions = vi.fn();
 const phone = vi.fn();
+const updateTransaction = vi.fn();
 
 vi.mock('./queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./queries')>();
-  return { ...actual, useTransactions: (...args: unknown[]) => useTransactions(...args) };
+  return {
+    ...actual,
+    useTransactions: (...args: unknown[]) => useTransactions(...args),
+    useUpdateTransaction: () => ({ mutateAsync: updateTransaction }),
+  };
 });
 
 vi.mock('../../lib/media', async (importOriginal) => {
@@ -27,9 +32,19 @@ vi.mock('../accounts/queries', () => ({
   }),
 }));
 
-vi.mock('../categories/queries', () => ({
-  useCategories: () => ({ data: [{ id: 'groceries', name: 'Groceries', kind: 'expense', archived_at: null }] }),
-}));
+vi.mock('../categories/queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../categories/queries')>();
+  return {
+    ...actual,
+    useCategories: () => ({
+      data: [
+        { id: 'groceries', name: 'Groceries', kind: 'expense', archived_at: null, sort_order: 0 },
+        { id: 'dining', name: 'Eating out', kind: 'expense', archived_at: null, sort_order: 1 },
+      ],
+    }),
+    useCategoryUsage: () => ({ data: [] }),
+  };
+});
 
 vi.mock('../../lib/profile', () => ({
   useCurrency: () => 'USD',
@@ -96,6 +111,8 @@ function show() {
 }
 
 beforeEach(() => {
+  updateTransaction.mockReset();
+  updateTransaction.mockResolvedValue({});
   useTransactions.mockReturnValue({ data: { rows: ROWS, total: 2 }, isPending: false, isError: false, isSuccess: true });
 });
 
@@ -137,5 +154,52 @@ describe('ActivityPage on a wide screen', () => {
     const table = screen.getByRole('table');
     expect(within(table).getByRole('columnheader', { name: 'Account' })).toBeInTheDocument();
     expect(useTransactions).toHaveBeenLastCalledWith(expect.anything(), 50);
+  });
+});
+
+describe('editing Activity like a spreadsheet', () => {
+  beforeEach(() => phone.mockReturnValue(false));
+
+  it('saves a typed description on Enter and moves down to the next row', async () => {
+    show();
+    await userEvent.click(screen.getByRole('button', { name: 'Description, Market. Edit' }));
+    const input = screen.getByRole('textbox', { name: 'Description' });
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Corner market{Enter}');
+    expect(updateTransaction).toHaveBeenCalledWith({ id: 'a', changes: { description: 'Corner market' } });
+    expect(screen.getByRole('textbox', { name: 'Description' })).toHaveValue('Emergency fund');
+  });
+
+  it('saves an amount, and refuses one it cannot read', async () => {
+    show();
+    await userEvent.click(screen.getByRole('button', { name: 'Amount, 45.50. Edit' }));
+    const input = screen.getByRole('textbox', { name: 'Amount' });
+    await userEvent.clear(input);
+    await userEvent.type(input, 'abc{Enter}');
+    expect(updateTransaction).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    await userEvent.clear(input);
+    await userEvent.type(input, '12.30{Enter}');
+    expect(updateTransaction).toHaveBeenCalledWith({ id: 'a', changes: { amount_minor: 1230 } });
+  });
+
+  it('changes a category from its picker', async () => {
+    show();
+    await userEvent.click(screen.getByRole('button', { name: /Category of “Market”/ }));
+    await userEvent.click(screen.getByRole('option', { name: 'Eating out' }));
+    expect(updateTransaction).toHaveBeenCalledWith({ id: 'a', changes: { category_id: 'dining' } });
+  });
+
+  it('swaps a transfer’s accounts rather than send money from an account to itself', async () => {
+    show();
+    await userEvent.click(screen.getByRole('button', { name: /From account of “Emergency fund”/ }));
+    await userEvent.click(screen.getByRole('option', { name: 'Emergency fund' }));
+    expect(updateTransaction).toHaveBeenCalledWith({ id: 'b', changes: { from_account_id: 'sav', to_account_id: 'chk' } });
+  });
+
+  it('keeps the full form a click away at the end of each row', async () => {
+    show();
+    await userEvent.click(screen.getByRole('button', { name: 'Open “Market” in the full form' }));
+    expect(screen.getByText('Editing Market')).toBeInTheDocument();
   });
 });

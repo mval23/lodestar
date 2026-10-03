@@ -11,7 +11,7 @@ import { Notice } from '../../ui/Notice';
 import { dataErrorMessage } from '../auth/errors';
 import { TransactionSheet } from '../transactions/TransactionSheet';
 import { GoalSheet } from './GoalSheet';
-import { standingOf, useGoals, type GoalProgress } from './queries';
+import { standingOf, useGoals, useUpdateGoal, type GoalProgress } from './queries';
 
 // A goal is a savings account with an intention attached. Money arrives the
 // same way it arrives anywhere: a transfer. There is no separate "savings"
@@ -26,6 +26,9 @@ export function GoalsPage() {
 
   const today = monthStartInZone(profile.data?.timezone);
   const rows = (goals.data ?? []).filter((goal) => !goal.archived_at);
+  const archived = (goals.data ?? []).filter((goal) => goal.archived_at);
+  const update = useUpdateGoal();
+  const [restoreError, setRestoreError] = useState<string | null>(null);
   // Each goal has its own account, so these balances never overlap and can
   // be added up for display.
   const saved = rows.reduce((sum, goal) => sum + goal.balance_minor, 0);
@@ -162,6 +165,44 @@ export function GoalsPage() {
           );
         })}
       </div>
+
+      {/* Goals put away when they were done: out of the way, a click from
+          coming back. */}
+      {archived.length > 0 && (
+        <details className="fold">
+          <summary className="fold-summary">Archived · {archived.length}</summary>
+          <div className="fold-body">
+            {restoreError && <Notice tone="err">{restoreError}</Notice>}
+            <ul className="rows-list">
+              {archived.map((goal) => (
+                <li key={goal.goal_id} className="archived-goal">
+                  <Link to={goalPath(goal.goal_id)} className="archived-goal-name">
+                    {goal.name}
+                    <small>Archived {formatDate(goal.archived_at!.slice(0, 10))}</small>
+                  </Link>
+                  <span className="num secondary">
+                    <Amount minor={goal.balance_minor} currency={currency} />
+                  </span>
+                  <Button
+                    variant="plain"
+                    aria-label={`Restore “${goal.name}”`}
+                    onClick={async () => {
+                      setRestoreError(null);
+                      try {
+                        await update.mutateAsync({ id: goal.goal_id, changes: { archived_at: null } });
+                      } catch (cause) {
+                        setRestoreError(dataErrorMessage(cause));
+                      }
+                    }}
+                  >
+                    Restore
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      )}
 
       {sheetOpen && <GoalSheet goal={editing} onClose={() => setSheetOpen(false)} />}
       {contributingTo && (

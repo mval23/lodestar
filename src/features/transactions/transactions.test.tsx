@@ -42,7 +42,7 @@ vi.mock('../categories/queries', async (importOriginal) => {
   };
 });
 
-vi.mock('../../lib/profile', () => ({ useCurrency: () => 'USD' }));
+vi.mock('../../lib/profile', () => ({ useCurrency: () => 'USD', useProfile: () => ({ data: { timezone: 'UTC' } }) }));
 
 beforeEach(() => {
   create.mockReset().mockResolvedValue({ id: 't1' });

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useCurrency } from '../../lib/profile';
 import { parseMoney, toAmountInput, type Currency } from '../../lib/money';
 import { Button } from '../../ui/Button';
+import { DatePicker } from '../../ui/DatePicker';
 import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
 import { Select } from '../../ui/Select';
@@ -118,12 +119,14 @@ export function AccountSheet({
             />
           </FormRow>
           <FormRow label="Tracking since" htmlFor="account-date">
-            <input
+            <DatePicker
               id="account-date"
-              type="date"
+              label="Tracking since"
+              placeholder="Optional"
+              clearable
               value={values.opening_date}
               max={new Date().toISOString().slice(0, 10)}
-              onChange={(e) => set('opening_date', e.target.value)}
+              onChange={(next) => set('opening_date', next)}
             />
           </FormRow>
           <FormRow label="Count in net worth" htmlFor="account-net-worth">

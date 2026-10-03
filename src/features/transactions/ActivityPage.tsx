@@ -1,19 +1,20 @@
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
-import { ArrowLeftRight } from 'lucide-react';
+import { useSearchParams } from 'react-router';
+import { ArrowLeftRight, Ellipsis } from 'lucide-react';
 import { useCurrency, useProfile } from '../../lib/profile';
 import { formatDate, formatDateShort, todayInZone } from '../../lib/dates';
 import { PHONE, useMediaQuery } from '../../lib/media';
-import { accountPath, categoryPath } from '../../lib/routes';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
+import { DatePicker } from '../../ui/DatePicker';
 import { EmptyState } from '../../ui/EmptyState';
 import { Notice } from '../../ui/Notice';
 import { Select } from '../../ui/Select';
 import { dataErrorMessage } from '../auth/errors';
 import { useAccounts } from '../accounts/queries';
-import { useCategories } from '../categories/queries';
+import { sortForPicker, useCategories, useCategoryUsage } from '../categories/queries';
 import { TransactionSheet } from './TransactionSheet';
+import { useCellEditor } from './useCellEditor';
 import {
   DEFAULT_FILTERS,
   PAGE_SIZE,
@@ -61,7 +62,6 @@ const KIND_LABEL: Record<TxnKind, string> = { expense: 'Expense', income: 'Incom
 const PHONE_PAGE_SIZE = 25;
 
 export function ActivityPage() {
-  const currency = useCurrency();
   const [params, setParams] = useSearchParams();
   const filters = useMemo(() => readFilters(params), [params]);
   const profile = useProfile();
@@ -155,19 +155,32 @@ export function ActivityPage() {
             on screen, not just in the accessibility tree. They wrap as one
             range, so "To" never ends up alone on a line. */}
         <span className="filter-dates">
-          <label className="filter-date">
-            <span className="caption">From</span>
-            <input
-              type="date"
-              aria-label="From date"
+          <span className="filter-date">
+            <span className="caption" aria-hidden>
+              From
+            </span>
+            <DatePicker
+              label="From date"
+              placeholder="Any date"
+              clearable
               value={filters.from}
-              onChange={(e) => update({ from: e.target.value })}
+              max={filters.to || undefined}
+              onChange={(next) => update({ from: next })}
             />
-          </label>
-          <label className="filter-date">
-            <span className="caption">To</span>
-            <input type="date" aria-label="To date" value={filters.to} onChange={(e) => update({ to: e.target.value })} />
-          </label>
+          </span>
+          <span className="filter-date">
+            <span className="caption" aria-hidden>
+              To
+            </span>
+            <DatePicker
+              label="To date"
+              placeholder="Any date"
+              clearable
+              value={filters.to}
+              min={filters.from || undefined}
+              onChange={(next) => update({ to: next })}
+            />
+          </span>
         </span>
         {filtered && (
           <Button variant="plain" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
@@ -210,73 +223,7 @@ export function ActivityPage() {
       )}
 
       {rows.length > 0 && !phone && (
-        <div className="table-wrap">
-          <table className="ledger">
-            <thead>
-              <tr>
-                <th scope="col" aria-sort={sortState(filters, 'occurred_on')}>
-                  <SortButton filters={filters} column="occurred_on" label="Date" onSort={setParams} />
-                </th>
-                <th scope="col">Description</th>
-                <th scope="col">Category</th>
-                <th scope="col">Account</th>
-                <th scope="col" className="num" aria-sort={sortState(filters, 'amount_minor')}>
-                  <SortButton filters={filters} column="amount_minor" label="Amount" onSort={setParams} />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                return (
-                  // The whole row opens the transaction. The description is the
-                  // real control, so a keyboard or screen reader reaches it by
-                  // name; the row just widens the target for a pointer. Clicks
-                  // on the category and account links keep their own meaning.
-                  <tr
-                    key={row.id}
-                    className="row-open"
-                    onClick={(event) => {
-                      if ((event.target as HTMLElement).closest('a, button')) return;
-                      openSheet(row);
-                    }}
-                  >
-                    <td className="nowrap">{formatDate(row.occurred_on)}</td>
-                    <td>
-                      <button type="button" className="link-button row-open-button" onClick={() => openSheet(row)}>
-                        {row.description}
-                      </button>
-                    </td>
-                    <td className="secondary">
-                      {row.category_id && categoryName.has(row.category_id) ? (
-                        <Link to={categoryPath(row.category_id)}>{categoryName.get(row.category_id)}</Link>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td className="secondary">
-                      {row.kind === 'transfer' ? (
-                        <>
-                          <AccountLink id={row.from_account_id} names={accountName} /> →{' '}
-                          <AccountLink id={row.to_account_id} names={accountName} />
-                        </>
-                      ) : (
-                        <AccountLink id={row.from_account_id ?? row.to_account_id} names={accountName} />
-                      )}
-                    </td>
-                    <td className="num">
-                      <Amount
-                        minor={row.kind === 'expense' ? -row.amount_minor : row.amount_minor}
-                        currency={currency}
-                        signed={row.kind !== 'transfer'}
-                      />
-                      <span className="visually-hidden"> {KIND_LABEL[row.kind]}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <ActivityTable rows={rows} filters={filters} onSort={setParams} categoryName={categoryName} onOpen={openSheet} />
       )}
 
       {lastPage > 1 && (
@@ -306,11 +253,185 @@ export function ActivityPage() {
   );
 }
 
-// The account a row touched opens its own page, when the name is known.
-function AccountLink({ id, names }: { id: string | null; names: Map<string, string> }) {
-  const name = id ? names.get(id) : undefined;
-  if (!id || !name) return <>—</>;
-  return <Link to={accountPath(id)}>{name}</Link>;
+// ---------------------------------------------------------------------------
+// The wide table, edited like a spreadsheet: click a date, description or
+// amount and type (Enter saves and moves down, Tab moves along, Escape puts
+// it back); category and accounts are pickers that save on choosing. The
+// kind, notes and deleting are in the full form, at the end of each row.
+// ---------------------------------------------------------------------------
+function ActivityTable({
+  rows,
+  filters,
+  onSort,
+  categoryName,
+  onOpen,
+}: {
+  rows: Transaction[];
+  filters: Filters;
+  onSort: (params: URLSearchParams, options: { replace: boolean }) => void;
+  categoryName: Map<string, string>;
+  onOpen: (row: Transaction) => void;
+}) {
+  const currency = useCurrency();
+  const accounts = useAccounts();
+  const categories = useCategories();
+  const usage = useCategoryUsage();
+  const editor = useCellEditor({
+    rows,
+    editable: () => true,
+    current: (row) => ({
+      occurred_on: row.occurred_on,
+      description: row.description,
+      amount_minor: row.amount_minor,
+      category_id: row.category_id,
+      from_account_id: row.from_account_id,
+      to_account_id: row.to_account_id,
+    }),
+    fallbackDescription: (row, v) => (v.category_id && categoryName.get(v.category_id)) || KIND_LABEL[row.kind],
+    errorId: 'activity-table-error',
+  });
+  const { cell, save, valuesOf } = editor;
+
+  const pickable = (kind: TxnKind) =>
+    sortForPicker(
+      (categories.data ?? []).filter((c) => !c.archived_at),
+      usage.data,
+    ).filter((c) => c.kind === (kind === 'income' ? 'income' : 'expense'));
+
+  const categoryOptions = (kind: TxnKind, current: string | null) => {
+    const list = pickable(kind);
+    return [
+      { value: '', label: 'No category' },
+      ...list.map((c) => ({ value: c.id, label: c.name })),
+      // An archived category a row still uses keeps its name.
+      ...(current && !list.some((c) => c.id === current)
+        ? [{ value: current, label: categoryName.get(current) ?? 'Archived category' }]
+        : []),
+    ];
+  };
+
+  // Open accounts, plus an archived one the row already uses, so its name shows.
+  const accountOptions = (current: string | null) =>
+    (accounts.data ?? [])
+      .filter((a) => !a.archived_at || a.account_id === current)
+      .map((a) => ({ value: a.account_id, label: a.name }));
+
+  const accountPicker = (row: Transaction, side: 'from_account_id' | 'to_account_id', label: string) => {
+    const v = valuesOf(row);
+    const value = v[side];
+    const other = side === 'from_account_id' ? v.to_account_id : v.from_account_id;
+    return (
+      <Select
+        className="cell-category cell-picker"
+        label={`${label} of “${v.description}”`}
+        placeholder="Choose"
+        value={value ?? ''}
+        onChange={(next) => {
+          if (!next || next === value) return;
+          // A transfer can't go from an account to itself: choosing the
+          // other side's account swaps the two.
+          if (row.kind === 'transfer' && next === other) {
+            void save(row, { from_account_id: v.to_account_id, to_account_id: v.from_account_id });
+          } else {
+            void save(row, { [side]: next });
+          }
+        }}
+        options={accountOptions(value)}
+        emptyText="Add an account first."
+      />
+    );
+  };
+
+  return (
+    <>
+      <div className="table-wrap">
+        <table className="ledger activity-sheet">
+          <thead>
+            <tr>
+              <th scope="col" aria-sort={sortState(filters, 'occurred_on')}>
+                <SortButton filters={filters} column="occurred_on" label="Date" onSort={onSort} />
+              </th>
+              <th scope="col">Description</th>
+              <th scope="col">Category</th>
+              <th scope="col">Account</th>
+              <th scope="col" className="num" aria-sort={sortState(filters, 'amount_minor')}>
+                <SortButton filters={filters} column="amount_minor" label="Amount" onSort={onSort} />
+              </th>
+              <th scope="col" className="activity-full-col">
+                <span className="visually-hidden">Full form</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const v = valuesOf(row);
+              return (
+                <tr key={row.id} data-editing={editor.editingRow === row.id || undefined}>
+                  <td className="cell nowrap">{cell(row, 'date', formatDate(v.occurred_on), 'Date')}</td>
+                  <td className="cell">{cell(row, 'description', v.description, 'Description')}</td>
+                  <td className="cell secondary">
+                    {row.kind === 'transfer' ? (
+                      <span className="cell-static">—</span>
+                    ) : (
+                      <Select
+                        className="cell-category cell-picker"
+                        label={`Category of “${v.description}”`}
+                        placeholder="No category"
+                        value={v.category_id ?? ''}
+                        onChange={(next) => {
+                          if (next !== (v.category_id ?? '')) void save(row, { category_id: next || null });
+                        }}
+                        emptyText="No categories of this kind yet."
+                        options={categoryOptions(row.kind, v.category_id)}
+                      />
+                    )}
+                  </td>
+                  <td className="cell secondary">
+                    {row.kind === 'transfer' ? (
+                      <span className="cell-transfer">
+                        {accountPicker(row, 'from_account_id', 'From account')}
+                        <span aria-hidden>→</span>
+                        {accountPicker(row, 'to_account_id', 'To account')}
+                      </span>
+                    ) : (
+                      accountPicker(row, row.kind === 'expense' ? 'from_account_id' : 'to_account_id', 'Account')
+                    )}
+                  </td>
+                  <td className="cell num">
+                    {cell(
+                      row,
+                      'amount',
+                      <>
+                        <Amount
+                          minor={row.kind === 'expense' ? -v.amount_minor : v.amount_minor}
+                          currency={currency}
+                          signed={row.kind !== 'transfer'}
+                        />
+                        <span className="visually-hidden"> {KIND_LABEL[row.kind]}</span>
+                      </>,
+                      'Amount',
+                    )}
+                  </td>
+                  <td className="activity-full-col">
+                    <button
+                      type="button"
+                      className="activity-full"
+                      aria-label={`Open “${v.description}” in the full form`}
+                      title="Kind, notes and delete"
+                      onClick={() => onOpen(row)}
+                    >
+                      <Ellipsis strokeWidth={1.75} aria-hidden />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {editor.status}
+    </>
+  );
 }
 
 function SortButton({

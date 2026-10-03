@@ -3,6 +3,7 @@ import { useCurrency } from '../../lib/profile';
 import { formatDate } from '../../lib/dates';
 import { parseMoney, toAmountInput } from '../../lib/money';
 import { Button } from '../../ui/Button';
+import { DatePicker } from '../../ui/DatePicker';
 import { Notice } from '../../ui/Notice';
 import { dataErrorMessage } from '../auth/errors';
 import { useMarkBillPaid, type RecurringItem } from './queries';
@@ -64,10 +65,10 @@ export function MarkPaid({ bill, today }: { bill: RecurringItem; today: string }
               onChange={(event) => setAmount(event.target.value)}
             />
           </label>
-          <label className="footnote">
-            Paid on
-            <input type="date" value={paidOn} onChange={(event) => setPaidOn(event.target.value)} />
-          </label>
+          <div className="footnote bill-paid-on">
+            <span aria-hidden>Paid on</span>
+            <DatePicker label="Paid on" value={paidOn} onChange={setPaidOn} />
+          </div>
           <Button
             variant="secondary"
             dimmed={!parsed.ok}

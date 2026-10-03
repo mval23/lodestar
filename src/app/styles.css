@@ -909,8 +909,7 @@ a:hover {
   gap: var(--space-2);
   align-items: center;
 }
-.filters select,
-.filters input[type='date'] {
+.filters select {
   font: inherit;
   font-size: 13px;
   padding: 7px 10px;
@@ -1367,9 +1366,21 @@ a:hover {
   align-items: flex-end;
   gap: var(--space-2);
 }
-.bill-confirm label {
+.bill-confirm label,
+.bill-paid-on {
   display: grid;
   gap: 2px;
+}
+.bill-paid-on .select-trigger {
+  justify-content: space-between;
+  min-height: 36px;
+  width: 150px;
+  padding: 6px 10px;
+  font-size: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
 }
 .bill-confirm input {
   font: inherit;
@@ -1738,9 +1749,6 @@ a:hover {
   background: var(--surface);
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--blue) 50%, transparent);
 }
-.quick-add-date {
-  width: 150px;
-}
 .quick-add-description {
   flex: 1 1 180px;
   min-width: 140px;
@@ -1828,9 +1836,6 @@ a:hover {
   min-height: 32px;
   padding-block: 4px;
 }
-.cell-input[type='date'] {
-  min-width: 140px;
-}
 .cell-input[aria-invalid='true'] {
   box-shadow: inset 0 0 0 2px var(--err);
 }
@@ -1858,6 +1863,31 @@ a:hover {
 .select-trigger.cell-category:hover svg,
 .select-trigger.cell-category:focus-visible svg {
   opacity: 1;
+}
+/* Activity edited in place: the same cells, and the category and accounts
+   as pickers at the size of the text around them. */
+.activity-sheet td.cell {
+  padding: 4px var(--space-2);
+}
+.select-trigger.cell-picker {
+  min-height: 28px;
+  padding: 4px var(--space-2);
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+.select-trigger.cell-picker:hover {
+  background: var(--sunk);
+}
+.cell-transfer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 var(--space-1);
+}
+.cell-static {
+  display: block;
+  padding: 4px var(--space-2);
 }
 .activity-full-col {
   width: 44px;
@@ -1905,10 +1935,6 @@ a:hover {
   .cell-button.num {
     min-width: 0;
     max-width: 112px;
-  }
-  .cell-input[type='date'] {
-    min-width: 0;
-    width: 128px;
   }
   .activity-full-col {
     width: 36px;
@@ -2923,6 +2949,24 @@ a:hover {
 .fold[open] > .fold-summary::after {
   transform: rotate(-135deg);
 }
+/* An archived goal: its name, what its account holds, and Restore. */
+.archived-goal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+}
+.archived-goal-name {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  color: var(--ink);
+  text-decoration: none;
+}
+.archived-goal-name small {
+  font-size: 12px;
+  color: var(--ink-3);
+}
 .fold-body {
   display: grid;
   gap: var(--space-4);
@@ -3090,4 +3134,148 @@ a:hover {
   .choice-chip {
     min-height: 44px;
   }
+}
+
+/* ---------- Date picker ----------
+   The calendar in the same floating panel as a picker's list: ink days on
+   white, the chosen day filled in blue (it is the control), today ringed. */
+.date-trigger {
+  white-space: nowrap;
+}
+.date-popup {
+  padding: var(--space-3);
+  max-height: none;
+}
+.date-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+.date-nav,
+.date-title,
+.date-foot-button,
+.date-month,
+.date-day {
+  font: inherit;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.date-nav {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  color: var(--ink-2);
+}
+.date-nav svg {
+  width: 18px;
+  height: 18px;
+}
+.date-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+}
+.date-nav:hover,
+.date-title:hover,
+.date-foot-button:hover,
+.date-month:hover {
+  background: var(--sunk);
+}
+.date-grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.date-grid th {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-align: center;
+  padding: var(--space-2) 0 var(--space-1);
+}
+.date-grid th,
+.date-grid td {
+  border: 0;
+}
+.date-grid td {
+  padding: 1px;
+  text-align: center;
+}
+.date-day {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.date-day:hover {
+  background: var(--sunk);
+}
+.date-day.outside {
+  color: var(--ink-3);
+}
+.date-day.today {
+  box-shadow: inset 0 0 0 1.5px var(--blue);
+}
+.date-day.chosen {
+  background: var(--blue);
+  color: var(--on-blue);
+  font-weight: 600;
+}
+.date-day:disabled {
+  color: var(--ink-3);
+  opacity: 0.4;
+  cursor: default;
+  background: transparent;
+}
+.date-day:focus-visible,
+.date-month:focus-visible,
+.date-nav:focus-visible,
+.date-title:focus-visible,
+.date-foot-button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+.date-months {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-1);
+  padding-block: var(--space-2);
+}
+.date-month {
+  min-height: 44px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+}
+.date-month.current {
+  background: var(--blue);
+  color: var(--on-blue);
+  font-weight: 600;
+}
+.date-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+  margin-top: var(--space-1);
+}
+.date-foot:empty {
+  display: none;
+}
+.date-foot-button {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--blue);
+  font-weight: 600;
+  font-size: 14px;
 }

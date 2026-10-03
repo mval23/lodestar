@@ -3,6 +3,7 @@ import { useCurrency } from '../../lib/profile';
 import { parseMoney, toAmountInput } from '../../lib/money';
 import { todayInZone } from '../../lib/dates';
 import { Button } from '../../ui/Button';
+import { DatePicker } from '../../ui/DatePicker';
 import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
 import { Select } from '../../ui/Select';
@@ -202,10 +203,10 @@ export function BillSheet({ bill, onClose }: { bill?: RecurringItem; onClose: ()
             />
           </FormRow>
           <FormRow label="Next due" htmlFor="bill-next">
-            <input id="bill-next" type="date" value={nextDue} onChange={(e) => setNextDue(e.target.value)} />
+            <DatePicker id="bill-next" label="Next due" value={nextDue} onChange={setNextDue} />
           </FormRow>
           <FormRow label="Ends" htmlFor="bill-ends">
-            <input id="bill-ends" type="date" value={endsOn} placeholder="Never" onChange={(e) => setEndsOn(e.target.value)} />
+            <DatePicker id="bill-ends" label="Ends" placeholder="Never" clearable value={endsOn} onChange={setEndsOn} />
           </FormRow>
         </FormGroup>
         <p className="form-hint">

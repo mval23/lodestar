@@ -30,7 +30,7 @@ vi.mock('../accounts/queries', async (importOriginal) => {
   };
 });
 
-vi.mock('../../lib/profile', () => ({ useCurrency: () => 'USD' }));
+vi.mock('../../lib/profile', () => ({ useCurrency: () => 'USD', useProfile: () => ({ data: { timezone: 'UTC' } }) }));
 
 function goal(over: Partial<GoalProgress> = {}): GoalProgress {
   return {
@@ -67,6 +67,15 @@ describe('GoalSheet', () => {
     const { changes } = update.mock.calls[0]![0];
     expect(changes).not.toHaveProperty('account_id');
     expect(changes).toMatchObject({ name: 'Travel', monthly_plan_minor: 15000 });
+  });
+
+  it('archives a goal, keeping its account and transfers', async () => {
+    const onClose = vi.fn();
+    update.mockResolvedValue({});
+    render(<GoalSheet goal={goal()} onClose={onClose} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Archive goal' }));
+    expect(update).toHaveBeenCalledWith({ id: goal().goal_id, changes: { archived_at: expect.any(String) } });
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('shows the account as fixed while editing, and says how to move it', () => {

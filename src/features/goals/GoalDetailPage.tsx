@@ -85,6 +85,7 @@ function GoalDetail({ goal }: { goal: GoalProgress }) {
             Funded by <Link to={accountPath(goal.account_id)}>{fund?.name ?? 'its account'}</Link>
             {goal.target_date && ` · Target by ${formatMonth(goal.target_date)}`}
             {goal.achieved_at && ` · Reached ${formatDate(goal.achieved_at.slice(0, 10))}`}
+            {goal.archived_at && ` · Archived ${formatDate(goal.archived_at.slice(0, 10))}`}
           </>
         }
         actions={
