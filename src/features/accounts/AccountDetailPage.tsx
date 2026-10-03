@@ -95,6 +95,7 @@ function AccountDetail({ account }: { account: AccountBalance }) {
           <>
             {accountTypeLabel(account.type)}
             {account.archived_at && ' · Archived'}
+            {!account.include_in_net_worth && ' · Not in net worth'}
             {goal && (
               <>
                 {' · Funds '}

@@ -313,12 +313,16 @@ function namesOf(rows: AccountBalance[]): string {
 export function WhereYouStand({ accounts, month, currency }: { accounts: AccountBalance[]; month: string; currency: Currency }) {
   const closings = useAccountClosings(month);
   const open = accounts.filter((a) => !a.archived_at);
+  // The subtotals add up to net worth, so an account left out of it is named
+  // under them instead of counted in them.
+  const counted = open.filter((a) => a.include_in_net_worth);
+  const leftOut = open.filter((a) => !a.include_in_net_worth);
   const previous = addMonths(month, -1);
   const since = formatDateShort(lastDayOf(previous));
   const months = Array.from({ length: 12 }, (_, i) => addMonths(month, i - 11));
 
   const groups = GROUPS.map((group) => {
-    const rows = open.filter((a) => group.types.includes(a.type));
+    const rows = counted.filter((a) => group.types.includes(a.type));
     const ids = new Set(rows.map((r) => r.account_id));
     // Already-summed month-end balances of a few accounts, added for a subtotal.
     const closingIn = (m: string) =>
@@ -329,7 +333,7 @@ export function WhereYouStand({ accounts, month, currency }: { accounts: Account
     return { ...group, rows, now, series, change: hadPrevious ? now - closingIn(previous) : null };
   }).filter((group) => group.rows.length > 0);
 
-  if (groups.length === 0) return null;
+  if (groups.length === 0 && leftOut.length === 0) return null;
 
   return (
     <section className="group wide-group" aria-labelledby="overview-stand">
@@ -377,6 +381,12 @@ export function WhereYouStand({ accounts, month, currency }: { accounts: Account
           </span>
         </Link>
       ))}
+      {leftOut.length > 0 && (
+        <p className="caption need-note">
+          Not in net worth: {leftOut.map((a) => a.name).join(', ')} (
+          <Amount minor={leftOut.reduce((sum, a) => sum + a.balance_minor, 0)} currency={currency} />)
+        </p>
+      )}
     </section>
   );
 }

@@ -1000,6 +1000,21 @@ await test('budget_pace counts bills on their due dates and spreads the rest of 
   ], 'March 2026 on the 10th');
 });
 
+await test('an account left out of net worth leaves it, history and all, but stays in account_balances', async () => {
+  const latest = `select net_worth_minor from public.net_worth_by_month order by month desc limit 1`;
+  const held = (await insertAs(C, 'accounts', { name: 'C held for someone', type: 'other_asset', opening_balance_minor: 50000 })).id;
+  const withIt = num((await one(asUser(C, latest))).net_worth_minor);
+  await asUser(C, `update public.accounts set include_in_net_worth = false where id = $1`, [held]);
+  const without = num((await one(asUser(C, latest))).net_worth_minor);
+  eq(withIt - without, 50000, 'net worth falls by exactly its balance');
+  const row = await one(asUser(C, `select include_in_net_worth, balance_minor from public.account_balances where account_id = $1`, [held]));
+  eq([row.include_in_net_worth, num(row.balance_minor)], [false, 50000], 'still listed, with its balance');
+  // A new account can start out left out.
+  const outside = await insertAs(C, 'accounts', { name: 'C outside', type: 'cash', opening_balance_minor: 700, include_in_net_worth: false });
+  eq(outside.include_in_net_worth, false, 'insert grant');
+  eq(num((await one(asUser(C, latest))).net_worth_minor), without, 'the new one is left out too');
+});
+
 await test("month_to_date and budget_pace show A nothing of C's", async () => {
   // A's only rows in these months are its bill payments (Jan 31, Feb 27), so
   // none of C's salary, rent or goal transfers may show up.

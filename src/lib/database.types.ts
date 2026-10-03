@@ -54,6 +54,7 @@ export type Database = {
           sort_order: number;
           archived_at: string | null;
           source_ref: string | null;
+          include_in_net_worth: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -66,6 +67,7 @@ export type Database = {
           sort_order?: number;
           archived_at?: string | null;
           source_ref?: string | null;
+          include_in_net_worth?: boolean;
         };
         Update: {
           name?: string;
@@ -74,6 +76,7 @@ export type Database = {
           opening_date?: string | null;
           sort_order?: number;
           archived_at?: string | null;
+          include_in_net_worth?: boolean;
         };
         Relationships: [];
       };
@@ -364,6 +367,7 @@ export type Database = {
           money_in_minor: number | null;
           money_out_minor: number | null;
           balance_minor: number | null;
+          include_in_net_worth: boolean | null;
         };
         Relationships: [];
       };

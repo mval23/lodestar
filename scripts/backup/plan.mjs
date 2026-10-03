@@ -12,7 +12,13 @@ export const FORMAT = 'lodestar-backup-1';
 // scripts/backup/plan.test.mjs checks these against the migrations.
 export const TABLES = [
   { name: 'category_groups', columns: ['id', 'name', 'sort_order'] },
-  { name: 'accounts', columns: ['id', 'name', 'type', 'opening_balance_minor', 'opening_date', 'sort_order', 'archived_at', 'source_ref'] },
+  // include_in_net_worth is absent from backups taken before it existed; a
+  // missing column is skipped, so those accounts come back counted.
+  {
+    name: 'accounts',
+    columns: ['id', 'name', 'type', 'opening_balance_minor', 'opening_date', 'sort_order', 'archived_at', 'source_ref',
+      'include_in_net_worth'],
+  },
   { name: 'categories', columns: ['id', 'group_id', 'name', 'kind', 'sort_order', 'archived_at', 'source_ref'] },
   { name: 'import_batches', columns: ['id', 'source', 'filename', 'row_count'] },
   {

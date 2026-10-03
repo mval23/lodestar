@@ -79,6 +79,7 @@ export function AccountsPage() {
 function describeRow(row: AccountBalance): string {
   const parts = [accountTypeLabel(row.type)];
   if (row.archived_at) parts.push('Archived');
+  if (!row.include_in_net_worth) parts.push('Not in net worth');
   return parts.join(' · ');
 }
 

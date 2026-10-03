@@ -80,7 +80,8 @@ function account(id: string, name: string, type: AccountBalance['type'], balance
     opening_balance_minor: 0,
     money_in_minor: 0,
     money_out_minor: 0,
-  } as AccountBalance;
+    include_in_net_worth: true,
+  };
 }
 
 function pace(name: string, planned: number, spent: number, onPace: number, daysLeft = 6): BudgetPace {
@@ -312,6 +313,22 @@ describe('Where you stand', () => {
     // −661,265 now against −738,313: owed less, said in words, not by sign.
     expect(debt).toHaveTextContent('$770.48 less owed than');
     expect(within(group).getByText('Savings')).toBeInTheDocument();
+  });
+
+  it('names an account left out of net worth instead of counting it in a subtotal', () => {
+    useAccounts.mockReturnValue({
+      data: [...accounts, { ...account('astro', 'Astro dollars', 'investment', 14800), include_in_net_worth: false }],
+      isSuccess: true,
+      isPending: false,
+      isError: false,
+    });
+    show();
+    const group = screen.getByRole('region', { name: 'Where you stand' });
+    // Savings is the Emergency fund alone: 12,350.00, without the 148.00.
+    expect(within(group).getByText('Savings').closest('a')).toHaveTextContent('$12,350.00');
+    expect(group).toHaveTextContent('Not in net worth: Astro dollars');
+    // Net worth in the band leaves it out too: still 11,743.74.
+    expect(within(screen.getByRole('region', { name: 'This month' })).getAllByText('$11,743.74').length).toBeGreaterThan(0);
   });
 });
 
