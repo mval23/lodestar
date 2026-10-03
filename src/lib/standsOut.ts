@@ -318,3 +318,138 @@ export function categoryFindings(name: string, kind: 'expense' | 'income', figur
 
   return findings;
 }
+
+// ---------------------------------------------------------------------------
+// Spending by category: how much one category carries, which flexible one
+// grew most, and what still needs a category. Amounts are Postgres totals.
+
+export type CategoryShare = { name: string; total_minor: number; compare_minor: number; fixed: boolean };
+
+// One category is worth naming when it carries at least this share.
+export const LARGE_SHARE = 0.25;
+// A flexible category's growth is worth saying beyond this share.
+export const GROWTH_SHARE = 0.1;
+
+export function spendingFindings(
+  total: number,
+  categories: CategoryShare[],
+  uncategorized: { minor: number; count: number },
+): Finding[] {
+  const findings: Finding[] = [];
+  const largest = categories[0];
+  if (largest && total > 0 && largest.total_minor >= total * LARGE_SHARE) {
+    findings.push({
+      key: 'largest',
+      weight: 2,
+      parts: [`${largest.name} alone is ${percent(largest.total_minor / total)} of spending.`],
+    });
+  }
+  // The flexible category that grew by the most money, as the page's band
+  // names it; worth a sentence only when that is more than a tenth.
+  const grew = categories
+    .filter((c) => !c.fixed && c.compare_minor > 0)
+    .sort((a, b) => b.total_minor - b.compare_minor - (a.total_minor - a.compare_minor))[0];
+  if (grew && grew.total_minor - grew.compare_minor > grew.compare_minor * GROWTH_SHARE) {
+    findings.push({
+      key: 'grew',
+      weight: 2,
+      parts: [
+        `Among the flexible categories, ${grew.name} grew most: `,
+        { minor: grew.total_minor - grew.compare_minor, signed: true },
+        ` (${percent((grew.total_minor - grew.compare_minor) / grew.compare_minor)} more than before).`,
+      ],
+    });
+  }
+  if (uncategorized.count > 0) {
+    findings.push({
+      key: 'uncategorized',
+      weight: 1,
+      parts: [
+        `${uncategorized.count} ${uncategorized.count === 1 ? 'expense' : 'expenses'} (`,
+        { minor: uncategorized.minor },
+        `) still ${uncategorized.count === 1 ? 'needs' : 'need'} a category.`,
+      ],
+    });
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// Budget vs actual: how the month ended against its plans, and the category
+// whose plan most often does not hold.
+
+export type PlanHistory = { name: string; over: number; planned: number; average_minor: number | null; plan_minor: number | null };
+
+export function budgetFindings(
+  month: string,
+  inProgress: boolean,
+  left: number,
+  within: number,
+  lines: number,
+  worst: PlanHistory | null,
+): Finding[] {
+  const findings: Finding[] = [];
+  if (lines > 0) {
+    const verb = inProgress ? 'is' : 'ended';
+    findings.push({
+      key: 'month',
+      weight: 2,
+      parts:
+        left >= 0
+          ? [`${month} ${verb} `, { minor: left }, ` under plan, with ${within} of ${lines} categories within it.`]
+          : [`${month} ${verb} `, { minor: -left }, ` over plan, with ${within} of ${lines} categories within it.`],
+    });
+  }
+  if (worst && worst.planned >= 3 && worst.over * 2 > worst.planned) {
+    findings.push({
+      key: 'worst',
+      weight: 1,
+      parts:
+        worst.average_minor !== null && worst.plan_minor !== null && worst.average_minor > worst.plan_minor
+          ? [
+              `${worst.name} was over plan in ${worst.over} of ${worst.planned} months and averaged `,
+              { minor: worst.average_minor },
+              ' against a ',
+              { minor: worst.plan_minor },
+              ' plan, so the plan may be set below what it usually costs.',
+            ]
+          : [`${worst.name} was over plan in ${worst.over} of ${worst.planned} months.`],
+    });
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// Savings rate and goals: what went in and came back out, and the rate.
+
+export function savingsFindings(
+  putIn: number,
+  takenOut: number,
+  moneyIn: number,
+  monthsOnPlan: { on: number; of: number } | null,
+): Finding[] {
+  const findings: Finding[] = [];
+  if (putIn > 0 || takenOut > 0) {
+    const rate = moneyIn > 0 ? ` That nets to a ${percent((putIn - takenOut) / moneyIn)} savings rate.` : '';
+    findings.push({
+      key: 'flow',
+      weight: 2,
+      parts:
+        takenOut > 0
+          ? ['You put ', { minor: putIn }, ' into goals and took ', { minor: takenOut }, ` back out.${rate}`]
+          : ['You put ', { minor: putIn }, ` into goals and took nothing back out.${rate}`],
+    });
+  }
+  if (monthsOnPlan && monthsOnPlan.of > 0) {
+    findings.push({
+      key: 'plan',
+      weight: 1,
+      parts: [
+        monthsOnPlan.on === monthsOnPlan.of
+          ? `Every month met the monthly plans for your goals.`
+          : `${monthsOnPlan.on} of ${monthsOnPlan.of} months met the monthly plans for your goals.`,
+      ],
+    });
+  }
+  return findings;
+}

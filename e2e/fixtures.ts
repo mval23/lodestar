@@ -382,6 +382,55 @@ function categoryStatsOf(tables: Tables, id: string) {
   }];
 }
 
+// The Phase 5 report functions, from the stub's transactions and plans.
+function expensesBetween(tables: Tables, from: string, to: string) {
+  return tables.transactions.filter((t) => t.kind === 'expense' && String(t.occurred_on) >= from && String(t.occurred_on) < to);
+}
+
+function categoryMonthsOf(tables: Tables, from: string, to: string) {
+  const by = new Map<string, { category_id: string | null; month: string; total_minor: number }>();
+  for (const t of expensesBetween(tables, from, to)) {
+    const month = `${String(t.occurred_on).slice(0, 7)}-01`;
+    const key = `${t.category_id}|${month}`;
+    const row = by.get(key) ?? { category_id: (t.category_id as string | null) ?? null, month, total_minor: 0 };
+    row.total_minor += Number(t.amount_minor);
+    by.set(key, row);
+  }
+  return [...by.values()];
+}
+
+function categoryTotalsOf(tables: Tables, from: string, to: string) {
+  const by = new Map<string | null, { category_id: string | null; total_minor: number; txn_count: number; compare_minor: number }>();
+  for (const t of expensesBetween(tables, from, to)) {
+    const id = (t.category_id as string | null) ?? null;
+    const row = by.get(id) ?? { category_id: id, total_minor: 0, txn_count: 0, compare_minor: 0 };
+    row.total_minor += Number(t.amount_minor);
+    row.txn_count += 1;
+    by.set(id, row);
+  }
+  return [...by.values()].sort((a, b) => b.total_minor - a.total_minor);
+}
+
+function budgetResultsOf(tables: Tables, from: string, to: string) {
+  return tables.budget_progress
+    .filter((b) => String(b.month) >= from && String(b.month) < to)
+    .map((b) => ({
+      category_id: b.category_id, month: b.month, planned_minor: b.planned_minor, spent_minor: b.spent_minor,
+      within_plan: Number(b.spent_minor) <= Number(b.planned_minor),
+    }));
+}
+
+function budgetSummaryOf(tables: Tables, month: string) {
+  const rows = budgetResultsOf(tables, month, '9999-12-31').filter((r) => r.month === month);
+  const within = rows.filter((r) => r.within_plan).length;
+  return [{
+    planned_minor: rows.reduce((s, r) => s + Number(r.planned_minor), 0),
+    spent_planned_minor: rows.reduce((s, r) => s + Number(r.spent_minor), 0),
+    unplanned_minor: 0, uncategorized_minor: 0, lines: rows.length, within,
+    history_lines: rows.length, history_within: within, first_month: rows.length ? month : null,
+  }];
+}
+
 export async function stubSupabase(page: Page, options: Options = {}) {
   const tables = options.tables ?? emptyTables();
 
@@ -427,6 +476,10 @@ export async function stubSupabase(page: Page, options: Options = {}) {
       if (name === 'daily_spending') return json(dailySpendingOf(tables, args.p_month!));
       if (name === 'month_categories') return json(monthCategoriesOf(tables, args.p_month!));
       if (name === 'category_stats') return json(categoryStatsOf(tables, args.p_category_id!));
+      if (name === 'report_category_months') return json(categoryMonthsOf(tables, args.p_from!, args.p_to!));
+      if (name === 'report_category_totals') return json(categoryTotalsOf(tables, args.p_from!, args.p_to!));
+      if (name === 'budget_month_results') return json(budgetResultsOf(tables, args.p_from!, args.p_to!));
+      if (name === 'budget_month_summary') return json(budgetSummaryOf(tables, args.p_month!));
       return json(null);
     }
 

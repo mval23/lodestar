@@ -19,3 +19,11 @@ export function percentChange(current: number, before: number): string {
   }).format((current - before) / Math.abs(before));
   return text.replace('-', '−');
 }
+
+// A signed share, no decimals, true minus: "+12%", "−19%", "0%".
+export function signedShare(part: number, whole: number): string {
+  if (whole === 0) return '—';
+  return new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 0, signDisplay: 'exceptZero' })
+    .format(part / whole)
+    .replace('-', '−');
+}

@@ -1,9 +1,12 @@
 import {
   cashFlowFindings,
+  budgetFindings,
   categoryFindings,
   monthFindings,
   netWorthFindings,
   overviewFindings,
+  savingsFindings,
+  spendingFindings,
   type MonthSoFar,
   type PaceLine,
 } from './standsOut';
@@ -182,5 +185,48 @@ describe('categoryFindings', () => {
     expect(text(categoryFindings('Salary', 'income', { ...figures, over_plan_months: 1, prev3_minor: 97957 }, null))).toBe(
       'Salary averaged [35152] a month.',
     );
+  });
+});
+
+const said = (findings: { parts: (string | { minor: number })[] }[]) =>
+  findings.map((f) => f.parts.map((p) => (typeof p === 'string' ? p : `[${p.minor}]`)).join('')).join(' ');
+
+describe('spendingFindings', () => {
+  it('names a large category, the flexible one that grew most, and what still needs a category', () => {
+    const categories = [
+      { name: 'Rent', total_minor: 1980000, compare_minor: 1920000, fixed: true },
+      { name: 'Dining out', total_minor: 430796, compare_minor: 380000, fixed: false },
+      { name: 'Groceries', total_minor: 632971, compare_minor: 630000, fixed: false },
+    ];
+    expect(said(spendingFindings(4593845, categories, { minor: 21550, count: 3 }))).toBe(
+      'Rent alone is 43% of spending. Among the flexible categories, Dining out grew most: [50796] (13% more than before).' +
+        ' 3 expenses ([21550]) still need a category.',
+    );
+  });
+
+  it('says nothing about a fixed category growing, or a small one', () => {
+    const categories = [{ name: 'Rent', total_minor: 900000, compare_minor: 100000, fixed: true }];
+    expect(said(spendingFindings(4000000, categories, { minor: 0, count: 0 }))).toBe('');
+  });
+});
+
+describe('budgetFindings', () => {
+  it('says how the month ended and names a plan that keeps not holding', () => {
+    expect(said(budgetFindings('September', false, 37390, 11, 13, { name: 'Dining out', over: 10, planned: 12, average_minor: 35900, plan_minor: 30000 }))).toBe(
+      'September ended [37390] under plan, with 11 of 13 categories within it.' +
+        ' Dining out was over plan in 10 of 12 months and averaged [35900] against a [30000] plan, so the plan may be set below what it usually costs.',
+    );
+    expect(said(budgetFindings('October', true, -5000, 2, 3, { name: 'Gifts', over: 1, planned: 4, average_minor: null, plan_minor: null }))).toBe(
+      'October is [5000] over plan, with 2 of 3 categories within it.',
+    );
+  });
+});
+
+describe('savingsFindings', () => {
+  it('nets what went in and out into a rate, and counts the months on plan', () => {
+    expect(said(savingsFindings(1500000, 205000, 6607000, { on: 12, of: 12 }))).toBe(
+      'You put [1500000] into goals and took [205000] back out. That nets to a 20% savings rate. Every month met the monthly plans for your goals.',
+    );
+    expect(said(savingsFindings(0, 0, 100000, null))).toBe('');
   });
 });

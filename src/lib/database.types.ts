@@ -319,6 +319,22 @@ export type Database = {
           remaining_minor: number | null;
           this_month: string | null;
           this_month_contributed_minor: number | null;
+          needed_monthly_minor: number | null;
+          avg_put_in_minor: number | null;
+          months_put_in: number | null;
+          estimated_month: string | null;
+        };
+        Relationships: [];
+      };
+      goal_month_flow: {
+        Row: {
+          user_id: string | null;
+          goal_id: string | null;
+          account_id: string | null;
+          month: string | null;
+          put_in_minor: number | null;
+          taken_out_minor: number | null;
+          closing_balance_minor: number | null;
         };
         Relationships: [];
       };
@@ -445,6 +461,38 @@ export type Database = {
       };
     };
     Functions: {
+      report_category_months: {
+        Args: { p_from: string; p_to: string; p_account_ids?: string[] };
+        Returns: { category_id: string; month: string; total_minor: number }[];
+      };
+      report_category_totals: {
+        Args: { p_from: string; p_to: string; p_compare_from: string; p_account_ids?: string[] };
+        Returns: { category_id: string; total_minor: number; txn_count: number; compare_minor: number }[];
+      };
+      budget_month_results: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          category_id: string;
+          month: string;
+          planned_minor: number;
+          spent_minor: number;
+          within_plan: boolean;
+        }[];
+      };
+      budget_month_summary: {
+        Args: { p_month: string };
+        Returns: {
+          planned_minor: number;
+          spent_planned_minor: number;
+          unplanned_minor: number;
+          uncategorized_minor: number;
+          lines: number;
+          within: number;
+          history_lines: number;
+          history_within: number;
+          first_month: string;
+        }[];
+      };
       budget_pace: {
         Args: { p_month: string; p_today?: string };
         Returns: {

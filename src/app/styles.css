@@ -3498,3 +3498,233 @@ a:hover {
   font-weight: 400;
   color: var(--ink-3);
 }
+
+/* ---------- Spending by category, Budget vs actual, Savings ---------- */
+/* The breakdown colours, in their fixed order; the fixed base is grey and
+   spending with no category is hatched (its fill is the SVG pattern). */
+.stack-fixed { fill: var(--out); }
+.stack-c2 { fill: var(--c2); }
+.stack-c3 { fill: var(--c3); }
+.stack-c4 { fill: var(--c4); }
+.stack-c5 { fill: var(--c5); }
+.stack-c6 { fill: var(--c6); }
+.stack-c7 { fill: var(--c7); }
+.stack-c8 { fill: var(--c8); }
+.stack-swatch-fixed { background: var(--out); }
+.stack-swatch-c2 { background: var(--c2); }
+.stack-swatch-c3 { background: var(--c3); }
+.stack-swatch-c4 { background: var(--c4); }
+.stack-swatch-c5 { background: var(--c5); }
+.stack-swatch-c6 { background: var(--c6); }
+.stack-swatch-c7 { background: var(--c7); }
+.stack-swatch-c8 { background: var(--c8); }
+.stack-swatch-none {
+  background: repeating-linear-gradient(45deg, var(--ink) 0 2px, var(--ink-3) 2px 4px);
+}
+
+/* The plan grid: squares by month, solid within plan, hatched over it. */
+.plan-grid {
+  border-collapse: separate;
+  border-spacing: 4px 6px;
+  width: 100%;
+  font-size: 15px;
+}
+.plan-grid th[scope='row'] {
+  text-align: left;
+  font-weight: 400;
+  white-space: nowrap;
+  padding-right: var(--space-3);
+}
+.plan-grid .plan-month {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-3);
+  text-align: center;
+}
+.plan-grid abbr {
+  text-decoration: none;
+}
+.plan-grid td {
+  padding: 0;
+  text-align: center;
+}
+.plan-cell {
+  display: block;
+  width: 100%;
+  min-width: 14px;
+  height: 18px;
+  border-radius: var(--radius-xs);
+}
+.plan-within {
+  background: var(--out);
+}
+.plan-over {
+  background: repeating-linear-gradient(45deg, var(--ink) 0 2px, var(--surface) 2px 5px);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.plan-none {
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.plan-now {
+  display: block;
+  width: 6px;
+  height: 6px;
+  margin: 0 auto;
+  background: var(--fix);
+}
+
+/* Budget vs actual: spent as a grey bar, the plan as an ink tick, and the
+   part over plan hatched, on a square-root scale. */
+.plan-bar-cell {
+  width: 26%;
+  min-width: 120px;
+}
+.plan-bar {
+  position: relative;
+  display: block;
+  height: 16px;
+}
+.plan-bar > i {
+  position: absolute;
+  display: block;
+}
+.plan-bar-spent {
+  left: 0;
+  top: 4px;
+  height: 8px;
+  background: var(--out);
+  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+}
+.plan-bar-over {
+  top: 4px;
+  height: 8px;
+  background: repeating-linear-gradient(45deg, var(--ink) 0 2px, var(--ink-3) 2px 4px);
+}
+.plan-bar-tick {
+  top: 0;
+  width: 2px;
+  height: 16px;
+  margin-left: -1px;
+  background: var(--ink);
+}
+.plan-result {
+  white-space: nowrap;
+}
+.num.strong {
+  font-weight: 600;
+}
+.ranked th .swatch {
+  vertical-align: -1px;
+}
+
+/* Savings: the zero line solid, each month's rate over its bar, and the
+   goals as a list with their capsules. */
+.chart-zero-solid {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.savings-rate {
+  font-weight: 600;
+  fill: var(--ink);
+}
+.savings-goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.savings-goals > li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.savings-goals > li:last-child {
+  border-bottom: 0;
+}
+.savings-goal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.savings-goal-head a {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.savings-goal-head small {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.savings-no-target {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: repeating-linear-gradient(90deg, var(--sunk) 0 8px, transparent 8px 11px);
+}
+.estimate-tag {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  margin-right: var(--space-1);
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+/* Savings: the zero line solid, each month's rate over its bar, and the
+   goals as a list with their capsules. */
+.chart-zero-solid {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.savings-rate {
+  font-weight: 600;
+  fill: var(--ink);
+}
+.savings-goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.savings-goals > li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.savings-goals > li:last-child {
+  border-bottom: 0;
+}
+.savings-goal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.savings-goal-head a {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.savings-goal-head small {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.savings-no-target {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: repeating-linear-gradient(90deg, var(--sunk) 0 8px, transparent 8px 11px);
+}
+.estimate-tag {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  margin-right: var(--space-1);
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}

@@ -123,11 +123,15 @@ export function ReportHead({
   subtitle,
   back,
   showScope,
+  controls,
 }: {
   title: string;
   subtitle: ReactNode;
   back?: string;
   showScope?: boolean;
+  // In place of the shared filters, for a report that picks something else
+  // (Budget vs actual picks one month).
+  controls?: ReactNode;
 }) {
   return (
     <header className="detail-head">
@@ -142,7 +146,7 @@ export function ReportHead({
           <h1 className="large-title">{title}</h1>
           <p className="footnote flush">{subtitle}</p>
         </div>
-        <ReportFiltersBar showScope={showScope} />
+        {controls ?? <ReportFiltersBar showScope={showScope} />}
       </div>
     </header>
   );

@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { ChartColumn, ChartLine, ChevronRight } from 'lucide-react';
+import { ChartColumn, ChartColumnStacked, ChartLine, ChevronRight, ListChecks, PiggyBank } from 'lucide-react';
 import { useCurrency } from '../../lib/profile';
 import { addMonths, formatDate } from '../../lib/dates';
 import { Amount } from '../../ui/Amount';
@@ -10,7 +10,7 @@ import { dataErrorMessage } from '../auth/errors';
 import { CashFlowChart } from './CashFlowChart';
 import { NetWorthChart } from './NetWorthChart';
 import { rangeLabel } from './filters';
-import { useCurrentMonthFlow, useNetWorthRange, useReportCashFlow, useReportSummary } from './queries';
+import { useBudgetSummary, useCurrentMonthFlow, useNetWorthRange, useReportCashFlow, useReportSummary } from './queries';
 import { ReportHead, monthEnd, share, useReportRange } from './ReportParts';
 
 // The Reports hub: the period's figures against a comparison period, the two
@@ -24,6 +24,7 @@ export function ReportsPage() {
   const flow = useReportCashFlow(range.from, range.to, accountIds);
   const worth = useNetWorthRange(range.from, range.to);
   const soFar = useCurrentMonthFlow(report.currentMonth);
+  const plans = useBudgetSummary(report.currentMonth);
 
   const totals = summary.data?.current;
   const before = summary.data?.compare;
@@ -185,6 +186,48 @@ export function ReportsPage() {
                   <span className="report-figure">
                     <Amount minor={totals?.net_minor ?? 0} currency={currency} signed />
                     <small>net</small>
+                  </span>
+                  <ChevronRight className="row-chevron" strokeWidth={1.75} aria-hidden />
+                </Link>
+              </li>
+              <li>
+                <Link className="row-button" to={`/reports/spending${search}`}>
+                  <ChartColumnStacked className="row-icon" strokeWidth={1.75} aria-hidden />
+                  <span className="row-label row-grow">
+                    Spending by category
+                    <small>Each month split by category, and every category ranked</small>
+                  </span>
+                  <span className="report-figure">
+                    <Amount minor={totals?.money_out_minor ?? 0} currency={currency} />
+                    <small>spent</small>
+                  </span>
+                  <ChevronRight className="row-chevron" strokeWidth={1.75} aria-hidden />
+                </Link>
+              </li>
+              <li>
+                <Link className="row-button" to={`/reports/budgets${search}`}>
+                  <ListChecks className="row-icon" strokeWidth={1.75} aria-hidden />
+                  <span className="row-label row-grow">
+                    Budget vs actual
+                    <small>One month’s plans against spending, and which plans held</small>
+                  </span>
+                  <span className="report-figure">
+                    {plans.data && plans.data.lines > 0 ? `${plans.data.within} of ${plans.data.lines}` : '—'}
+                    <small>within plan this month</small>
+                  </span>
+                  <ChevronRight className="row-chevron" strokeWidth={1.75} aria-hidden />
+                </Link>
+              </li>
+              <li>
+                <Link className="row-button" to={`/reports/savings${search}`}>
+                  <PiggyBank className="row-icon" strokeWidth={1.75} aria-hidden />
+                  <span className="row-label row-grow">
+                    Savings rate and goals
+                    <small>What went into goals each month, and each goal’s progress</small>
+                  </span>
+                  <span className="report-figure">
+                    {totals ? share(saved, totals.money_in_minor) : '—'}
+                    <small>savings rate</small>
                   </span>
                   <ChevronRight className="row-chevron" strokeWidth={1.75} aria-hidden />
                 </Link>

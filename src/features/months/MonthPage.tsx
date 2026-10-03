@@ -228,7 +228,7 @@ function MonthDetail({ month }: { month: string }) {
             </div>
             {byCategory.data && byCategory.data.length === 0 && <p className="secondary flush">Nothing spent this month.</p>}
             {byCategory.data && byCategory.data.length > 0 && (
-              <CategoryTable rows={byCategory.data} nameOf={nameOf} comparable={comparable} />
+              <CategoryTable rows={byCategory.data} nameOf={nameOf} comparable={comparable} monthStart={range.from} monthLast={range.to} />
             )}
           </section>
           <BillsThisMonth month={month} today={today} />
@@ -315,10 +315,14 @@ function CategoryTable({
   rows,
   nameOf,
   comparable,
+  monthStart,
+  monthLast,
 }: {
   rows: MonthCategory[];
   nameOf: (row: MonthCategory) => string;
   comparable: boolean;
+  monthStart: string;
+  monthLast: string;
 }) {
   const currency = useCurrency();
   const shown = rows.filter((r) => r.spent_minor > 0 || r.typical_minor > 0);
@@ -345,7 +349,11 @@ function CategoryTable({
         {shown.map((row) => (
           <tr key={row.category_id ?? 'none'}>
             <th scope="row">
-              {row.category_id ? <Link to={categoryPath(row.category_id)}>{nameOf(row)}</Link> : nameOf(row)}
+              {row.category_id ? (
+                <Link to={categoryPath(row.category_id)}>{nameOf(row)}</Link>
+              ) : (
+                <Link to={activityPath({ kind: 'expense', categoryId: 'none', from: monthStart, to: monthLast })}>{nameOf(row)}</Link>
+              )}
             </th>
             <td className="month-cat-bar" aria-hidden="true">
               <span className="bar-track">

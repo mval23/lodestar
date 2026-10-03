@@ -148,6 +148,7 @@ export function ActivityPage() {
           onChange={(next) => update({ categoryId: next })}
           options={[
             { value: 'all', label: 'All categories' },
+            { value: 'none', label: 'No category' },
             ...(categories.data ?? []).map((c) => ({ value: c.id, label: c.name })),
           ]}
         />
