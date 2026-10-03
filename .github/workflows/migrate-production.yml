@@ -78,7 +78,9 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned: "latest" asks the GitHub API which release that is, unauthenticated,
+          # and a rate-limited runner then fails before anything runs.
+          version: 2.119.0
       - name: Link
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
       - name: Show pending migrations

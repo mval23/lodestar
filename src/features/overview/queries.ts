@@ -54,7 +54,8 @@ export function useBudgetPace(month: string) {
     queryFn: async (): Promise<BudgetPace[]> => {
       const { data, error } = await db().rpc('budget_pace', { p_month: month });
       if (error) throw error;
-      return data ?? [];
+      // status is text in Postgres; the function only ever returns these three.
+      return (data ?? []).map((row) => ({ ...row, status: row.status as BudgetPace['status'] }));
     },
   });
 }

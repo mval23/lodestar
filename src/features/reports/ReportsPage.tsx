@@ -1,145 +1,211 @@
-import { useState } from 'react';
-import { ChartColumn } from 'lucide-react';
-import { useCurrency, useProfile } from '../../lib/profile';
-import { addMonths, formatDate, formatDateShort, formatMonthShort, monthStartInZone, todayInZone } from '../../lib/dates';
+import { Link } from 'react-router';
+import { ChartColumn, ChartLine, ChevronRight } from 'lucide-react';
+import { useCurrency } from '../../lib/profile';
+import { addMonths, formatDate } from '../../lib/dates';
 import { Amount } from '../../ui/Amount';
+import { Comparison } from '../../ui/Comparison';
 import { EmptyState } from '../../ui/EmptyState';
 import { Notice } from '../../ui/Notice';
-import { Select } from '../../ui/Select';
 import { dataErrorMessage } from '../auth/errors';
 import { CashFlowChart } from './CashFlowChart';
 import { NetWorthChart } from './NetWorthChart';
-import {
-  averagePerMonth,
-  summarizeCashFlow,
-  useCashFlowReport,
-  useCurrentMonthFlow,
-  useNetWorthReport,
-  type TypicalMonth,
-} from './queries';
+import { rangeLabel } from './filters';
+import { useCurrentMonthFlow, useNetWorthRange, useReportCashFlow, useReportSummary } from './queries';
+import { ReportHead, monthEnd, share, useReportRange } from './ReportParts';
 
-const RANGES = [
-  { value: '6', label: 'Last 6 months' },
-  { value: '12', label: 'Last 12 months' },
-  { value: '24', label: 'Last 24 months' },
-];
-
-// What a typical month is the average of, in words.
-export function typicalBasis(typical: TypicalMonth): string {
-  const months = `${typical.months} ${typical.months === 1 ? 'month' : 'months'}`;
-  if (typical.emptyMonths === 0) return `average of ${months}`;
-  const empty = `${typical.emptyMonths} empty ${typical.emptyMonths === 1 ? 'month' : 'months'}`;
-  return `average of ${months} with activity; ${empty} left out`;
-}
-
+// The Reports hub: the period's figures against a comparison period, the two
+// charts every month is read by, and every report, each with its headline.
+// The filters live in the address and travel with every link from here.
 export function ReportsPage() {
   const currency = useCurrency();
-  const profile = useProfile();
-  const [range, setRange] = useState('12');
-  const months = Number(range);
+  const report = useReportRange();
+  const { range, compareFrom, accountIds, search, against } = report;
+  const summary = useReportSummary(range.from, range.to, compareFrom, accountIds);
+  const flow = useReportCashFlow(range.from, range.to, accountIds);
+  const worth = useNetWorthRange(range.from, range.to);
+  const soFar = useCurrentMonthFlow(report.currentMonth);
 
-  // A range is made of complete calendar months; the current month is still
-  // partial, so it is shown on its own line and never added to the totals.
-  const timezone = profile.data?.timezone;
-  const currentMonth = monthStartInZone(timezone);
-  const today = todayInZone(timezone);
-  const cashFlow = useCashFlowReport(months, currentMonth);
-  const thisMonth = useCurrentMonthFlow(currentMonth);
-  const netWorth = useNetWorthReport(months, currentMonth);
-
-  const rows = cashFlow.data ?? [];
-  const totals = summarizeCashFlow(rows);
-  const typical = averagePerMonth(rows);
-  const soFar = thisMonth.data ?? null;
-  const empty = cashFlow.isSuccess && thisMonth.isSuccess && rows.length === 0 && !soFar;
-  const first = rows[0];
-  const last = rows[rows.length - 1];
-
-  const soFarLine = soFar ? (
-    <>
-      So far this month ({formatDateShort(currentMonth)} – {formatDateShort(today)}):{' '}
-      <Amount minor={soFar.net_minor} currency={currency} signed />
-    </>
-  ) : (
-    'Nothing recorded this month yet.'
-  );
+  const totals = summary.data?.current;
+  const before = summary.data?.compare;
+  const rows = worth.data ?? [];
+  const start = rows.find((row) => row.month === addMonths(range.from, -1)) ?? null;
+  const chartRows = rows.filter((row) => row.month >= range.from);
+  const end = chartRows[chartRows.length - 1] ?? null;
+  const saved = totals ? totals.to_goals_minor - totals.from_goals_minor : 0;
+  const savedBefore = before ? before.to_goals_minor - before.from_goals_minor : 0;
+  const error = summary.error ?? flow.error ?? worth.error;
+  // A comparison period with nothing in it says so, rather than "+everything".
+  const comparable = Boolean(before && before.active_months > 0);
 
   return (
     <div className="page">
-      <header className="page-head">
-        <div>
-          <h1 className="large-title">Reports</h1>
-          <p className="footnote flush">
-            Every figure is summed in the database from the same rows as Activity. Ranges count complete calendar
-            months.
-          </p>
-        </div>
-        <div className="control-select">
-          <Select label="Range" value={range} onChange={setRange} options={RANGES} />
-        </div>
-      </header>
+      <ReportHead
+        title="Reports"
+        subtitle={
+          report.nothingYet
+            ? 'Every figure is summed in the database from the same rows as Activity.'
+            : `${rangeLabel(range)} · complete months, summed in the database from the same rows as Activity`
+        }
+      />
 
-      {cashFlow.isError && <Notice tone="err">{dataErrorMessage(cashFlow.error)}</Notice>}
-      {thisMonth.isError && <Notice tone="err">{dataErrorMessage(thisMonth.error)}</Notice>}
-      {netWorth.isError && <Notice tone="err">{dataErrorMessage(netWorth.error)}</Notice>}
-      {cashFlow.isPending && <p className="secondary">Working out your figures…</p>}
+      {error && <Notice tone="err">{dataErrorMessage(error)}</Notice>}
+      {!report.ready && <p className="secondary">Working out your figures…</p>}
 
-      {empty && (
+      {report.ready && report.nothingYet && (
         <EmptyState icon={ChartColumn} title="Nothing to report yet">
-          Reports draw on your transactions. Add a few, or import a statement, and the months will fill in here.
+          {soFar.data
+            ? `Reports count complete months; your first one appears on ${formatDate(addMonths(report.currentMonth, 1))}.`
+            : 'Reports draw on your transactions. Add a few, or import a statement, and the months will fill in here.'}
         </EmptyState>
       )}
 
-      {first && last && (
-        <section className="group figure-group">
-          <h2 className="caption">
-            Net over {rows.length} complete {rows.length === 1 ? 'month' : 'months'}
-          </h2>
-          <p className="fig flush">
-            <span className="bracket">
-              <Amount minor={totals.net} currency={currency} signed />
-            </span>
-          </p>
-          <p className="footnote flush">
-            {formatMonthShort(first.month)} – {formatMonthShort(last.month)} ·{' '}
-            <Amount minor={totals.moneyIn} currency={currency} /> in ·{' '}
-            <Amount minor={totals.moneyOut} currency={currency} /> out
-          </p>
-          {typical && (
-            <p className="footnote flush">
-              <Amount minor={typical.net} currency={currency} signed /> in a typical month · {typicalBasis(typical)}
-            </p>
-          )}
-          <p className="footnote flush">{soFarLine}</p>
-        </section>
-      )}
+      {report.ready && !report.nothingYet && (
+        <>
+          <section className="group fig-band fig-band-6" aria-label="This period">
+            <div className="fig-cell">
+              <h2 className="caption">Money in</h2>
+              <p className="card-figure flush">
+                <Amount minor={totals?.money_in_minor ?? 0} currency={currency} />
+              </p>
+              {totals && before && (
+                <p className="footnote flush">
+                  {comparable ? (
+                    <Comparison delta={totals.money_in_minor - before.money_in_minor} currency={currency} against={against} />
+                  ) : (
+                    'Nothing earlier to compare with'
+                  )}
+                </p>
+              )}
+            </div>
+            <div className="fig-cell">
+              <h2 className="caption">Money out</h2>
+              <p className="card-figure flush">
+                <Amount minor={totals?.money_out_minor ?? 0} currency={currency} />
+              </p>
+              {totals && before && (
+                <p className="footnote flush">
+                  {comparable ? (
+                    <Comparison delta={totals.money_out_minor - before.money_out_minor} currency={currency} against={against} />
+                  ) : (
+                    'Nothing earlier to compare with'
+                  )}
+                </p>
+              )}
+            </div>
+            <div className="fig-cell">
+              <h2 className="caption">Net cash flow</h2>
+              <p className="card-figure flush">
+                <Amount minor={totals?.net_minor ?? 0} currency={currency} signed />
+              </p>
+              {totals && before && (
+                <p className="footnote flush">
+                  {comparable ? (
+                    <Comparison delta={totals.net_minor - before.net_minor} currency={currency} against={against} />
+                  ) : (
+                    'Nothing earlier to compare with'
+                  )}
+                </p>
+              )}
+            </div>
+            <div className="fig-cell">
+              <h2 className="caption">Saved into goals</h2>
+              <p className="card-figure flush">
+                <Amount minor={saved} currency={currency} />
+              </p>
+              {totals && (
+                <p className="footnote flush">
+                  {share(saved, totals.money_in_minor)} of money in
+                  {comparable && before && before.money_in_minor > 0 && ` · ${share(savedBefore, before.money_in_minor)} before`}
+                </p>
+              )}
+            </div>
+            <div className="fig-cell">
+              <h2 className="caption">{end ? `Net worth, ${monthEnd(end.month)}` : 'Net worth'}</h2>
+              <p className="fig flush">
+                <span className="bracket">
+                  <Amount minor={end?.net_worth_minor ?? 0} currency={currency} />
+                </span>
+              </p>
+              {end && start && (
+                <p className="footnote flush">
+                  <Comparison
+                    delta={end.net_worth_minor - start.net_worth_minor}
+                    currency={currency}
+                    against={`since ${monthEnd(start.month)}`}
+                  />
+                </p>
+              )}
+            </div>
+            <div className="fig-cell">
+              <h2 className="caption">Debt</h2>
+              <p className="card-figure flush">
+                <Amount minor={end?.liabilities_minor ?? 0} currency={currency} />
+              </p>
+              {end && start && (
+                <p className="footnote flush">
+                  <Amount minor={start.liabilities_minor} currency={currency} /> at {monthEnd(start.month)}
+                </p>
+              )}
+            </div>
+          </section>
 
-      {/* A new account's first month: nothing is complete yet, but the month
-          so far is still worth showing. */}
-      {rows.length === 0 && soFar && (
-        <section className="group figure-group">
-          <h2 className="caption">So far this month</h2>
-          <p className="fig flush">
-            <span className="bracket">
-              <Amount minor={soFar.net_minor} currency={currency} signed />
-            </span>
-          </p>
-          <p className="footnote flush">
-            Reports count complete months; your first one appears on {formatDate(addMonths(currentMonth, 1))}.
-          </p>
-        </section>
-      )}
+          <div className="report-pair">
+            {(flow.data ?? []).length > 0 && (
+              <CashFlowChart
+                rows={flow.data ?? []}
+                currency={currency}
+                currentMonth={addMonths(range.to, -1)}
+                nowLabel="Latest complete month"
+                netLine
+              />
+            )}
+            {chartRows.length > 0 && (
+              <NetWorthChart
+                rows={chartRows}
+                currency={currency}
+                currentMonth={addMonths(range.to, -1)}
+                nowLabel="Latest complete month"
+                start={start ? { label: `Where the period began, ${monthEnd(start.month)}`, value: start.net_worth_minor } : null}
+              />
+            )}
+          </div>
 
-      {rows.length > 0 && (
-        <CashFlowChart
-          rows={rows}
-          currency={currency}
-          currentMonth={addMonths(currentMonth, -1)}
-          nowLabel="Latest complete month"
-        />
-      )}
-      {!empty && (netWorth.data ?? []).length > 0 && (
-        <NetWorthChart rows={netWorth.data ?? []} currency={currency} currentMonth={currentMonth} />
+          <section className="stack-tight" aria-labelledby="all-reports">
+            <h2 className="headline" id="all-reports">
+              All reports
+            </h2>
+            <ul className="rows-list report-list">
+              <li>
+                <Link className="row-button" to={`/reports/cash-flow${search}`}>
+                  <ChartColumn className="row-icon" strokeWidth={1.75} aria-hidden />
+                  <span className="row-label row-grow">
+                    Cash flow
+                    <small>Money in and out each month, the net, and the transfers left out</small>
+                  </span>
+                  <span className="report-figure">
+                    <Amount minor={totals?.net_minor ?? 0} currency={currency} signed />
+                    <small>net</small>
+                  </span>
+                  <ChevronRight className="row-chevron" strokeWidth={1.75} aria-hidden />
+                </Link>
+              </li>
+              <li>
+                <Link className="row-button" to={`/reports/net-worth${search}`}>
+                  <ChartLine className="row-icon" strokeWidth={1.75} aria-hidden />
+                  <span className="row-label row-grow">
+                    Net worth
+                    <small>Month-end net worth, and what each account added</small>
+                  </span>
+                  <span className="report-figure">
+                    <Amount minor={end?.net_worth_minor ?? 0} currency={currency} />
+                    <small>{end ? monthEnd(end.month) : ''}</small>
+                  </span>
+                  <ChevronRight className="row-chevron" strokeWidth={1.75} aria-hidden />
+                </Link>
+              </li>
+            </ul>
+          </section>
+        </>
       )}
     </div>
   );

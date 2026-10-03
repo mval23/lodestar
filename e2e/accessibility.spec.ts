@@ -17,6 +17,8 @@ const PAGES = [
   ['/bills', 'Bills'],
   ['/goals', 'Goals'],
   ['/reports', 'Reports'],
+  ['/reports/cash-flow', 'Cash flow report'],
+  ['/reports/net-worth', 'Net worth report'],
   ['/import-export', 'Import & export'],
   ['/settings', 'Settings'],
 ] as const;

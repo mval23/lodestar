@@ -21,7 +21,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/readme/overview-dark.png">
-    <img src="docs/readme/overview.png" alt="The Overview screen: left to spend this month, net worth, this month's money in and out, bills due, budgets and debts">
+    <img src="docs/readme/overview.png" alt="The Overview: left to spend this month against its pace, money in and out so far against a typical month, into goals, net worth, the budgets that need a look, where you stand, goals and bills coming up">
   </picture>
 </p>
 
@@ -65,7 +65,7 @@ Each person picks **USD or COP** at first run. Every amount uses that currency, 
   </tr>
   <tr>
     <td width="50%"><img src="docs/readme/accounts.png" alt="Accounts: every account and its balance, and net worth"></td>
-    <td width="50%"><img src="docs/readme/reports.png" alt="Reports: monthly cash flow and net worth charts"></td>
+    <td width="50%"><img src="docs/readme/reports.png" alt="Reports: the last 12 complete months against the year before, with cash flow and net worth charts and links to each report"></td>
   </tr>
   <tr>
     <td align="center"><sub>Accounts</sub></td>

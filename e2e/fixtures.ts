@@ -31,14 +31,22 @@ export type Tables = {
 export const USER_ID = '00000000-0000-4000-8000-00000000000a';
 export const EMAIL = 'synthetic@example.test';
 
-const thisMonth = `${new Date().toISOString().slice(0, 7)}-01`;
-const today = new Date().toISOString().slice(0, 10);
+// The stub's today. E2E_TODAY (YYYY-MM-DD) pins it, as the README
+// screenshots do, so a picture taken on the 2nd still reads like mid-month;
+// the browser's clock has to be pinned to the same day (pinClock).
+export const stubNow = process.env.E2E_TODAY ? new Date(`${process.env.E2E_TODAY}T12:00:00Z`) : new Date();
+const thisMonth = `${stubNow.toISOString().slice(0, 7)}-01`;
+const today = stubNow.toISOString().slice(0, 10);
 // Reports count complete months, so the data needs one before this month.
 const lastMonth = (() => {
-  const now = new Date();
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  const d = new Date(Date.UTC(stubNow.getUTCFullYear(), stubNow.getUTCMonth() - 1, 1));
   return d.toISOString().slice(0, 10);
 })();
+
+// Sets the page's clock to the stub's today when it is pinned.
+export async function pinClock(page: Page) {
+  if (process.env.E2E_TODAY) await page.clock.setFixedTime(stubNow);
+}
 
 export function emptyTables(): Tables {
   return {
@@ -151,7 +159,8 @@ function jwt(payload: object): string {
 // One signed-in session: it seeds storage, and it is what a successful
 // sign-in at /auth/v1/token hands back.
 function session() {
-  const now = Math.floor(Date.now() / 1000);
+  // From the stub's today, so a pinned browser clock doesn't find it expired.
+  const now = Math.floor(Math.max(Date.now(), stubNow.getTime()) / 1000);
   const expiresAt = now + 3600;
   return {
     // amr is how the real thing records an authentication, and what the
@@ -203,17 +212,47 @@ type Options = {
 const dayOfMonth = Number(today.slice(8, 10));
 const daysInMonth = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).getUTCDate();
 
+// A bill's due dates this month, walked from its anchor by its cadence, as
+// recurrence_next does (month-end dates clamp).
+function dueDatesThisMonth(item: Record<string, unknown>): string[] {
+  const anchor = String(item.anchor_on);
+  const [ay, am, ad] = anchor.split('-').map(Number) as [number, number, number];
+  const step = Number(item.cadence_interval ?? 1);
+  const out: string[] = [];
+  for (let k = 0; k < 600; k++) {
+    let due: string;
+    if (item.cadence_unit === 'week') {
+      due = new Date(Date.UTC(ay, am - 1, ad + 7 * step * k)).toISOString().slice(0, 10);
+    } else {
+      const months = (item.cadence_unit === 'year' ? 12 : 1) * step * k;
+      const last = new Date(Date.UTC(ay, am - 1 + months + 1, 0)).getUTCDate();
+      due = new Date(Date.UTC(ay, am - 1 + months, Math.min(ad, last))).toISOString().slice(0, 10);
+    }
+    if (due.slice(0, 7) > thisMonth.slice(0, 7)) break;
+    if (due.slice(0, 7) === thisMonth.slice(0, 7)) out.push(due);
+  }
+  return out;
+}
+
 function budgetPaceOf(tables: Tables) {
+  const bills = tables.recurring_items.filter((r) => r.kind === 'expense' && r.category_id && !r.archived_at);
   return tables.budget_progress
     .filter((row) => row.month === thisMonth)
     .map((row) => {
       const planned = Number(row.planned_minor), spent = Number(row.spent_minor);
-      const pace = Math.round((planned * dayOfMonth) / daysInMonth);
+      let billsMonth = 0, billsDue = 0;
+      for (const bill of bills.filter((b) => b.category_id === row.category_id)) {
+        for (const due of dueDatesThisMonth(bill)) {
+          billsMonth += Number(bill.amount_minor);
+          if (due <= today) billsDue += Number(bill.amount_minor);
+        }
+      }
+      const pace = Math.min(planned, billsDue + Math.round((Math.max(planned - billsMonth, 0) * dayOfMonth) / daysInMonth));
       const daysLeft = daysInMonth - dayOfMonth;
       return {
         ...row,
-        bills_month_minor: 0,
-        bills_due_minor: 0,
+        bills_month_minor: billsMonth,
+        bills_due_minor: billsDue,
         pace_minor: pace,
         gap_minor: spent - pace,
         days_left: daysLeft,
@@ -243,6 +282,64 @@ function monthToDateOf(tables: Tables) {
       typical_months: before ? 1 : 0,
     },
   ];
+}
+
+// The Reports functions, answered from monthly_cash_flow and
+// net_worth_by_month. Transfers aren't in the stub's tables, so their
+// buckets are zero unless a month row carries to_goals_minor (the README's
+// data does); the real split is tested against Postgres.
+function monthsFrom(from: string, to: string): string[] {
+  const out: string[] = [];
+  for (let m = from; m < to; ) {
+    out.push(m);
+    const d = new Date(`${m}T00:00:00Z`);
+    d.setUTCMonth(d.getUTCMonth() + 1);
+    m = d.toISOString().slice(0, 10);
+  }
+  return out;
+}
+
+function reportCashFlowOf(tables: Tables, from: string, to: string) {
+  return monthsFrom(from, to).map((month) => {
+    const row = tables.monthly_cash_flow.find((r) => r.month === month);
+    const moneyIn = Number(row?.money_in_minor ?? 0), moneyOut = Number(row?.money_out_minor ?? 0);
+    return {
+      month, money_in_minor: moneyIn, money_out_minor: moneyOut, net_minor: moneyIn - moneyOut,
+      to_goals_minor: Number(row?.to_goals_minor ?? 0), from_goals_minor: 0, moved_in_minor: 0, moved_out_minor: 0, active: Boolean(row),
+    };
+  });
+}
+
+function totalsOf(tables: Tables, period: string, from: string, to: string) {
+  const rows = reportCashFlowOf(tables, from, to);
+  const moneyIn = rows.reduce((s, r) => s + r.money_in_minor, 0), moneyOut = rows.reduce((s, r) => s + r.money_out_minor, 0);
+  return {
+    period, period_from: from, period_to: to, money_in_minor: moneyIn, money_out_minor: moneyOut, net_minor: moneyIn - moneyOut,
+    to_goals_minor: rows.reduce((s, r) => s + r.to_goals_minor, 0), from_goals_minor: 0, card_payments_minor: 0, loan_payments_minor: 0, cash_withdrawals_minor: 0,
+    other_transfers_minor: 0, transfers_minor: rows.reduce((s, r) => s + r.to_goals_minor, 0), months: rows.length, active_months: rows.filter((r) => r.active).length,
+  };
+}
+
+function reportSummaryOf(tables: Tables, from: string, to: string, compareFrom: string) {
+  const length = monthsFrom(from, to).length;
+  const compareTo = monthsFrom(compareFrom, '9999-01-01').slice(0, length + 1)[length] ?? compareFrom;
+  return [totalsOf(tables, 'current', from, to), totalsOf(tables, 'compare', compareFrom, compareTo)];
+}
+
+function netWorthByAccountOf(tables: Tables) {
+  return tables.account_balances.map((a) => ({
+    account_id: a.account_id, name: a.name, type: a.type, is_liability: a.is_liability,
+    include_in_net_worth: a.include_in_net_worth ?? true, archived_at: a.archived_at ?? null,
+    start_minor: Number(a.balance_minor), end_minor: Number(a.balance_minor), change_minor: 0,
+  }));
+}
+
+function netWorthChangeOf(tables: Tables, from: string, to: string) {
+  const at = (month: string) => Number(tables.net_worth_by_month.find((r) => r.month === month)?.net_worth_minor ?? 0);
+  const months = monthsFrom(from, to);
+  const startMonth = monthsFrom('1970-01-01', from).at(-1) ?? from;
+  const start = at(startMonth), end = at(months.at(-1) ?? from);
+  return [{ start_minor: start, end_minor: end, change_minor: end - start, cash_flow_minor: end - start, openings_minor: 0, moved_minor: 0 }];
 }
 
 export async function stubSupabase(page: Page, options: Options = {}) {
@@ -282,6 +379,11 @@ export async function stubSupabase(page: Page, options: Options = {}) {
       if (name === 'merge_categories') return json(1);
       if (name === 'budget_pace') return json(budgetPaceOf(tables));
       if (name === 'month_to_date') return json(monthToDateOf(tables));
+      const args = (request.postDataJSON?.() ?? {}) as Record<string, string>;
+      if (name === 'report_cash_flow') return json(reportCashFlowOf(tables, args.p_from!, args.p_to!));
+      if (name === 'report_summary') return json(reportSummaryOf(tables, args.p_from!, args.p_to!, args.p_compare_from!));
+      if (name === 'net_worth_by_account') return json(netWorthByAccountOf(tables));
+      if (name === 'net_worth_change') return json(netWorthChangeOf(tables, args.p_from!, args.p_to!));
       return json(null);
     }
 

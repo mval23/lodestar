@@ -451,7 +451,7 @@ export type Database = {
           budget_id: string;
           category_id: string;
           category_name: string;
-          group_id: string | null;
+          group_id: string;
           month: string;
           planned_minor: number;
           spent_minor: number;
@@ -460,8 +460,8 @@ export type Database = {
           pace_minor: number;
           gap_minor: number;
           days_left: number;
-          per_day_minor: number | null;
-          status: 'over' | 'ahead' | 'on_pace';
+          per_day_minor: number;
+          status: string;
         }[];
       };
       category_top_descriptions: {
@@ -491,6 +491,65 @@ export type Database = {
       merge_categories: {
         Args: { p_source_id: string; p_target_id: string };
         Returns: number;
+      };
+      net_worth_by_account: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          account_id: string;
+          name: string;
+          type: Database['public']['Enums']['account_type'];
+          is_liability: boolean;
+          include_in_net_worth: boolean;
+          archived_at: string | null;
+          start_minor: number;
+          end_minor: number;
+          change_minor: number;
+        }[];
+      };
+      net_worth_change: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          start_minor: number;
+          end_minor: number;
+          change_minor: number;
+          cash_flow_minor: number;
+          openings_minor: number;
+          moved_minor: number;
+        }[];
+      };
+      report_cash_flow: {
+        Args: { p_from: string; p_to: string; p_account_ids?: string[] };
+        Returns: {
+          month: string;
+          money_in_minor: number;
+          money_out_minor: number;
+          net_minor: number;
+          to_goals_minor: number;
+          from_goals_minor: number;
+          moved_in_minor: number;
+          moved_out_minor: number;
+          active: boolean;
+        }[];
+      };
+      report_summary: {
+        Args: { p_from: string; p_to: string; p_compare_from: string; p_account_ids?: string[] };
+        Returns: {
+          period: string;
+          period_from: string;
+          period_to: string;
+          money_in_minor: number;
+          money_out_minor: number;
+          net_minor: number;
+          to_goals_minor: number;
+          from_goals_minor: number;
+          card_payments_minor: number;
+          loan_payments_minor: number;
+          cash_withdrawals_minor: number;
+          other_transfers_minor: number;
+          transfers_minor: number;
+          months: number;
+          active_months: number;
+        }[];
       };
       month_to_date: {
         Args: { p_month: string; p_today?: string };

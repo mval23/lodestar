@@ -1,4 +1,4 @@
-import { signIn, stubSupabase, test } from '../../e2e/fixtures';
+import { pinClock, signIn, stubSupabase, test } from '../../e2e/fixtures';
 import { readmeTables } from './data';
 
 // The README's screenshots: the production build, driven through a real
@@ -27,6 +27,7 @@ for (const scheme of ['light', 'dark'] as const) {
         const phone = info.project.name === 'phone';
         if ((scheme === 'dark' || phone) && name !== 'overview') test.skip();
 
+        await pinClock(page);
         await signIn(page);
         await stubSupabase(page, { tables: readmeTables() });
         await page.goto(path);

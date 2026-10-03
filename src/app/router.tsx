@@ -18,6 +18,8 @@ import { GoalDetailPage } from '../features/goals/GoalDetailPage';
 import { MonthPage } from '../features/months/MonthPage';
 import { GoalsPage } from '../features/goals/GoalsPage';
 import { ImportExportPage } from '../features/import-export/ImportExportPage';
+import { CashFlowReportPage } from '../features/reports/CashFlowReportPage';
+import { NetWorthReportPage } from '../features/reports/NetWorthReportPage';
 import { ReportsPage } from '../features/reports/ReportsPage';
 import { OverviewPage } from '../features/overview/OverviewPage';
 import { ActivityPage } from '../features/transactions/ActivityPage';
@@ -64,6 +66,8 @@ export const routes: RouteObject[] = [
               { path: '/goals/:id', element: <GoalDetailPage /> },
               { path: '/import-export', element: <ImportExportPage /> },
               { path: '/reports', element: <ReportsPage /> },
+              { path: '/reports/cash-flow', element: <CashFlowReportPage /> },
+              { path: '/reports/net-worth', element: <NetWorthReportPage /> },
               // A month is a range over the ledger, never a table of its own.
               { path: '/months/:month', element: <MonthPage /> },
               // Categories have a page of their own, reached from Budgets and

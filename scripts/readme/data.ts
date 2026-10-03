@@ -1,9 +1,10 @@
-import { emptyTables, USER_ID, type Tables } from '../../e2e/fixtures';
+import { emptyTables, stubNow, USER_ID, type Tables } from '../../e2e/fixtures';
 
 // A made-up person's money, rich enough to fill every screen for the README.
 // Synthetic throughout: no real names, accounts or amounts.
 
-const now = new Date();
+// The screenshots pin today to the 23rd (see playwright.config.ts).
+const now = stubNow;
 const monthStart = (offset: number) => {
   const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
   return date.toISOString().slice(0, 10);
@@ -11,6 +12,8 @@ const monthStart = (offset: number) => {
 const thisMonth = monthStart(0);
 const day = (d: number) => `${thisMonth.slice(0, 8)}${String(Math.min(d, now.getUTCDate())).padStart(2, '0')}`;
 const inDays = (n: number) => new Date(now.getTime() + n * 86_400_000).toISOString().slice(0, 10);
+// The same day next month, for a bill already paid this month.
+const nextMonth = (d: number) => `${monthStart(-1).slice(0, 8)}${String(d).padStart(2, '0')}`;
 
 const stamp = { created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' };
 
@@ -67,6 +70,14 @@ const txnList: Txn[] = [
   [1, 'income', 323100, 'Payroll', null, 'acc-chk', 'cat-salary'],
 ];
 
+// Payments made through Mark as paid, by description.
+const paidBills: Record<string, string> = {
+  Rent: 'bill-1',
+  'Phone and fiber': 'bill-2',
+  'Electricity and water': 'bill-3',
+  'Streaming plan': 'bill-4',
+};
+
 // Planned and spent this month, per category.
 const budgetList: [category: string, planned: number, spent: number][] = [
   ['cat-rent', 145000, 145000],
@@ -80,12 +91,16 @@ const budgetList: [category: string, planned: number, spent: number][] = [
   ['cat-gifts', 4000, 3275],
 ];
 
-// Twelve months of money in and out, newest first, as the view returns them.
-const flow = [
+// Twelve months of money in and out, newest first, as the view returns them,
+// then the year before at a lower salary, so Reports has a period to compare.
+const recent = [
   [688200, 443670], [646200, 468100], [662400, 431900], [646200, 512300],
   [701500, 455800], [646200, 470200], [646200, 489600], [598000, 452100],
   [646200, 438700], [612400, 501200], [646200, 447300], [580000, 466900],
 ];
+const flow = [...recent, ...recent.map(([moneyIn, moneyOut], k) => [moneyIn - 31000 - (k % 3) * 4000, moneyOut - 12000 + (k % 4) * 5000])];
+// Into goal accounts each month: the two monthly transfers, less in the first year.
+const toGoalsAt = (offset: number) => (offset < 12 ? 70000 : 55000);
 
 export function readmeTables(): Tables {
   const tables = emptyTables();
@@ -113,7 +128,7 @@ export function readmeTables(): Tables {
     id: `0c000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
     user_id: USER_ID, kind, occurred_on: day(d), amount_minor: amount, from_account_id: from, to_account_id: to,
     category_id: category, category_kind: category ? categoryList.find((c) => c[0] === category)![2] : null,
-    description, notes: null, recurring_item_id: null, import_batch_id: null, source_ref: null, ...stamp,
+    description, notes: null, recurring_item_id: paidBills[description] ?? null, import_batch_id: null, source_ref: null, ...stamp,
   }));
 
   tables.budget_progress = budgetList.map(([category, planned, spent], index) => {
@@ -136,20 +151,24 @@ export function readmeTables(): Tables {
     goal('goal-3', 'acc-inv', 'Long-term investing', null, null, 30000, 1510000, 0, 2),
   ];
 
-  const bill = (id: string, name: string, label: string, amount: number, category: string, due: string, unit = 'month', variable = false) => ({
+  // Each bill keeps its day of the month; the ones paid this month are next
+  // due on that day next month, as Mark as paid leaves them.
+  const bill = (id: string, name: string, label: string, amount: number, category: string, anchor: string, due: string, unit = 'month', variable = false) => ({
     id, user_id: USER_ID, name, label, kind: 'expense', amount_minor: amount, amount_is_variable: variable,
     from_account_id: label === 'subscription' ? 'acc-card' : 'acc-chk', to_account_id: null, category_id: category,
-    category_kind: 'expense', cadence_unit: unit, cadence_interval: 1, anchor_on: due, next_due_on: due,
+    category_kind: 'expense', cadence_unit: unit, cadence_interval: 1, anchor_on: anchor, next_due_on: due,
     ends_on: null, archived_at: null, ...stamp,
   });
   tables.recurring_items = [
-    bill('bill-1', 'Phone and fiber', 'bill', 5500, 'cat-internet', inDays(2)),
-    bill('bill-2', 'Music', 'subscription', 1099, 'cat-subs', inDays(4)),
-    bill('bill-3', 'Rent', 'bill', 145000, 'cat-rent', inDays(7)),
-    bill('bill-4', 'Electricity and water', 'bill', 18000, 'cat-utilities', inDays(18), 'month', true),
-    bill('bill-5', 'Streaming plan', 'subscription', 1599, 'cat-subs', inDays(27)),
-    bill('bill-6', 'Cloud storage', 'subscription', 9999, 'cat-subs', inDays(140), 'year'),
+    bill('bill-1', 'Rent', 'bill', 145000, 'cat-rent', '2026-01-01', nextMonth(1)),
+    bill('bill-2', 'Phone and fiber', 'bill', 5500, 'cat-internet', '2026-01-10', nextMonth(10)),
+    bill('bill-3', 'Electricity and water', 'bill', 18000, 'cat-utilities', '2026-01-12', nextMonth(12), 'month', true),
+    bill('bill-4', 'Streaming plan', 'subscription', 1599, 'cat-subs', '2026-01-21', nextMonth(21)),
+    bill('bill-5', 'Music', 'subscription', 1099, 'cat-subs', '2026-01-27', `${thisMonth.slice(0, 8)}27`),
+    bill('bill-6', 'Cloud storage', 'subscription', 9999, 'cat-subs', inDays(140), inDays(140), 'year'),
   ];
+  // In due order, as the app asks for them (the stub doesn't sort).
+  tables.recurring_items.sort((x, y) => String(x.next_due_on).localeCompare(String(y.next_due_on)));
 
   const toGoals = 70000;
   const [income, expense] = flow[0];
@@ -159,6 +178,8 @@ export function readmeTables(): Tables {
   }];
   tables.monthly_cash_flow = flow.map(([moneyIn, moneyOut], offset) => ({
     user_id: USER_ID, month: monthStart(offset), money_in_minor: moneyIn, money_out_minor: moneyOut, net_minor: moneyIn - moneyOut,
+    // Not a column of the view: the stub's report functions read it.
+    to_goals_minor: toGoalsAt(offset),
   }));
 
   const assets = tables.account_balances.filter((a) => !a.is_liability).reduce((s, a) => s + (a.balance_minor as number), 0);

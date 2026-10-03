@@ -2,6 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 // Screenshots for the README, taken the same way the end-to-end tests run:
 // the production build against a stubbed Supabase. See screenshots.spec.ts.
+// Today is pinned to the 23rd of this month, so the Overview's pace and the
+// bills coming up read the same whatever day the pictures are retaken.
+process.env.E2E_TODAY ??= `${new Date().toISOString().slice(0, 7)}-23`;
+
 export default defineConfig({
   testDir: '.',
   testMatch: 'screenshots.spec.ts',
