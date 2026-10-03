@@ -13,7 +13,9 @@ const WORDS = { within: 'Within plan', over: 'Over plan', none: 'No plan' } as c
 
 export function PlanGrid({ rows, months, caption }: { rows: PlanRow[]; months: string[]; caption: string }) {
   return (
-    <div className="table-wrap">
+    // On a phone the grid scrolls sideways; with nothing to focus inside it,
+    // the region itself takes focus so the keyboard can scroll it.
+    <div className="table-wrap plan-grid-wrap" tabIndex={0} role="region" aria-label={caption}>
       <table className="plan-grid">
         <caption className="visually-hidden">{caption}</caption>
         <thead>
