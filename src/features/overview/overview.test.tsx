@@ -8,6 +8,7 @@ import { OverviewPage } from './OverviewPage';
 const useAccounts = vi.fn();
 const useNetWorth = vi.fn();
 const useBills = vi.fn();
+const useUpcomingItems = vi.fn();
 const useGoals = vi.fn();
 const useMonthToDate = vi.fn();
 const useBudgetPace = vi.fn();
@@ -23,7 +24,7 @@ vi.mock('../reports/queries', async (importOriginal) => {
 });
 vi.mock('../bills/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../bills/queries')>();
-  return { ...actual, useBills: () => useBills() };
+  return { ...actual, useBills: () => useBills(), useUpcomingItems: () => useUpcomingItems() };
 });
 vi.mock('../goals/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../goals/queries')>();
@@ -131,6 +132,7 @@ beforeEach(() => {
   useAccounts.mockReturnValue({ data: [], isSuccess: true, isPending: false, isError: false });
   useNetWorth.mockReturnValue({ data: [] });
   useBills.mockReturnValue({ data: [] });
+  useUpcomingItems.mockReturnValue({ data: [], isError: false });
   useGoals.mockReturnValue({ data: [] });
   useMonthToDate.mockReturnValue({ data: null, isPending: false });
   useBudgetPace.mockReturnValue({ data: [], isPending: false });
@@ -356,6 +358,48 @@ describe('Goals', () => {
     const retirement = within(group).getByText('Retirement').closest('a')!;
     expect(retirement).toHaveTextContent('No monthly plan');
     expect(retirement).toHaveTextContent('No target');
+  });
+});
+
+describe('Coming up', () => {
+  // Synthetic items as upcoming_items returns them, totals included.
+  const item = (name: string, kind: 'expense' | 'income' | 'transfer', due: string, amount: number, week: number,
+    bills: number, income: number, extra: { overdue?: boolean; variable?: boolean } = {}) => ({
+    recurring_item_id: name.toLowerCase().replace(/ /g, '-'), name, label: kind === 'income' ? 'income' : 'bill', kind, due_on: due,
+    amount_minor: amount, amount_is_variable: extra.variable ?? false, overdue: extra.overdue ?? false, week,
+    week_bills_minor: bills, week_in_minor: income, bills_minor: 0, in_minor: 0,
+  });
+
+  it('shows the next 30 days in four week columns, each with its totals', () => {
+    loaded();
+    useUpcomingItems.mockReturnValue({
+      data: [
+        item('Phone plan', 'expense', '2026-09-20', 3000, 0, 168000, 255000, { overdue: true }),
+        item('Salary', 'income', '2026-09-30', 255000, 0, 168000, 255000),
+        item('Rent', 'expense', '2026-10-01', 165000, 0, 168000, 255000),
+        item('Electric bill', 'expense', '2026-10-12', 11653, 2, 11653, 0, { variable: true }),
+        item('Car loan payment', 'transfer', '2026-10-20', 38500, 3, 0, 0),
+      ],
+      isError: false,
+    });
+    show();
+    const strip = screen.getByRole('region', { name: /Coming up/ });
+    const weeks = within(strip).getAllByRole('region');
+    expect(weeks).toHaveLength(4);
+    expect(weeks[0]).toHaveTextContent(/Overdue.*Phone plan/);
+    expect(weeks[0]).toHaveTextContent(/\$1,680\.00.*of bills.*\+\$2,550\.00.*in/);
+    expect(weeks[1]).toHaveTextContent('Nothing due');
+    expect(weeks[2]).toHaveTextContent(/about.*\$116\.53/);
+    // A transfer is listed, but it is not a bill.
+    expect(weeks[3]).toHaveTextContent(/Car loan payment · transfer/);
+    expect(weeks[3]).toHaveTextContent('No bills');
+    expect(within(strip).getByRole('link', { name: 'Rent' })).toHaveAttribute('href', '/bills/rent');
+  });
+
+  it('says when nothing is set up, rather than that nothing is due', () => {
+    loaded();
+    show();
+    expect(screen.getByRole('region', { name: /Coming up/ })).toHaveTextContent('No bills or subscriptions yet.');
   });
 });
 

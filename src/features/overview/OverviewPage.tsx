@@ -4,22 +4,18 @@ import { ArrowDownUp, CalendarClock, ChartColumn, ChevronRight, type LucideIcon 
 import { useCurrency, useProfile, useUpdateProfile } from '../../lib/profile';
 import { CURRENCIES, type Currency } from '../../lib/money';
 import { formatDate, monthStartInZone, todayInZone } from '../../lib/dates';
-import { billPath } from '../../lib/routes';
-import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
 import { SectionHead } from '../../ui/Detail';
 import { Notice } from '../../ui/Notice';
 import { dataErrorMessage } from '../auth/errors';
 import { AccountSheet } from '../accounts/AccountSheet';
 import { useAccounts } from '../accounts/queries';
-import { describeDue, dueStateOf, useBills } from '../bills/queries';
 import { TransactionSheet } from '../transactions/TransactionSheet';
 import { GoalsGroup, BudgetsGroup, OverviewStandsOut, ThisMonthBand, WhereYouStand } from './Dashboard';
 import { hasSeenTour, useTour } from '../tour/Tour';
 import { navTarget } from '../tour/steps';
 import { PHONE, useMediaQuery } from '../../lib/media';
-import { TitleLink } from './TitleLink';
-import { WideOverview } from './WideOverview';
+import { ComingUp, WideOverview } from './WideOverview';
 
 // Where you stand, in one screen. A wide screen gets WideOverview: what
 // stands out, this month in one band, then three columns. A phone gets the
@@ -89,7 +85,7 @@ export function OverviewPage() {
             <details className="fold">
               <summary className="fold-summary">Coming up</summary>
               <div className="fold-body">
-                <DueThisWeek today={today} currency={currency} />
+                <ComingUp today={today} currency={currency} />
               </div>
             </details>
             <MoreOnPhone />
@@ -100,52 +96,6 @@ export function OverviewPage() {
       {accountSheet && <AccountSheet onClose={() => setAccountSheet(false)} />}
       {txnSheet && <TransactionSheet onClose={() => setTxnSheet(false)} />}
     </div>
-  );
-}
-
-// "Nothing due this week" and "we haven't asked yet" are different
-// statements, and only one of them is safe to make before the answer arrives.
-function DueThisWeek({ today, currency }: { today: string; currency: Currency }) {
-  const bills = useBills();
-  const due = (bills.data ?? []).filter((bill) => !bill.archived_at && dueStateOf(bill.next_due_on, today) !== 'later');
-  const total = due.reduce((sum, bill) => sum + bill.amount_minor, 0);
-
-  return (
-    <section className="group overview-card" aria-labelledby="overview-due">
-      <div className="card-head">
-        <h2 className="caption" id="overview-due">
-          <TitleLink to="/bills">Due this week</TitleLink>
-        </h2>
-        {due.length > 0 && <Amount minor={total} currency={currency} className="card-total" />}
-      </div>
-      {bills.isPending ? (
-        <p className="footnote flush">Loading…</p>
-      ) : due.length === 0 ? (
-        <p className="footnote flush">Nothing due in the next week.</p>
-      ) : (
-        <ul className="mini-list">
-          {due.slice(0, 4).map((bill) => {
-            const state = dueStateOf(bill.next_due_on, today);
-            return (
-              <li key={bill.id}>
-                <span className="row-label">
-                  <Link to={billPath(bill.id)}>{bill.name}</Link>
-                  <small className={state === 'overdue' ? 'due-overdue' : undefined}>
-                    {describeDue(bill.next_due_on, today)}
-                  </small>
-                </span>
-                <Amount minor={bill.amount_minor} currency={currency} />
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      {due.length > 4 && (
-        <p className="footnote flush">
-          <Link to="/bills">{due.length - 4} more due this week</Link>
-        </p>
-      )}
-    </section>
   );
 }
 

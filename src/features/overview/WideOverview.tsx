@@ -1,9 +1,12 @@
 import { Link } from 'react-router';
 import type { Currency } from '../../lib/money';
 import { billPath } from '../../lib/routes';
-import { Amount } from '../../ui/Amount';
+import { Notice } from '../../ui/Notice';
+import { WeekStrip } from '../../ui/WeekStrip';
+import { dataErrorMessage } from '../auth/errors';
 import type { AccountBalance } from '../accounts/queries';
-import { describeDue, dueStateOf, useBills } from '../bills/queries';
+import { useBills, useUpcomingItems } from '../bills/queries';
+import { TitleLink } from './TitleLink';
 import { GoalsGroup, BudgetsGroup, OverviewStandsOut, ThisMonthBand, WhereYouStand } from './Dashboard';
 
 // The Overview on a wide screen: what stands out, then this month in one
@@ -29,47 +32,42 @@ export function WideOverview({ accounts, today, month, currency }: Props) {
 }
 
 // ---------------------------------------------------------------------------
-// What comes round next, soonest first, income included.
+// What comes round in the next 30 days, in four week columns, income and
+// planned transfers included. The phone shows the same strip, folded.
 // ---------------------------------------------------------------------------
 
-const COMING_SHOWN = 5;
-
-function ComingUp({ today, currency }: { today: string; currency: Currency }) {
+export function ComingUp({ today, currency }: { today: string; currency: Currency }) {
+  const upcoming = useUpcomingItems(30);
   const bills = useBills();
-  const rows = (bills.data ?? []).filter((bill) => !bill.archived_at).slice(0, COMING_SHOWN);
+  const none = upcoming.data?.length === 0;
+  const setUp = (bills.data ?? []).some((b) => !b.archived_at);
 
   return (
     <section className="group wide-group" aria-labelledby="wide-coming">
       <div className="wide-head">
         <h2 className="headline" id="wide-coming">
-          Coming up
+          <TitleLink to="/bills">Coming up · next 30 days</TitleLink>
         </h2>
-        <Link className="footnote" to="/bills">
-          All bills
-        </Link>
+        <span className="footnote desktop-only">Bills, subscriptions and expected income you’ve set up</span>
       </div>
-      {bills.isPending ? (
+      {upcoming.isError ? (
+        <div className="wide-empty">
+          <Notice tone="err">{dataErrorMessage(upcoming.error)}</Notice>
+        </div>
+      ) : !upcoming.data ? (
         <p className="footnote wide-empty">Loading…</p>
-      ) : rows.length === 0 ? (
-        <p className="footnote wide-empty">No bills or subscriptions yet.</p>
+      ) : none ? (
+        <p className="footnote wide-empty">
+          {setUp ? (
+            "Nothing is due in the next 30 days."
+          ) : (
+            <>
+              No bills or subscriptions yet. <Link to="/bills">Add one</Link>
+            </>
+          )}
+        </p>
       ) : (
-        rows.map((bill) => {
-          const state = dueStateOf(bill.next_due_on, today);
-          return (
-            <div key={bill.id} className="wide-row">
-              <span className="row-label">
-                <Link className="plain-link" to={billPath(bill.id)}>
-                  {bill.name}
-                </Link>
-                <small className={state === 'overdue' ? 'due-overdue' : state === 'today' ? 'due-today' : undefined}>
-                  {describeDue(bill.next_due_on, today)}
-                  {bill.amount_is_variable && ' · amount varies'}
-                </small>
-              </span>
-              <Amount minor={bill.amount_minor} currency={currency} signed={bill.kind === 'income'} />
-            </div>
-          );
-        })
+        <WeekStrip items={upcoming.data} today={today} currency={currency} linkFor={billPath} />
       )}
     </section>
   );

@@ -206,7 +206,13 @@ test.describe('editing in place', () => {
   test('an amount is typed into its cell, saved with Enter, and the next row opens', async ({ page }) => {
     const writes: { table: string; body: unknown }[] = [];
     await signIn(page);
-    await stubSupabase(page, { tables: withLedger(), onWrite: (table, body) => writes.push({ table, body }) });
+    // RPCs are reads; only what is written to a table counts.
+    await stubSupabase(page, {
+      tables: withLedger(),
+      onWrite: (table, body) => {
+        if (!table.startsWith('rpc:')) writes.push({ table, body });
+      },
+    });
     await page.goto(`/accounts/${LEDGER_ACCOUNT}`);
 
     const table = page.getByRole('table', { name: /Expenses on this account/ });

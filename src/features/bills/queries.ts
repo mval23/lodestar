@@ -226,3 +226,72 @@ export function perYear(unit: CadenceUnit, interval: number): number {
   const base = unit === 'week' ? 52 : unit === 'month' ? 12 : 1;
   return base / Math.max(1, interval);
 }
+
+export type UpcomingItem = {
+  recurring_item_id: string;
+  name: string;
+  label: RecurringLabel;
+  kind: TxnKind;
+  due_on: string;
+  amount_minor: number;
+  amount_is_variable: boolean;
+  overdue: boolean;
+  week: number;
+  week_bills_minor: number;
+  week_in_minor: number;
+  bills_minor: number;
+  in_minor: number;
+};
+
+// Every bill, subscription, expected income and planned transfer due in the
+// next `days` days, each repeat on its own row, in four week columns with the
+// totals summed in Postgres (upcoming_items).
+export function useUpcomingItems(days = 30) {
+  return useQuery({
+    queryKey: [...billsKey, 'upcoming', days],
+    queryFn: async (): Promise<UpcomingItem[]> => {
+      const { data, error } = await db().rpc('upcoming_items', { p_days: days });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({ ...row, due_on: row.due_on.slice(0, 10) }));
+    },
+  });
+}
+
+export type BillHistoryStatus = 'paid' | 'short' | 'missed' | 'due' | 'upcoming' | 'none';
+
+export type BillHistoryMonth = {
+  month: string;
+  due_count: number;
+  paid_minor: number;
+  payment_count: number;
+  last_minor: number | null;
+  from_minor: number | null;
+  change_minor: number | null;
+  status: BillHistoryStatus;
+  months_due: number;
+  months_paid: number;
+  typical_month_minor: number | null;
+};
+
+// A bill's last `months` months, judged against its current schedule: what
+// fell due, what was paid, and each change from the payment before
+// (recurring_item_history). Payments change it, so it sits with them.
+export function useBillHistory(id: string | undefined, months = 24) {
+  return useQuery({
+    queryKey: [...transactionsKey, 'bill-history', id, months],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<BillHistoryMonth[]> => {
+      const { data, error } = await db().rpc('recurring_item_history', { p_item_id: id!, p_months: months });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        ...row,
+        month: row.month.slice(0, 10),
+        last_minor: (row.last_minor as number | null) ?? null,
+        from_minor: (row.from_minor as number | null) ?? null,
+        change_minor: (row.change_minor as number | null) ?? null,
+        status: row.status as BillHistoryStatus,
+        typical_month_minor: (row.typical_month_minor as number | null) ?? null,
+      }));
+    },
+  });
+}

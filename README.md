@@ -21,7 +21,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/readme/overview-dark.png">
-    <img src="docs/readme/overview.png" alt="The Overview: left to spend this month against its pace, money in and out so far against a typical month, into goals, net worth, every budget line against its pace, where you stand, goals and bills coming up">
+    <img src="docs/readme/overview.png" alt="The Overview: left to spend this month against its pace, money in and out so far against a typical month, into goals, net worth, every budget line against its pace, where you stand, goals, and the next 30 days in four week columns">
   </picture>
 </p>
 
@@ -35,11 +35,11 @@ Lodestar replaces a finance system that lived in Notion. Each person has their o
 
 | | |
 |---|---|
-| **Overview** | Left to spend this month, net worth, money in and out, bills due in the next 7 days, budgets, debts and goals on one screen. |
+| **Overview** | Left to spend this month, net worth, money in and out, budgets, debts and goals on one screen, and the next 30 days of bills and expected income in four week columns. |
 | **Activity** | Every income, expense and transfer. Search descriptions and notes, then filter by kind, account, category or date. |
-| **Accounts** | Checking, savings, credit cards, cash, investments, loans, and other assets such as money someone owes you. Each balance is computed from the ledger, never stored. |
+| **Accounts** | Checking, savings, credit cards, cash, investments, loans, and other assets such as money someone owes you. Each balance is computed from the ledger, never stored. An account page shows what moved the balance each month, a typical month in and out, the lowest balance in 90 days, and where its money goes. |
 | **Budgets** | A plan per category per month, grouped. Overspending shows as "Over plan by" and is never clamped to zero. You can copy last month's plan to start a new one. |
-| **Bills** | Bills and subscriptions on a weekly, monthly or yearly cadence. "Mark as paid" records the payment and moves the due date forward in one step. |
+| **Bills** | Bills and subscriptions on a weekly, monthly or yearly cadence. "Mark as paid" records the payment and moves the due date forward in one step. A bill page shows its share of all bills and of a typical month, its price changes, and any month it went unpaid. |
 | **Goals** | Each goal is one savings account. Every transfer into that account counts toward the goal, with an optional target, date and monthly plan. |
 | **Reports** | Cash flow and net worth over time. Money in is ink, money out is grey, and blue marks only "now." |
 | **Import & export** | CSV import with a review step and a date-order check (DD/MM or MM/DD). Re-importing the same file is safe. You can export everything at any time. |

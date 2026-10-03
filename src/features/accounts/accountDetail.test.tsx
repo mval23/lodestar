@@ -3,9 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { pick } from '../../test/select';
 import { AccountDetailPage } from './AccountDetailPage';
-import type { AccountBalance, AccountMonth, LedgerEntry } from './queries';
+import type { AccountBalance, AccountMonth, AccountSummary, LedgerEntry, OutflowLine } from './queries';
 
 const useAccountBalance = vi.fn();
+const useAccountSummary = vi.fn();
+const useAccountOutflows = vi.fn();
 const useAccountMonths = vi.fn();
 const useAccountLedger = vi.fn();
 const create = vi.fn();
@@ -63,6 +65,46 @@ function entry(over: Partial<LedgerEntry> = {}): LedgerEntry {
   };
 }
 
+// Synthetic figures, as account_summary would return them for Jun – Aug.
+function summary(over: Partial<AccountSummary> = {}): AccountSummary {
+  return {
+    months: 3,
+    income_minor: 1530000,
+    expense_minor: 1050000,
+    transfer_in_minor: 175091,
+    transfer_out_minor: 594000,
+    in_minor: 1705091,
+    out_minor: 1644000,
+    avg_in_minor: 568364,
+    avg_out_minor: 548000,
+    avg_income_minor: 510000,
+    avg_expense_minor: 350000,
+    avg_transfer_in_minor: 58364,
+    avg_transfer_out_minor: 198000,
+    balance_minor: 421835,
+    month_end_on: '2026-08-31',
+    since_month_end_minor: -218078,
+    year_ago_on: '2025-09-30',
+    since_year_ago_minor: -12828,
+    lowest_minor: 286513,
+    lowest_on: '2026-09-12',
+    payments_left: null,
+    ...over,
+  };
+}
+
+const line = (over: Partial<OutflowLine>): OutflowLine => ({
+  line: 'category',
+  category_id: null,
+  to_account_id: null,
+  account_type: null,
+  name: '',
+  out_minor: 0,
+  txn_count: 1,
+  total_out_minor: 1644000,
+  ...over,
+});
+
 const update = vi.hoisted(() => vi.fn());
 
 vi.mock('./queries', async (importOriginal) => {
@@ -72,6 +114,8 @@ vi.mock('./queries', async (importOriginal) => {
     useAccountBalance: (id: string | undefined) => useAccountBalance(id),
     useAccountMonths: () => useAccountMonths(),
     useAccountLedger: (id: string, kind: string) => useAccountLedger(id, kind),
+    useAccountSummary: (id: string, from: string, to: string) => useAccountSummary(id, from, to),
+    useAccountOutflows: (id: string, from: string, to: string) => useAccountOutflows(id, from, to),
     useAccount: () => ({ data: undefined }),
     useAccounts: () => ({
       data: [balance(), balance({ account_id: OTHER, name: 'Emergency savings', type: 'savings' })],
@@ -146,6 +190,17 @@ beforeEach(() => {
     isError: false,
   });
   useAccountLedger.mockReturnValue({ data: { rows: [entry()], total: 1 }, isError: false });
+  useAccountSummary.mockReturnValue({ data: summary(), isError: false });
+  useAccountOutflows.mockReturnValue({
+    data: [
+      line({ line: 'account', name: 'Visa card', account_type: 'credit_card', to_account_id: OTHER, out_minor: 565465 }),
+      line({ name: 'Rent', category_id: 'cat-housing', out_minor: 495000 }),
+      line({ line: 'goals', name: 'Into goals', out_minor: 375000 }),
+      line({ line: 'account', name: 'Wallet', account_type: 'cash', to_account_id: OTHER, out_minor: 30000 }),
+      line({ name: 'No category', out_minor: 178535 }),
+    ],
+    isError: false,
+  });
 });
 
 describe('AccountDetailPage', () => {
@@ -167,11 +222,36 @@ describe('AccountDetailPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Everyday checking' })).toBeInTheDocument();
     expect(screen.getAllByText('$4,218.35').length).toBeGreaterThan(0);
     // One balance, not two: there is no cleared figure to sit beside it.
-    expect(screen.queryByText(/cleared|pending/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\bcleared\b|\bpending\b/i)).not.toBeInTheDocument();
 
     const tabs = screen.getByRole('tablist', { name: 'Activity by kind' });
     // The figures above already say how much moved; the tabs only choose.
     expect(within(tabs).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Income', 'Expenses', 'Transfers']);
+  });
+
+  it('gives the period’s typical month, the changes since month ends, and the lowest balance', () => {
+    renderPage();
+    const band = screen.getByRole('region', { name: 'This account' });
+    expect(band).toHaveTextContent(/−\$2,180\.78.*since Aug 31.*−\$128\.28.*since Sep 30, 2025/);
+    expect(within(band).getByText('In, a typical month').closest('.fig-cell')).toHaveTextContent('$5,683.64');
+    expect(within(band).getByText('Out, a typical month').closest('.fig-cell')).toHaveTextContent('$5,480.00');
+    expect(within(band).getByText('Lowest, last 90 days').closest('.fig-cell')).toHaveTextContent(/\$2,865\.13.*Sep 12, 2026/);
+    // What stands out, from the same figures.
+    expect(screen.getByText(/Everyday checking is/).closest('.stands-out')).toHaveTextContent(/\$2,180\.78.*lower than at Aug 31.*stayed above \$2,865\.13/);
+  });
+
+  it('says where the money goes, transfers named for where they went and tagged', async () => {
+    renderPage();
+    const goes = screen.getByRole('region', { name: 'Where it goes' });
+    const rows = within(goes).getAllByRole('row').slice(1).map((r) => r.querySelector('th')?.textContent);
+    expect(rows).toEqual(['Visa card payments · transfer', 'Rent', 'Into goals · transfer', 'Cash to Wallet · transfer', 'No category']);
+    expect(within(goes).getByText('Rent').closest('tr')).toHaveTextContent(/\$4,950\.00.*30\.1%/);
+    expect(goes).toHaveTextContent(/\$16,440\.00/);
+    // The period moves both the typical months and where it goes.
+    await userEvent.click(screen.getByRole('radio', { name: '12 months' }));
+    expect(useAccountOutflows).toHaveBeenLastCalledWith(ID, expect.any(String), expect.any(String));
+    const [, from, to] = useAccountOutflows.mock.lastCall as [string, string, string];
+    expect((Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(to.slice(5, 7)) - Number(from.slice(5, 7))).toBe(12);
   });
 
   it('opens on expenses and moves to another kind', async () => {
@@ -203,7 +283,7 @@ describe('AccountDetailPage', () => {
     it('saves an amount typed into its cell, in integer minor units', async () => {
       renderPage();
       await userEvent.click(screen.getByRole('button', { name: 'Amount, 1450.00. Edit' }));
-      const input = within(screen.getByRole('table')).getByRole('textbox', { name: 'Amount' });
+      const input = within(screen.getByRole('table', { name: /on this account/ })).getByRole('textbox', { name: 'Amount' });
       expect(input).toHaveValue('1450.00');
       await userEvent.clear(input);
       await userEvent.type(input, '1,500.25{Enter}');
@@ -215,18 +295,18 @@ describe('AccountDetailPage', () => {
     it('moves to the next cell with Tab, saving the one it leaves', async () => {
       renderPage();
       await userEvent.click(screen.getByRole('button', { name: 'Description, Rent. Edit' }));
-      const description = within(screen.getByRole('table')).getByRole('textbox', { name: 'Description' });
+      const description = within(screen.getByRole('table', { name: /on this account/ })).getByRole('textbox', { name: 'Description' });
       await userEvent.clear(description);
       await userEvent.type(description, 'Rent, September');
       await userEvent.tab();
       expect(update).toHaveBeenCalledWith({ id: 't1', changes: { description: 'Rent, September' } });
-      expect(within(screen.getByRole('table')).getByRole('textbox', { name: 'Amount' })).toHaveFocus();
+      expect(within(screen.getByRole('table', { name: /on this account/ })).getByRole('textbox', { name: 'Amount' })).toHaveFocus();
     });
 
     it('puts a cell back with Escape, and writes nothing', async () => {
       renderPage();
       await userEvent.click(screen.getByRole('button', { name: 'Description, Rent. Edit' }));
-      const description = within(screen.getByRole('table')).getByRole('textbox', { name: 'Description' });
+      const description = within(screen.getByRole('table', { name: /on this account/ })).getByRole('textbox', { name: 'Description' });
       await userEvent.clear(description);
       await userEvent.type(description, 'Something else{Escape}');
       expect(update).not.toHaveBeenCalled();
@@ -243,12 +323,12 @@ describe('AccountDetailPage', () => {
     it('keeps the editor open and says why when an amount can’t be saved', async () => {
       renderPage();
       await userEvent.click(screen.getByRole('button', { name: 'Amount, 1450.00. Edit' }));
-      const input = within(screen.getByRole('table')).getByRole('textbox', { name: 'Amount' });
+      const input = within(screen.getByRole('table', { name: /on this account/ })).getByRole('textbox', { name: 'Amount' });
       await userEvent.clear(input);
       await userEvent.type(input, '10.005{Enter}');
       expect(update).not.toHaveBeenCalled();
       expect(screen.getByRole('alert')).toHaveTextContent('Enter at most 2 decimal places.');
-      expect(within(screen.getByRole('table')).getByRole('textbox', { name: 'Amount' })).toHaveAttribute('aria-invalid', 'true');
+      expect(within(screen.getByRole('table', { name: /on this account/ })).getByRole('textbox', { name: 'Amount' })).toHaveAttribute('aria-invalid', 'true');
     });
 
     it('still opens the full form for accounts, notes and deleting', async () => {
@@ -333,9 +413,26 @@ describe('AccountDetailPage', () => {
       isSuccess: true,
       isError: false,
     });
+    useAccountSummary.mockReturnValue({ data: summary({ balance_minor: -31000, lowest_minor: -138948 }), isError: false });
     renderPage();
     expect(screen.getByText('Owed')).toBeInTheDocument();
     // The figure stays negative rather than being flipped to read nicely.
     expect(screen.getAllByText('−$310.00').length).toBeGreaterThan(0);
+    const band = screen.getByRole('region', { name: 'This account' });
+    expect(within(band).getByText('Purchases, a typical month').closest('.fig-cell')).toHaveTextContent('$3,500.00');
+    expect(within(band).getByText('Most owed, last 90 days').closest('.fig-cell')).toHaveTextContent('−$1,389.48');
+  });
+
+  it('estimates when a loan is paid off, and says interest isn’t separated', () => {
+    useAccountBalance.mockReturnValue({
+      data: balance({ type: 'loan', is_liability: true, balance_minor: -556000 }),
+      isSuccess: true,
+      isError: false,
+    });
+    useAccountSummary.mockReturnValue({ data: summary({ balance_minor: -556000, avg_transfer_in_minor: 38500, payments_left: 15 }), isError: false });
+    renderPage();
+    const cell = screen.getByText(/Paid off around/).closest('.fig-cell');
+    expect(cell).toHaveTextContent(/Estimate/);
+    expect(cell).toHaveTextContent(/15 more payments at that amount; interest isn’t separated/);
   });
 });
