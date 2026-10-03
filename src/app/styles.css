@@ -519,7 +519,16 @@ a:hover {
   max-width: 1440px;
   margin-inline: auto;
   display: grid;
+  /* minmax(0, …): a grid item would otherwise never shrink below its widest
+     content, and one wide table would widen the whole page past a phone's
+     screen, which then zooms the page out. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-6);
+}
+.report-pair > *,
+.detail-pair > *,
+.stack > * {
+  min-width: 0;
 }
 /* One content width for every page. Width is capped where reading needs it,
    not per page: a form page keeps its sections to a comfortable measure, and
@@ -3732,4 +3741,56 @@ a:hover {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+/* ---------- Phones ---------- */
+/* A table wider than its card scrolls sideways inside it. */
+.table-scroll {
+  /* As a grid or flex item it may shrink below the table, which then scrolls. */
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  /* The ledger's cells are sticky, and a sticky cell still widens the page
+     past its scroller; paint containment keeps it inside. */
+  contain: paint;
+  max-width: 100%;
+}
+.table-scroll:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+@media (max-width: 1179px) {
+  /* A bracketed key figure is too wide for half a row: it takes the whole. */
+  .group.fig-band > .fig-cell:has(> .fig) {
+    grid-column: 1 / -1;
+  }
+  /* That can leave a cell alone on its row. The dividers are drawn as each
+     cell's outline (meeting in the 1px gap), so the space beside a lone
+     cell is the card's own colour, not a grey block. */
+  .group.fig-band {
+    background: var(--surface);
+  }
+  .group.fig-band > .fig-cell {
+    outline: 1px solid var(--line);
+  }
+}
+/* A part wide enough to name itself inside the bar isn't named under it. */
+.split-legend > .split-inbar {
+  display: none;
+}
+@media (max-width: 560px) {
+  /* Split bars: on a phone a part's words don't fit inside it, so every part
+     is named under the bar instead. */
+  .split-text {
+    display: none;
+  }
+  .split-legend > .split-inbar {
+    display: inline-flex;
+  }
+}
+.plan-grid-wrap {
+  min-width: 0;
+  overflow-x: auto;
+  contain: paint;
 }

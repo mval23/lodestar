@@ -81,7 +81,10 @@ describe('SplitBars', () => {
     const parts = Array.from(container.querySelectorAll('.split-part')) as HTMLElement[];
     expect(parts.map((p) => p.style.width)).toEqual(['75%', '25%', '87.5%', '12.5%']);
     expect(screen.getByRole('group', { name: 'Where the money in went' })).toHaveTextContent(/What came in:.*From balances.*\$500\.00/);
-    // Too narrow to hold its words, a part names itself under the bar.
-    expect(container.querySelector('.split-legend')).toHaveTextContent('From balances');
+    // Every part is named under its bar; the ones wide enough to name
+    // themselves inside it are marked, so wide screens can hide them there.
+    const legends = container.querySelectorAll('.split-legend');
+    expect(legends[1]).toHaveTextContent('From balances');
+    expect(legends[1]!.querySelector('.split-inbar')).toHaveTextContent('Money in');
   });
 });

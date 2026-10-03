@@ -2,6 +2,7 @@ import { useCurrency } from '../../lib/profile';
 import type { Currency } from '../../lib/money';
 import { addMonths, formatDateShort, formatMonth } from '../../lib/dates';
 import { cashFlowFindings } from '../../lib/standsOut';
+import { ScrollTable } from '../../ui/ScrollTable';
 import { Amount } from '../../ui/Amount';
 import { Comparison } from '../../ui/Comparison';
 import { Notice } from '../../ui/Notice';
@@ -190,41 +191,43 @@ function ComparisonTable({ totals, before, currency }: { totals: ReportTotals; b
       <h2 className="headline" id="cash-compare">
         Against the comparison period
       </h2>
-      <table className="ledger compact">
-        <thead>
-          <tr>
-            <th scope="col">
-              <span className="visually-hidden">Figure</span>
-            </th>
-            <th scope="col" className="num">
-              {rangeLabel({ from: before.period_from, to: before.period_to })}
-            </th>
-            <th scope="col" className="num">
-              {rangeLabel({ from: totals.period_from, to: totals.period_to })}
-            </th>
-            <th scope="col" className="num">
-              Change
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {lines.map(([label, was, now, signed]) => (
-            <tr key={label}>
-              <th scope="row">{label}</th>
-              <td className="num">
-                <Amount minor={was} currency={currency} signed={signed} />
-              </td>
-              <td className="num">
-                <Amount minor={now} currency={currency} signed={signed} />
-              </td>
-              <td className="num">
-                <Amount minor={now - was} currency={currency} signed />
-                {percentChange(now, was) && <small> {percentChange(now, was)}</small>}
-              </td>
+      <ScrollTable label="Comparison table">
+        <table className="ledger compact">
+          <thead>
+            <tr>
+              <th scope="col">
+                <span className="visually-hidden">Figure</span>
+              </th>
+              <th scope="col" className="num">
+                {rangeLabel({ from: before.period_from, to: before.period_to })}
+              </th>
+              <th scope="col" className="num">
+                {rangeLabel({ from: totals.period_from, to: totals.period_to })}
+              </th>
+              <th scope="col" className="num">
+                Change
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {lines.map(([label, was, now, signed]) => (
+              <tr key={label}>
+                <th scope="row">{label}</th>
+                <td className="num">
+                  <Amount minor={was} currency={currency} signed={signed} />
+                </td>
+                <td className="num">
+                  <Amount minor={now} currency={currency} signed={signed} />
+                </td>
+                <td className="num">
+                  <Amount minor={now - was} currency={currency} signed />
+                  {percentChange(now, was) && <small> {percentChange(now, was)}</small>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </ScrollTable>
     </section>
   );
 }
@@ -237,46 +240,48 @@ function TransfersTable({ totals, before, currency }: { totals: ReportTotals; be
       <h2 className="headline" id="cash-transfers">
         Left out of both: transfers
       </h2>
-      <table className="ledger compact">
-        <thead>
-          <tr>
-            <th scope="col">
-              <span className="visually-hidden">Transfer</span>
-            </th>
-            <th scope="col" className="num">
-              Before
-            </th>
-            <th scope="col" className="num">
-              This period
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {now.map((line, i) => (
-            <tr key={line.label}>
-              <th scope="row">
-                {line.label}
-                {line.note && <small> · {line.note}</small>}
+      <ScrollTable label="Transfers table">
+        <table className="ledger compact">
+          <thead>
+            <tr>
+              <th scope="col">
+                <span className="visually-hidden">Transfer</span>
               </th>
+              <th scope="col" className="num">
+                Before
+              </th>
+              <th scope="col" className="num">
+                This period
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {now.map((line, i) => (
+              <tr key={line.label}>
+                <th scope="row">
+                  {line.label}
+                  {line.note && <small> · {line.note}</small>}
+                </th>
+                <td className="num">
+                  <Amount minor={was[i]!.minor} currency={currency} />
+                </td>
+                <td className="num">
+                  <Amount minor={line.minor} currency={currency} />
+                </td>
+              </tr>
+            ))}
+            <tr className="ledger-total">
+              <th scope="row">Every transfer</th>
               <td className="num">
-                <Amount minor={was[i]!.minor} currency={currency} />
+                <Amount minor={before.transfers_minor} currency={currency} />
               </td>
               <td className="num">
-                <Amount minor={line.minor} currency={currency} />
+                <Amount minor={totals.transfers_minor} currency={currency} />
               </td>
             </tr>
-          ))}
-          <tr className="ledger-total">
-            <th scope="row">Every transfer</th>
-            <td className="num">
-              <Amount minor={before.transfers_minor} currency={currency} />
-            </td>
-            <td className="num">
-              <Amount minor={totals.transfers_minor} currency={currency} />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </ScrollTable>
     </section>
   );
 }

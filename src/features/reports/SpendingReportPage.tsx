@@ -5,6 +5,7 @@ import { addMonths } from '../../lib/dates';
 import { percentChange, share } from '../../lib/percent';
 import { activityPath, categoryPath, monthRange } from '../../lib/routes';
 import { spendingFindings } from '../../lib/standsOut';
+import { ScrollTable } from '../../ui/ScrollTable';
 import { Amount } from '../../ui/Amount';
 import { Notice } from '../../ui/Notice';
 import { StackedMonthBars, type StackSeries, type StackTone } from '../../ui/StackedMonthBars';
@@ -240,47 +241,49 @@ function RankedTable({
         </h2>
         {compareTotal !== null && <p className="footnote flush">Change {against}</p>}
       </div>
-      <table className="ledger compact ranked">
-        <thead>
-          <tr>
-            <th scope="col">Category</th>
-            <th scope="col" className="num">
-              Share
-            </th>
-            <th scope="col" className="num">
-              Amount
-            </th>
-            {compareTotal !== null && (
+      <ScrollTable label="Ranked table">
+        <table className="ledger compact ranked">
+          <thead>
+            <tr>
+              <th scope="col">Category</th>
               <th scope="col" className="num">
-                Change
+                Share
               </th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.category_id ?? 'none'}>
-              <th scope="row">
-                <span className={`swatch stack-swatch-${toneOf.get(r.category_id ?? 'none') ?? 'c8'}`} aria-hidden />{' '}
-                {r.category_id ? <Link to={categoryPath(r.category_id)}>{nameOf(r)}</Link> : <Link to={uncategorizedLink}>{nameOf(r)}</Link>}
+              <th scope="col" className="num">
+                Amount
               </th>
-              <td className="num">{share(r.total_minor, total)}</td>
-              <td className="num">
-                <Amount minor={r.total_minor} currency={currency} />
-              </td>
-              {compareTotal !== null && <td className="num secondary">{r.compare_minor > 0 ? percentChange(r.total_minor, r.compare_minor) : '—'}</td>}
+              {compareTotal !== null && (
+                <th scope="col" className="num">
+                  Change
+                </th>
+              )}
             </tr>
-          ))}
-          <tr className="ledger-total">
-            <th scope="row">Total</th>
-            <td className="num">{total > 0 ? '100%' : '—'}</td>
-            <td className="num">
-              <Amount minor={total} currency={currency} />
-            </td>
-            {compareTotal !== null && <td className="num">{percentChange(total, compareTotal)}</td>}
-          </tr>
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.category_id ?? 'none'}>
+                <th scope="row">
+                  <span className={`swatch stack-swatch-${toneOf.get(r.category_id ?? 'none') ?? 'c8'}`} aria-hidden />{' '}
+                  {r.category_id ? <Link to={categoryPath(r.category_id)}>{nameOf(r)}</Link> : <Link to={uncategorizedLink}>{nameOf(r)}</Link>}
+                </th>
+                <td className="num">{share(r.total_minor, total)}</td>
+                <td className="num">
+                  <Amount minor={r.total_minor} currency={currency} />
+                </td>
+                {compareTotal !== null && <td className="num secondary">{r.compare_minor > 0 ? percentChange(r.total_minor, r.compare_minor) : '—'}</td>}
+              </tr>
+            ))}
+            <tr className="ledger-total">
+              <th scope="row">Total</th>
+              <td className="num">{total > 0 ? '100%' : '—'}</td>
+              <td className="num">
+                <Amount minor={total} currency={currency} />
+              </td>
+              {compareTotal !== null && <td className="num">{percentChange(total, compareTotal)}</td>}
+            </tr>
+          </tbody>
+        </table>
+      </ScrollTable>
     </section>
   );
 }
