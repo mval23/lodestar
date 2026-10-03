@@ -431,6 +431,56 @@ function budgetSummaryOf(tables: Tables, month: string) {
   }];
 }
 
+// The safety reports, from the stub's bills, accounts and transactions.
+function recurringCostsOf(tables: Tables) {
+  const items = tables.recurring_items.filter((r) => r.kind === 'expense' && !r.archived_at);
+  const yearly = (r: Record<string, unknown>) =>
+    Math.round((Number(r.amount_minor) * (r.cadence_unit === 'week' ? 52 : r.cadence_unit === 'month' ? 12 : 1)) / Number(r.cadence_interval ?? 1));
+  const total = items.reduce((s, r) => s + yearly(r), 0);
+  const subs = items.filter((r) => r.label === 'subscription').reduce((s, r) => s + yearly(r), 0);
+  return items.map((r) => ({
+    recurring_item_id: r.id, yearly_minor: yearly(r), paid_12m_minor: 0, payments_12m: 0, last_paid_on: null,
+    total_yearly_minor: total, total_monthly_minor: Math.round(total / 12), subscriptions_yearly_minor: subs, items: items.length,
+  })).sort((a, b) => b.yearly_minor - a.yearly_minor);
+}
+
+function fixedFlexibleOf(tables: Tables, from: string, to: string) {
+  const months = monthsFrom(from, to);
+  const rows = months.map((month) => {
+    const out = tables.monthly_cash_flow.find((r) => r.month === month);
+    const total = Number(out?.money_out_minor ?? 0);
+    return { month, fixed_minor: 0, flexible_minor: total, total_minor: total };
+  });
+  const all = rows.reduce((s, r) => s + r.total_minor, 0);
+  return rows.map((r) => ({ ...r, fixed_total_minor: 0, all_total_minor: all }));
+}
+
+function cashRunwayOf(tables: Tables) {
+  const cash = tables.account_balances.filter((a) => ['checking', 'cash', 'credit_card'].includes(String(a.type)));
+  const available = cash.reduce((s, a) => s + Number(a.balance_minor), 0);
+  const spending = 455000;
+  const months = (n: number) => Math.round((n / spending) * 10) / 10;
+  return [
+    ...cash.map((a) => ({ line: 'account', account_id: a.account_id, name: a.name, amount_minor: a.balance_minor, months: null, n: null })),
+    { line: 'available', account_id: null, name: null, amount_minor: available, months: months(available), n: null },
+    { line: 'goals', account_id: null, name: null, amount_minor: 0, months: 0, n: null },
+    { line: 'spending', account_id: null, name: null, amount_minor: spending, months: null, n: 6 },
+    { line: 'loan_payments', account_id: null, name: null, amount_minor: 0, months: null, n: 6 },
+    { line: 'runway', account_id: null, name: null, amount_minor: available, months: months(available), n: null },
+    { line: 'runway_loans', account_id: null, name: null, amount_minor: available, months: months(available), n: null },
+  ];
+}
+
+function debtSummaryOf(tables: Tables) {
+  const debts = tables.account_balances.filter((a) => a.is_liability);
+  const total = debts.reduce((s, a) => s + Number(a.balance_minor), 0);
+  return debts.map((a) => ({
+    account_id: a.account_id, name: a.name, type: a.type, start_minor: a.balance_minor, end_minor: a.balance_minor,
+    balance_minor: a.balance_minor, paid_minor: 0, purchases_minor: 0, months_with_purchases: 0, months_paid_full: 0,
+    recent_payment_minor: 0, payments_left: null, payoff_month: null, total_start_minor: total, total_end_minor: total, total_paid_minor: 0,
+  }));
+}
+
 export async function stubSupabase(page: Page, options: Options = {}) {
   const tables = options.tables ?? emptyTables();
 
@@ -480,6 +530,11 @@ export async function stubSupabase(page: Page, options: Options = {}) {
       if (name === 'report_category_totals') return json(categoryTotalsOf(tables, args.p_from!, args.p_to!));
       if (name === 'budget_month_results') return json(budgetResultsOf(tables, args.p_from!, args.p_to!));
       if (name === 'budget_month_summary') return json(budgetSummaryOf(tables, args.p_month!));
+      if (name === 'recurring_costs') return json(recurringCostsOf(tables));
+      if (name === 'report_fixed_flexible') return json(fixedFlexibleOf(tables, args.p_from!, args.p_to!));
+      if (name === 'possible_recurring') return json([]);
+      if (name === 'cash_runway') return json(cashRunwayOf(tables));
+      if (name === 'debt_summary') return json(debtSummaryOf(tables));
       return json(null);
     }
 

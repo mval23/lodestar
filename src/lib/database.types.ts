@@ -461,6 +461,72 @@ export type Database = {
       };
     };
     Functions: {
+      recurring_costs: {
+        Args: { p_today?: string };
+        Returns: {
+          recurring_item_id: string;
+          yearly_minor: number;
+          paid_12m_minor: number;
+          payments_12m: number;
+          last_paid_on: string;
+          total_yearly_minor: number;
+          total_monthly_minor: number;
+          subscriptions_yearly_minor: number;
+          items: number;
+        }[];
+      };
+      report_fixed_flexible: {
+        Args: { p_from: string; p_to: string; p_account_ids?: string[] };
+        Returns: {
+          month: string;
+          fixed_minor: number;
+          flexible_minor: number;
+          total_minor: number;
+          fixed_total_minor: number;
+          all_total_minor: number;
+        }[];
+      };
+      possible_recurring: {
+        Args: { p_since: string };
+        Returns: {
+          description: string;
+          category_id: string;
+          account_id: string;
+          typical_minor: number;
+          yearly_minor: number;
+          months_seen: number;
+          run_months: number;
+          last_on: string;
+          confidence: string;
+          found: number;
+          found_yearly_minor: number;
+        }[];
+      };
+      cash_runway: {
+        Args: { p_months?: number; p_group_id?: string; p_today?: string };
+        Returns: { line: string; account_id: string; name: string; amount_minor: number; months: number; n: number }[];
+      };
+      debt_summary: {
+        Args: { p_from: string; p_to: string; p_today?: string };
+        Returns: {
+          account_id: string;
+          name: string;
+          type: Database['public']['Enums']['account_type'];
+          start_minor: number;
+          end_minor: number;
+          balance_minor: number;
+          paid_minor: number;
+          purchases_minor: number;
+          months_with_purchases: number;
+          months_paid_full: number;
+          recent_payment_minor: number;
+          payments_left: number;
+          payoff_month: string;
+          total_start_minor: number;
+          total_end_minor: number;
+          total_paid_minor: number;
+        }[];
+      };
       report_category_months: {
         Args: { p_from: string; p_to: string; p_account_ids?: string[] };
         Returns: { category_id: string; month: string; total_minor: number }[];

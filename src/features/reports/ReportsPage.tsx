@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { ChartColumn, ChartColumnStacked, ChartLine, ChevronRight, ListChecks, PiggyBank } from 'lucide-react';
+import { CalendarClock, ChartColumn, ChartColumnStacked, ChartLine, ChevronRight, Hourglass, ListChecks, PiggyBank, TrendingDown } from 'lucide-react';
 import { useCurrency } from '../../lib/profile';
 import { addMonths, formatDate } from '../../lib/dates';
 import { Amount } from '../../ui/Amount';
@@ -10,7 +10,17 @@ import { dataErrorMessage } from '../auth/errors';
 import { CashFlowChart } from './CashFlowChart';
 import { NetWorthChart } from './NetWorthChart';
 import { rangeLabel } from './filters';
-import { useBudgetSummary, useCurrentMonthFlow, useNetWorthRange, useReportCashFlow, useReportSummary } from './queries';
+import {
+  useBudgetSummary,
+  useCashRunway,
+  useCurrentMonthFlow,
+  useDebtSummary,
+  useNetWorthRange,
+  useRecurringCosts,
+  useReportCashFlow,
+  useReportSummary,
+} from './queries';
+import { formatMonths } from '../../ui/RunwayBar';
 import { ReportHead, monthEnd, share, useReportRange } from './ReportParts';
 
 // The Reports hub: the period's figures against a comparison period, the two
@@ -25,6 +35,11 @@ export function ReportsPage() {
   const worth = useNetWorthRange(range.from, range.to);
   const soFar = useCurrentMonthFlow(report.currentMonth);
   const plans = useBudgetSummary(report.currentMonth);
+  const recurring = useRecurringCosts();
+  const runway = useCashRunway(6, null);
+  const debts = useDebtSummary(range.from, range.to);
+  const runwayMonths = (runway.data ?? []).find((l) => l.line === 'runway')?.months ?? null;
+  const owed = debts.data?.[0]?.total_end_minor ?? null;
 
   const totals = summary.data?.current;
   const before = summary.data?.compare;
@@ -228,6 +243,48 @@ export function ReportsPage() {
                   <span className="report-figure">
                     {totals ? share(saved, totals.money_in_minor) : '—'}
                     <small>savings rate</small>
+                  </span>
+                  <ChevronRight className="row-chevron" strokeWidth={1.75} aria-hidden />
+                </Link>
+              </li>
+              <li>
+                <Link className="row-button" to={`/reports/recurring${search}`}>
+                  <CalendarClock className="row-icon" strokeWidth={1.75} aria-hidden />
+                  <span className="row-label row-grow">
+                    Recurring payments
+                    <small>Bills and subscriptions a year, and payments that look recurring</small>
+                  </span>
+                  <span className="report-figure">
+                    <Amount minor={recurring.data?.[0]?.total_yearly_minor ?? 0} currency={currency} />
+                    <small>a year</small>
+                  </span>
+                  <ChevronRight className="row-chevron" strokeWidth={1.75} aria-hidden />
+                </Link>
+              </li>
+              <li>
+                <Link className="row-button" to={`/reports/runway${search}`}>
+                  <Hourglass className="row-icon" strokeWidth={1.75} aria-hidden />
+                  <span className="row-label row-grow">
+                    Cash runway
+                    <small>How long cash and savings would cover spending</small>
+                  </span>
+                  <span className="report-figure">
+                    {runwayMonths !== null ? `${formatMonths(runwayMonths)} months` : '—'}
+                    <small>estimate</small>
+                  </span>
+                  <ChevronRight className="row-chevron" strokeWidth={1.75} aria-hidden />
+                </Link>
+              </li>
+              <li>
+                <Link className="row-button" to={`/reports/debt${search}`}>
+                  <TrendingDown className="row-icon" strokeWidth={1.75} aria-hidden />
+                  <span className="row-label row-grow">
+                    Debt repayment
+                    <small>What cards and loans owe, payments, and a payoff estimate</small>
+                  </span>
+                  <span className="report-figure">
+                    {owed !== null ? <Amount minor={owed} currency={currency} /> : '—'}
+                    <small>owed</small>
                   </span>
                   <ChevronRight className="row-chevron" strokeWidth={1.75} aria-hidden />
                 </Link>

@@ -24,7 +24,13 @@ import {
   type RecurringLabel,
 } from './queries';
 
-export function BillSheet({ bill, onClose }: { bill?: RecurringItem; onClose: () => void }) {
+// What a new bill starts from, such as a possible recurring payment found
+// in the ledger: the person still reviews it and saves it.
+export type BillPrefill = Partial<
+  Pick<RecurringItem, 'name' | 'label' | 'amount_minor' | 'from_account_id' | 'category_id' | 'next_due_on'>
+>;
+
+export function BillSheet({ bill, prefill, onClose }: { bill?: RecurringItem; prefill?: BillPrefill; onClose: () => void }) {
   const currency = useCurrency();
   const accounts = useAccounts();
   const categories = useCategories();
@@ -34,16 +40,17 @@ export function BillSheet({ bill, onClose }: { bill?: RecurringItem; onClose: ()
   const remove = useDeleteBill();
 
   const today = todayInZone();
-  const [name, setName] = useState(bill?.name ?? '');
-  const [label, setLabel] = useState<RecurringLabel>(bill?.label ?? 'bill');
-  const [amount, setAmount] = useState(bill ? toAmountInput(bill.amount_minor, currency) : '');
+  const start = bill ?? prefill;
+  const [name, setName] = useState(start?.name ?? '');
+  const [label, setLabel] = useState<RecurringLabel>(start?.label ?? 'bill');
+  const [amount, setAmount] = useState(start?.amount_minor !== undefined ? toAmountInput(start.amount_minor, currency) : '');
   const [variable, setVariable] = useState(bill?.amount_is_variable ?? false);
-  const [fromAccount, setFromAccount] = useState(bill?.from_account_id ?? '');
+  const [fromAccount, setFromAccount] = useState(start?.from_account_id ?? '');
   const [toAccount, setToAccount] = useState(bill?.to_account_id ?? '');
-  const [categoryId, setCategoryId] = useState(bill?.category_id ?? '');
+  const [categoryId, setCategoryId] = useState(start?.category_id ?? '');
   const [unit, setUnit] = useState<CadenceUnit>(bill?.cadence_unit ?? 'month');
   const [interval, setInterval] = useState(String(bill?.cadence_interval ?? 1));
-  const [nextDue, setNextDue] = useState(bill?.next_due_on ?? today);
+  const [nextDue, setNextDue] = useState(start?.next_due_on ?? today);
   const [endsOn, setEndsOn] = useState(bill?.ends_on ?? '');
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);

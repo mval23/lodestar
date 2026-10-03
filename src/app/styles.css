@@ -3794,3 +3794,141 @@ a:hover {
   overflow-x: auto;
   contain: paint;
 }
+/* ---------- Recurring payments, Cash runway, Debt repayment ---------- */
+/* The runway: blocks along a months axis, used in order, and a rule where
+   they run out. Ink, grey, hatched and light, in that order. */
+.runway {
+  display: grid;
+  gap: var(--space-2);
+}
+.runway-track {
+  position: relative;
+  display: flex;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: var(--sunk);
+  overflow: hidden;
+}
+.runway-block {
+  height: 100%;
+  box-shadow: inset -2px 0 0 var(--surface);
+}
+.runway-in { background: var(--in); }
+.runway-out { background: var(--out); }
+.runway-hatch { background: repeating-linear-gradient(45deg, var(--ink) 0 2px, var(--surface) 2px 6px); }
+.runway-light { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.runway-end {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--ink);
+}
+.runway-axis {
+  position: relative;
+  height: 18px;
+  font-size: 12px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.runway-axis > span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+.runway-axis .runway-axis-name {
+  right: 0;
+  left: auto !important;
+  transform: none;
+  top: 18px;
+}
+.runway-legend {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+.runway-legend li {
+  display: flex;
+  gap: var(--space-2);
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--line);
+}
+.runway-legend li > span:last-child {
+  display: grid;
+  font-size: 14px;
+}
+.runway-legend strong {
+  font-variant-numeric: tabular-nums;
+}
+.runway-legend small {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.runway-swatch-in { background: var(--in); }
+.runway-swatch-out { background: var(--out); }
+.runway-swatch-hatch { background: repeating-linear-gradient(45deg, var(--ink) 0 2px, var(--surface) 2px 4px); }
+.runway-swatch-light { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); }
+
+/* Possible recurring payments: one card each, with its confidence. */
+.possible-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.possible-list > li {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.possible-list > li:last-child {
+  border-bottom: 0;
+}
+.possible-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.possible-head small {
+  color: var(--ink-3);
+}
+.confidence {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.confidence-high {
+  background: var(--in);
+  color: var(--ground);
+}
+.confidence-medium {
+  box-shadow: inset 0 0 0 1px var(--ink);
+  color: var(--ink);
+}
+.possible-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  align-items: baseline;
+  font-size: 14px;
+}
+.possible-figures .btn {
+  margin-left: auto;
+}
+.varies-tag {
+  margin-left: var(--space-1);
+}
+.stack-ink { fill: var(--in); }
+.stack-swatch-ink { background: var(--in); }
+/* An "Estimate" tag beside a caption keeps its distance. */
+.caption .estimate-tag {
+  margin-left: var(--space-2);
+}

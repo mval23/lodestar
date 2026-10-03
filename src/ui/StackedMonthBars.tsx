@@ -28,7 +28,7 @@ const INNER_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 
 // 'fixed' is grey; c2 to c8 are the breakdown colours (c1 is left out: it is
 // the accent blue, which marks only "now"); 'none' is hatched.
-export type StackTone = 'fixed' | 'c2' | 'c3' | 'c4' | 'c5' | 'c6' | 'c7' | 'c8' | 'none';
+export type StackTone = 'ink' | 'fixed' | 'c2' | 'c3' | 'c4' | 'c5' | 'c6' | 'c7' | 'c8' | 'none';
 
 // Series sharing a group (the smaller categories, all in c8) share one
 // legend entry, named by the group.
@@ -42,24 +42,33 @@ export function StackedMonthBars({
   totals,
   currency,
   currentMonth,
+  direction = 'up',
 }: {
   title: string;
   caption?: string;
   months: string[];
-  // Bottom to top.
+  // Bottom to top (or, drawn down, top to bottom).
   series: StackSeries[];
-  // Each month's total, from Postgres.
-  totals: Map<string, number>;
+  // Each month's total, from Postgres. Without it the readout gives none.
+  totals?: Map<string, number>;
   currency: Currency;
   // The latest month, marked in blue.
   currentMonth: string;
+  // 'down' draws below zero, for what is owed: values stay positive, the
+  // axis reads negative.
+  direction?: 'up' | 'down';
 }) {
+  const down = direction === 'down';
+  // The tallest stack, for the scale only; nothing here is shown as a sum.
+  const stackHeight = (m: string) => series.reduce((top, s) => top + Math.max(0, s.values.get(m) ?? 0), 0);
   const { ref, width } = useChartWidth();
   const hatchId = useId();
   const innerW = width - MARGIN.left - MARGIN.right;
   const x = scaleBand({ domain: months, range: [0, innerW], padding: 0.3 });
-  const largest = Math.max(1, ...months.map((m) => totals.get(m) ?? 0));
-  const y = scaleLinear({ domain: [0, largest], range: [INNER_H, 0], nice: true });
+  const largest = Math.max(1, ...months.map((m) => totals?.get(m) ?? stackHeight(m)));
+  const y = scaleLinear({ domain: down ? [-largest, 0] : [0, largest], range: [INNER_H, 0], nice: true });
+  // Where a stack that has reached `level` ends, up or down from zero.
+  const at = (level: number) => y(down ? -level : level);
   const centers = months.map((m) => (x(m) ?? 0) + x.bandwidth() / 2);
   const hover = usePlotHover(centers);
   const hovered = hover.index !== null ? months[hover.index] : undefined;
@@ -84,7 +93,7 @@ export function StackedMonthBars({
           </span>
         </>
       }
-      table={<StackTable months={months} series={series} totals={totals} currency={currency} />}
+      table={<StackTable months={months} series={series} totals={totals} currency={currency} sign={down ? -1 : 1} />}
     >
       <div className="chart-plot" ref={ref}>
         <svg
@@ -121,8 +130,8 @@ export function StackedMonthBars({
                   {series.map((s) => {
                     const value = s.values.get(month) ?? 0;
                     if (value <= 0) return null;
-                    const top = y(base + value);
-                    const bottom = y(base);
+                    const top = Math.min(at(base + value), at(base));
+                    const bottom = Math.max(at(base + value), at(base));
                     base += value;
                     return (
                       <rect
@@ -161,12 +170,14 @@ export function StackedMonthBars({
               .filter((s) => (s.values.get(hovered) ?? 0) > 0)
               .map((s) => (
                 <ReadoutLine key={s.key} label={s.label} swatch={`stack-swatch-${s.tone}`}>
-                  <Amount minor={s.values.get(hovered) ?? 0} currency={currency} />
+                  <Amount minor={(down ? -1 : 1) * (s.values.get(hovered) ?? 0)} currency={currency} />
                 </ReadoutLine>
               ))}
-            <ReadoutLine label="Total">
-              <Amount minor={totals.get(hovered) ?? 0} currency={currency} />
-            </ReadoutLine>
+            {totals && (
+              <ReadoutLine label="Total">
+                <Amount minor={down ? -(totals.get(hovered) ?? 0) : (totals.get(hovered) ?? 0)} currency={currency} />
+              </ReadoutLine>
+            )}
           </ChartReadout>
         )}
       </div>
@@ -179,11 +190,13 @@ function StackTable({
   series,
   totals,
   currency,
+  sign,
 }: {
   months: string[];
   series: StackSeries[];
-  totals: Map<string, number>;
+  totals?: Map<string, number>;
   currency: Currency;
+  sign: 1 | -1;
 }) {
   return (
     <table className="ledger">
@@ -195,9 +208,11 @@ function StackTable({
               {s.label}
             </th>
           ))}
-          <th scope="col" className="num">
-            Total
-          </th>
+          {totals && (
+            <th scope="col" className="num">
+              Total
+            </th>
+          )}
         </tr>
       </thead>
       <tbody>
@@ -206,12 +221,14 @@ function StackTable({
             <th scope="row">{formatMonth(month)}</th>
             {series.map((s) => (
               <td key={s.key} className="num">
-                <Amount minor={s.values.get(month) ?? 0} currency={currency} />
+                <Amount minor={sign * (s.values.get(month) ?? 0)} currency={currency} />
               </td>
             ))}
-            <td className="num">
-              <Amount minor={totals.get(month) ?? 0} currency={currency} />
-            </td>
+            {totals && (
+              <td className="num">
+                <Amount minor={sign * (totals.get(month) ?? 0)} currency={currency} />
+              </td>
+            )}
           </tr>
         ))}
       </tbody>
