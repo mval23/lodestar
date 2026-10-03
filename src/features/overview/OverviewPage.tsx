@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { ArrowDownUp, CalendarClock, ChartColumn, ChevronRight, Flag, type LucideIcon } from 'lucide-react';
+import { ArrowDownUp, CalendarClock, ChevronRight, Flag, type LucideIcon } from 'lucide-react';
 import { useCurrency, useProfile, useUpdateProfile } from '../../lib/profile';
 import { CURRENCIES, type Currency } from '../../lib/money';
 import { formatDate, monthStartInZone, todayInZone } from '../../lib/dates';
@@ -168,14 +168,13 @@ function FirstRun({ onAddAccount }: { onAddAccount: () => void }) {
   );
 }
 
-// The phone's tab bar has room for four screens. Everything else the sidebar
+// The phone's tab bar has room for five screens. Everything else the sidebar
 // offers has to be reachable from somewhere, and the Overview is where
-// CLAUDE.md puts it: without this, Reports and Import & export had no way in
+// CLAUDE.md puts it: without this, Goals and Import & export had no way in
 // on a phone at all. On a wide screen the sidebar already lists them.
 const MORE: { to: string; label: string; hint: string; icon: LucideIcon }[] = [
   { to: '/bills', label: 'Bills', hint: 'Bills and subscriptions, and what’s due next', icon: CalendarClock },
   { to: '/goals', label: 'Goals', hint: 'What you’re saving for, and how close you are', icon: Flag },
-  { to: '/reports', label: 'Reports', hint: 'Cash flow and net worth, month by month', icon: ChartColumn },
   { to: '/import-export', label: 'Import & export', hint: 'Bring in a CSV, or take all your data', icon: ArrowDownUp },
 ];
 

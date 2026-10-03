@@ -1,16 +1,20 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { ChevronLeft, Info } from 'lucide-react';
+import { ChevronLeft, Info, SlidersHorizontal } from 'lucide-react';
 import { useProfile } from '../../lib/profile';
 import type { Currency } from '../../lib/money';
 import type { Finding } from '../../lib/standsOut';
 import { addMonths, formatDate, monthStartInZone, todayInZone } from '../../lib/dates';
 import { monthRange } from '../../lib/routes';
+import { Button } from '../../ui/Button';
+import { FormGroup, FormRow } from '../../ui/Form';
 import { Select } from '../../ui/Select';
+import { Sheet } from '../../ui/Sheet';
 import { Findings } from '../../ui/StandsOut';
 import { useAccounts } from '../accounts/queries';
 import {
   COMPARES,
+  DEFAULT_FILTERS,
   PERIODS,
   SCOPES,
   compareStart,
@@ -71,47 +75,78 @@ export function monthEnd(month: string): string {
   return formatDate(monthRange(month).to);
 }
 
+// The report filters as one capsule that says what is chosen, "Last 12
+// months · vs previous · All accounts", and opens a sheet to change it: the
+// same pattern as Activity's Filters, and one line on a phone instead of
+// three.
+const COMPARE_SHORT: Record<Compare, string> = { previous: 'vs previous', year: 'vs a year earlier' };
+
 export function ReportFiltersBar({ showScope = true }: { showScope?: boolean }) {
   const [filters, setFilters] = useReportFilters();
+  const [open, setOpen] = useState(false);
+  const label = (options: { value: string; label: string }[], value: string) => options.find((o) => o.value === value)?.label ?? '';
+  const isDefault =
+    filters.period === DEFAULT_FILTERS.period &&
+    filters.compare === DEFAULT_FILTERS.compare &&
+    (!showScope || filters.scope === DEFAULT_FILTERS.scope);
   return (
     <div className="report-filters">
-      {/* Each filter is a filled capsule with its name shown; the name is
-          also in the button's accessible label, so it is hidden here. */}
-      <div className="report-filter">
-        <span className="report-filter-name" aria-hidden>
-          Period
-        </span>
-        <Select
-          label="Period"
-          value={filters.period}
-          onChange={(period) => setFilters({ period: period as Period })}
-          options={PERIODS}
-        />
-      </div>
-      <div className="report-filter">
-        <span className="report-filter-name" aria-hidden>
-          Compare
-        </span>
-        <Select
-          label="Compare with"
-          value={filters.compare}
-          onChange={(compare) => setFilters({ compare: compare as Compare })}
-          options={COMPARES}
-        />
-      </div>
-      {showScope && (
-        <div className="report-filter">
-          <span className="report-filter-name" aria-hidden>
-            Accounts
-          </span>
-          <Select
-            label="Accounts"
-            value={filters.scope}
-            onChange={(scope) => setFilters({ scope: scope as Scope })}
-            options={SCOPES.map(({ value, label }) => ({ value, label }))}
-          />
+      <button type="button" className="capsule-button report-filter-summary" onClick={() => setOpen(true)} aria-haspopup="dialog">
+        <SlidersHorizontal strokeWidth={1.75} aria-hidden />
+        <span className="visually-hidden">Report filters: </span>
+        <strong>{label(PERIODS, filters.period)}</strong>
+        <span>· {COMPARE_SHORT[filters.compare]}</span>
+        {showScope && <span>· {label(SCOPES, filters.scope)}</span>}
+      </button>
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Report filters"
+        leading={
+          <button type="button" className="btn btn-plain" onClick={() => setFilters({ ...DEFAULT_FILTERS })} disabled={isDefault}>
+            Reset
+          </button>
+        }
+        footer={
+          <Button variant="plain" className="btn-compact" onClick={() => setOpen(false)}>
+            Done
+          </Button>
+        }
+      >
+        <div className="stack filters-sheet">
+          <FormGroup>
+            <FormRow label="Period" htmlFor="report-period">
+              <Select
+                id="report-period"
+                label="Period"
+                value={filters.period}
+                onChange={(period) => setFilters({ period: period as Period })}
+                options={PERIODS}
+              />
+            </FormRow>
+            <FormRow label="Compare with" htmlFor="report-compare">
+              <Select
+                id="report-compare"
+                label="Compare with"
+                value={filters.compare}
+                onChange={(compare) => setFilters({ compare: compare as Compare })}
+                options={COMPARES}
+              />
+            </FormRow>
+            {showScope && (
+              <FormRow label="Accounts" htmlFor="report-scope">
+                <Select
+                  id="report-scope"
+                  label="Accounts"
+                  value={filters.scope}
+                  onChange={(scope) => setFilters({ scope: scope as Scope })}
+                  options={SCOPES.map(({ value, label: text }) => ({ value, label: text }))}
+                />
+              </FormRow>
+            )}
+          </FormGroup>
         </div>
-      )}
+      </Sheet>
     </div>
   );
 }

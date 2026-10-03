@@ -6,13 +6,13 @@ import { formatDate, formatDateShort, todayInZone } from '../../lib/dates';
 import { PHONE, useMediaQuery } from '../../lib/media';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
-import { DatePicker } from '../../ui/DatePicker';
 import { EmptyState } from '../../ui/EmptyState';
 import { Notice } from '../../ui/Notice';
 import { Select } from '../../ui/Select';
 import { dataErrorMessage } from '../auth/errors';
 import { useAccounts } from '../accounts/queries';
 import { sortForPicker, useCategories, useCategoryUsage } from '../categories/queries';
+import { ActivityFilters } from './ActivityFilters';
 import { TransactionSheet } from './TransactionSheet';
 import { useCellEditor } from './useCellEditor';
 import {
@@ -105,7 +105,6 @@ export function ActivityPage() {
           <h1 className="large-title">Activity</h1>
           <p className="footnote flush">
             {page.isPending ? 'Loading…' : `${total} ${total === 1 ? 'transaction' : 'transactions'}`}
-            {filtered && ' matching your filters'}
           </p>
         </div>
         <Button data-tour="add-transaction" onClick={() => openSheet()}>
@@ -113,82 +112,15 @@ export function ActivityPage() {
         </Button>
       </header>
 
-      <section className="filters" aria-label="Filters" data-tour="activity-filters">
-        <input
-          type="search"
-          className="search-field"
-          placeholder="Search descriptions and notes"
-          aria-label="Search"
-          defaultValue={filters.search}
-          onChange={(e) => update({ search: e.target.value })}
-        />
-        <Select
-          label="Kind"
-          value={filters.kind}
-          onChange={(next) => update({ kind: next as Filters['kind'] })}
-          options={[
-            { value: 'all', label: 'All kinds' },
-            { value: 'expense', label: 'Expenses' },
-            { value: 'income', label: 'Income' },
-            { value: 'transfer', label: 'Transfers' },
-          ]}
-        />
-        <Select
-          label="Account"
-          value={filters.accountId}
-          onChange={(next) => update({ accountId: next })}
-          options={[
-            { value: 'all', label: 'All accounts' },
-            ...(accounts.data ?? []).map((a) => ({ value: a.account_id, label: a.name })),
-          ]}
-        />
-        <Select
-          label="Category"
-          value={filters.categoryId}
-          onChange={(next) => update({ categoryId: next })}
-          options={[
-            { value: 'all', label: 'All categories' },
-            { value: 'none', label: 'No category' },
-            ...(categories.data ?? []).map((c) => ({ value: c.id, label: c.name })),
-          ]}
-        />
-        {/* A bare date field shows only "mm/dd/yyyy": the two need their names
-            on screen, not just in the accessibility tree. They wrap as one
-            range, so "To" never ends up alone on a line. */}
-        <span className="filter-dates">
-          <span className="filter-date">
-            <span className="caption" aria-hidden>
-              From
-            </span>
-            <DatePicker
-              label="From date"
-              placeholder="Any date"
-              clearable
-              value={filters.from}
-              max={filters.to || undefined}
-              onChange={(next) => update({ from: next })}
-            />
-          </span>
-          <span className="filter-date">
-            <span className="caption" aria-hidden>
-              To
-            </span>
-            <DatePicker
-              label="To date"
-              placeholder="Any date"
-              clearable
-              value={filters.to}
-              min={filters.from || undefined}
-              onChange={(next) => update({ to: next })}
-            />
-          </span>
-        </span>
-        {filtered && (
-          <Button variant="plain" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
-            Clear filters
-          </Button>
-        )}
-      </section>
+      <ActivityFilters
+        filters={filters}
+        onChange={update}
+        onClear={() => update({ accountId: 'all', categoryId: 'all', from: '', to: '' })}
+        accounts={accounts.data ?? []}
+        categories={categories.data ?? []}
+        total={total}
+        pending={page.isPending}
+      />
 
       {page.isError && <Notice tone="err">{dataErrorMessage(page.error)}</Notice>}
 

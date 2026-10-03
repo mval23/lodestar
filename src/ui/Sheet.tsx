@@ -10,6 +10,7 @@ export function Sheet({
   cancelLabel = 'Cancel',
   children,
   footer,
+  leading,
 }: {
   open: boolean;
   onClose: () => void;
@@ -17,6 +18,9 @@ export function Sheet({
   cancelLabel?: string;
   children: ReactNode;
   footer?: ReactNode;
+  // Takes the place of the Cancel button, for a sheet whose left action is
+  // not closing (Clear, in the Activity filters).
+  leading?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
 
@@ -49,9 +53,11 @@ export function Sheet({
       }}
     >
       <div className="sheet-bar">
-        <button type="button" className="btn btn-plain" onClick={onClose}>
-          {cancelLabel}
-        </button>
+        {leading ?? (
+          <button type="button" className="btn btn-plain" onClick={onClose}>
+            {cancelLabel}
+          </button>
+        )}
         <h2 className="headline">{title}</h2>
         <div className="sheet-bar-end">{footer}</div>
       </div>

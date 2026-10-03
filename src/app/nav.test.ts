@@ -26,14 +26,14 @@ describe('tabOwnerOf', () => {
     expect(tabOwnerOf('/categories')).toBe('/budgets');
     expect(tabOwnerOf('/goals')).toBe('/');
     expect(tabOwnerOf('/goals/0a8f7b2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b')).toBe('/');
-    expect(tabOwnerOf('/reports')).toBe('/');
-    expect(tabOwnerOf('/months/2026-09')).toBe('/');
+    expect(tabOwnerOf('/months/2026-09')).toBe('/reports');
     expect(tabOwnerOf('/import-export')).toBe('/');
   });
 
   it('leaves the four tabs and Settings to the router', () => {
     expect(tabOwnerOf('/budgets/2026-09')).toBeNull();
     expect(tabOwnerOf('/accounts')).toBeNull();
+    expect(tabOwnerOf('/reports')).toBeNull();
     expect(tabOwnerOf('/settings')).toBeNull();
     expect(tabOwnerOf('/billsomething')).toBeNull();
   });

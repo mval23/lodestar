@@ -41,16 +41,15 @@ export function navOwnerOf(pathname: string): string | null {
   return OWNED_BY.find(([prefix]) => pathname === prefix || pathname.startsWith(prefix + '/'))?.[1] ?? null;
 }
 
-// The tab bar has four places, so every other screen lives under one of them
-// and lights it: Bills and Categories are reached from Budgets, and Goals,
-// Reports, a month and Import & export from the Overview. Settings has its
+// The tab bar has five places, so every other screen lives under one of them
+// and lights it: Bills and Categories are reached from Budgets, a month from
+// Reports, and Goals and Import & export from the Overview. Settings has its
 // own button in the top bar and lights no tab.
 const TAB_OWNED_BY: [prefix: string, owner: string][] = [
   ['/bills', '/budgets'],
   ['/categories', '/budgets'],
   ['/goals', '/'],
-  ['/reports', '/'],
-  ['/months', '/'],
+  ['/months', '/reports'],
   ['/import-export', '/'],
 ];
 
@@ -63,4 +62,5 @@ export const TAB_BAR: NavItem[] = [
   { to: '/activity', label: 'Activity', icon: ArrowLeftRight },
   { to: '/accounts', label: 'Accounts', icon: SquareStack },
   { to: '/budgets', label: 'Budgets', icon: ChartPie },
+  { to: '/reports', label: 'Reports', icon: ChartColumn },
 ];

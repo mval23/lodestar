@@ -193,12 +193,30 @@ test.describe('the ledger', () => {
     await stubSupabase(page, { tables: withData() });
     await page.goto('/activity');
 
-    await page.getByRole('button', { name: /^Kind,/ }).click();
-    await page.getByRole('option', { name: 'Expenses' }).click();
+    await page.getByRole('radio', { name: 'Expenses' }).click();
+    await expect(page.getByRole('radio', { name: 'Expenses' })).toBeChecked();
 
     await expect(page).toHaveURL(/kind=expense/);
     await page.reload();
-    await expect(page.getByRole('button', { name: /^Kind, Expenses/ })).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'Expenses' })).toBeChecked();
+  });
+
+  test('a filter chosen in the sheet shows as a chip, and the chip removes it', async ({ page }) => {
+    await signIn(page);
+    await stubSupabase(page, { tables: withData() });
+    await page.goto('/activity');
+
+    await page.getByRole('button', { name: /^Filters/ }).click();
+    const sheet = page.getByRole('dialog', { name: 'Filters' });
+    await sheet.getByRole('button', { name: /^Account,/ }).click();
+    await page.getByRole('option', { name: 'Everyday checking' }).click();
+    await sheet.getByRole('button', { name: /^Show / }).click();
+
+    await expect(page).toHaveURL(/accountId=acc-chk/);
+    await expect(page.getByRole('button', { name: /^Filters 1 in use/ })).toBeVisible();
+    await page.getByRole('button', { name: 'Remove filter: Everyday checking' }).click();
+    await expect(page).not.toHaveURL(/accountId=/);
+    await expect(page.getByRole('list', { name: 'Filters in use' })).toHaveCount(0);
   });
 });
 
@@ -395,6 +413,7 @@ test.describe('the shell', () => {
       ['Activity', 'Activity'],
       ['Accounts', 'Accounts'],
       ['Budgets', 'Budgets'],
+      ['Reports', 'Reports'],
       ['Overview', 'Overview'],
     ] as const) {
       await tabs.getByRole('link', { name }).click();

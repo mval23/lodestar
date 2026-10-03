@@ -303,7 +303,8 @@ describe('Cash flow report', () => {
 
   it('changes the period from its filter', async () => {
     show('/reports/cash-flow');
-    await userEvent.click(screen.getByRole('button', { name: /Period/ }));
+    await userEvent.click(screen.getByRole('button', { name: /^Report filters/ }));
+    await userEvent.click(screen.getByRole('button', { name: /^Period,/ }));
     await userEvent.click(screen.getByRole('option', { name: 'Last 6 months' }));
     expect(useReportSummary).toHaveBeenLastCalledWith(addMonths(THIS_MONTH, -6), THIS_MONTH, addMonths(THIS_MONTH, -12), null);
   });
@@ -339,7 +340,8 @@ describe('Net worth report', () => {
 
   it('has no accounts filter, since net worth covers every account counted in it', () => {
     show('/reports/net-worth');
-    expect(screen.queryByRole('button', { name: /Accounts/ })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Period/ })).toBeInTheDocument();
+    const filters = screen.getByRole('button', { name: /^Report filters/ });
+    expect(filters).toHaveTextContent('Last 12 months');
+    expect(filters).not.toHaveTextContent(/accounts/i);
   });
 });
