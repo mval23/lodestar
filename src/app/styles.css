@@ -2008,6 +2008,175 @@ a:hover {
   width: 14px;
   border-radius: var(--radius-xs);
 }
+/* Reports: the net a year earlier, and where a period began, as dashed
+   lines; what you own as a light area under the net worth line. */
+.line-prior {
+  fill: none;
+  stroke: var(--out);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  stroke-linejoin: round;
+}
+.line-start {
+  stroke: var(--ink-2);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+.area-own {
+  fill: var(--sunk);
+}
+.swatch-dash {
+  width: 14px;
+  height: 0;
+  border-top: 2px dashed var(--ink-2);
+  border-radius: 0;
+}
+.swatch-area {
+  background: var(--sunk);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+/* ---------- Reports hub and report pages ---------- */
+/* The filters sit beside the title and wrap under it on a narrow screen. */
+.report-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: flex-end;
+}
+.report-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2) 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--sunk);
+}
+.report-filter-name {
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.report-filter .select-trigger {
+  width: auto;
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.group.fig-band.fig-band-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+@media (max-width: 1279px) {
+  .group.fig-band.fig-band-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  .group.fig-band.fig-band-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* Two parts side by side on a wide screen, stacked otherwise. */
+.report-pair {
+  display: grid;
+  gap: var(--space-6);
+  align-items: start;
+}
+@media (min-width: 1100px) {
+  .report-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.report-figure {
+  display: grid;
+  justify-items: end;
+  font-variant-numeric: tabular-nums;
+}
+.report-figure small {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.ledger-total th,
+.ledger-total td {
+  font-weight: 600;
+  border-top: 1px solid var(--line-strong);
+}
+.about-figures {
+  display: grid;
+  gap: var(--space-2);
+}
+.about-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+}
+.about-title svg {
+  width: 14px;
+  height: 14px;
+}
+.about-figures ul {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+}
+/* What each account added: a bar from a zero line, the amount at the end. */
+.change-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.change-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(80px, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  min-height: 44px;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.change-row:hover {
+  text-decoration: none;
+  background: var(--ground);
+}
+.change-name {
+  display: grid;
+  min-width: 0;
+  font-size: 14px;
+}
+.change-name small {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.change-track {
+  position: relative;
+  height: 12px;
+}
+.change-axis {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 1px;
+  background: var(--line-strong);
+}
+.change-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--in);
+  border-radius: 0 3px 3px 0;
+}
+.change-bar.down {
+  background: var(--out);
+  border-radius: 3px 0 0 3px;
+}
 
 @media (max-width: 767px) {
   /* The ledger hides its middle columns on a phone; these tables are

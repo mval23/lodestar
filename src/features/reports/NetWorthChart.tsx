@@ -1,7 +1,7 @@
 import { AxisBottom } from '@visx/axis';
 import { Group } from '@visx/group';
 import { scaleLinear, scalePoint } from '@visx/scale';
-import { LinePath } from '@visx/shape';
+import { Area, Bar, LinePath } from '@visx/shape';
 import type { Currency } from '../../lib/money';
 import { formatMonth } from '../../lib/dates';
 import { Amount } from '../../ui/Amount';
@@ -26,22 +26,39 @@ const INNER_H = HEIGHT - MARGIN.top - MARGIN.bottom;
 // only when the line crosses zero, so a negative stretch reads as below the
 // line rather than as a colour. The blue square marks now, and the figure
 // for now sits in the caption, where it used to hang under the months.
+//
+// The Net worth report draws it detailed: what is owned as a light area above
+// zero, cards and loans as grey bars below it, net worth as the line over
+// both, and a dashed line where the period began. The frame then includes
+// zero, since the bars stand on it.
 export function NetWorthChart({
   rows,
   currency,
   currentMonth,
+  detailed = false,
+  start,
+  nowLabel = 'This month',
 }: {
   rows: NetWorthMonth[];
   currency: Currency;
   currentMonth: string;
+  detailed?: boolean;
+  // Net worth where the period began, drawn as a dashed line.
+  start?: { label: string; value: number } | null;
+  nowLabel?: string;
 }) {
   const { ref, width } = useChartWidth();
   const innerWidth = width - MARGIN.left - MARGIN.right;
 
   const months = scalePoint({ domain: rows.map((row) => row.month), range: [0, innerWidth], padding: 0.5 });
   const values = rows.map((row) => row.net_worth_minor);
-  const { low, high, showZero } = lineDomain(values);
+  const framed = detailed
+    ? frameWithZero([...values, ...rows.map((row) => row.assets_minor), ...rows.map((row) => row.liabilities_minor), start?.value ?? 0])
+    : lineDomain(start ? [...values, start.value] : values);
+  const { low, high, showZero } = framed;
   const amounts = scaleLinear({ domain: [low, high], range: [INNER_H, 0], nice: true });
+  const zero = amounts(0);
+  const barWidth = Math.max(4, Math.min(24, months.step() * 0.5));
   const latest = rows[rows.length - 1];
   const centers = rows.map((row) => months(row.month) ?? 0);
   const hover = usePlotHover(centers);
@@ -54,11 +71,14 @@ export function NetWorthChart({
       title="Net worth"
       caption={
         <>
-          Everything you own, less what you owe, at the end of each month.
+          {detailed
+            ? 'At the end of each month: what you own above zero, cards and loans below, net worth as the line.'
+            : 'Everything you own, less what you owe, at the end of each month.'}
           {latest && (
             <>
               {' '}
-              Now <Amount minor={latest.net_worth_minor} currency={currency} />.
+              {detailed ? `${formatMonth(latest.month)}: ` : 'Now '}
+              <Amount minor={latest.net_worth_minor} currency={currency} />.
             </>
           )}
         </>
@@ -66,8 +86,15 @@ export function NetWorthChart({
       legend={
         <ChartLegend
           items={[
-            { className: 'swatch-in', label: 'Net worth' },
-            { className: 'swatch-now', label: 'This month' },
+            { className: 'swatch-in swatch-line', label: 'Net worth' },
+            ...(detailed
+              ? [
+                  { className: 'swatch-area', label: 'What you own' },
+                  { className: 'swatch-out', label: 'Cards and loans' },
+                ]
+              : []),
+            ...(start ? [{ className: 'swatch-dash', label: start.label }] : []),
+            { className: 'swatch-now', label: nowLabel },
           ]}
         />
       }
@@ -85,7 +112,35 @@ export function NetWorthChart({
         >
           <Group left={MARGIN.left} top={MARGIN.top}>
             <ValueAxis scale={amounts} innerWidth={innerWidth} currency={currency} />
-            {showZero && <line className="chart-zero" x1={0} x2={innerWidth} y1={amounts(0)} y2={amounts(0)} />}
+            {showZero && <line className="chart-zero" x1={0} x2={innerWidth} y1={zero} y2={zero} />}
+            {detailed && (
+              <>
+                {/* From zero up to what is owned: the area stands on zero, like the bars. */}
+                <Area
+                  className="area-own"
+                  data={rows}
+                  x={(row) => months(row.month) ?? 0}
+                  y0={() => zero}
+                  y1={(row) => amounts(row.assets_minor)}
+                />
+                {rows.map((row) =>
+                  row.liabilities_minor < 0 ? (
+                    <Bar
+                      key={row.month}
+                      className="bar-out"
+                      x={(months(row.month) ?? 0) - barWidth / 2}
+                      y={zero}
+                      width={barWidth}
+                      height={amounts(row.liabilities_minor) - zero}
+                      rx={2}
+                    />
+                  ) : null,
+                )}
+              </>
+            )}
+            {start && (
+              <line className="line-start" x1={0} x2={innerWidth} y1={amounts(start.value)} y2={amounts(start.value)} />
+            )}
 
             <LinePath
               className="line-net"
@@ -140,6 +195,14 @@ export function NetWorthChart({
       </div>
     </ChartFrame>
   );
+}
+
+// A frame that always includes zero, padded so nothing touches the edge.
+function frameWithZero(values: number[]): { low: number; high: number; showZero: boolean } {
+  const low = Math.min(0, ...values);
+  const high = Math.max(0, ...values);
+  const pad = (high - low || 100) * 0.05;
+  return { low: low < 0 ? low - pad : 0, high: high + pad, showZero: low < 0 };
 }
 
 function NetWorthTable({ rows, currency }: { rows: NetWorthMonth[]; currency: Currency }) {

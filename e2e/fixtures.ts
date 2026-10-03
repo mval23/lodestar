@@ -245,6 +245,63 @@ function monthToDateOf(tables: Tables) {
   ];
 }
 
+// The Reports functions, answered from monthly_cash_flow and
+// net_worth_by_month. Transfers aren't in the stub's tables, so their
+// buckets are zero; the real split is tested against Postgres.
+function monthsFrom(from: string, to: string): string[] {
+  const out: string[] = [];
+  for (let m = from; m < to; ) {
+    out.push(m);
+    const d = new Date(`${m}T00:00:00Z`);
+    d.setUTCMonth(d.getUTCMonth() + 1);
+    m = d.toISOString().slice(0, 10);
+  }
+  return out;
+}
+
+function reportCashFlowOf(tables: Tables, from: string, to: string) {
+  return monthsFrom(from, to).map((month) => {
+    const row = tables.monthly_cash_flow.find((r) => r.month === month);
+    const moneyIn = Number(row?.money_in_minor ?? 0), moneyOut = Number(row?.money_out_minor ?? 0);
+    return {
+      month, money_in_minor: moneyIn, money_out_minor: moneyOut, net_minor: moneyIn - moneyOut,
+      to_goals_minor: 0, from_goals_minor: 0, moved_in_minor: 0, moved_out_minor: 0, active: Boolean(row),
+    };
+  });
+}
+
+function totalsOf(tables: Tables, period: string, from: string, to: string) {
+  const rows = reportCashFlowOf(tables, from, to);
+  const moneyIn = rows.reduce((s, r) => s + r.money_in_minor, 0), moneyOut = rows.reduce((s, r) => s + r.money_out_minor, 0);
+  return {
+    period, period_from: from, period_to: to, money_in_minor: moneyIn, money_out_minor: moneyOut, net_minor: moneyIn - moneyOut,
+    to_goals_minor: 0, from_goals_minor: 0, card_payments_minor: 0, loan_payments_minor: 0, cash_withdrawals_minor: 0,
+    other_transfers_minor: 0, months: rows.length, active_months: rows.filter((r) => r.active).length,
+  };
+}
+
+function reportSummaryOf(tables: Tables, from: string, to: string, compareFrom: string) {
+  const length = monthsFrom(from, to).length;
+  const compareTo = monthsFrom(compareFrom, '9999-01-01').slice(0, length + 1)[length] ?? compareFrom;
+  return [totalsOf(tables, 'current', from, to), totalsOf(tables, 'compare', compareFrom, compareTo)];
+}
+
+function netWorthByAccountOf(tables: Tables) {
+  return tables.account_balances.map((a) => ({
+    account_id: a.account_id, name: a.name, type: a.type, is_liability: a.is_liability,
+    include_in_net_worth: a.include_in_net_worth ?? true, archived_at: a.archived_at ?? null,
+    start_minor: Number(a.balance_minor), end_minor: Number(a.balance_minor), change_minor: 0,
+  }));
+}
+
+function netWorthChangeOf(tables: Tables, from: string, to: string) {
+  const at = (month: string) => Number(tables.net_worth_by_month.find((r) => r.month === month)?.net_worth_minor ?? 0);
+  const months = monthsFrom(from, to);
+  const startMonth = monthsFrom('1970-01-01', from).at(-1) ?? from;
+  const start = at(startMonth), end = at(months.at(-1) ?? from);
+  return [{ start_minor: start, end_minor: end, change_minor: end - start, cash_flow_minor: end - start, openings_minor: 0, moved_minor: 0 }];
+}
+
 export async function stubSupabase(page: Page, options: Options = {}) {
   const tables = options.tables ?? emptyTables();
 
@@ -282,6 +339,11 @@ export async function stubSupabase(page: Page, options: Options = {}) {
       if (name === 'merge_categories') return json(1);
       if (name === 'budget_pace') return json(budgetPaceOf(tables));
       if (name === 'month_to_date') return json(monthToDateOf(tables));
+      const args = (request.postDataJSON?.() ?? {}) as Record<string, string>;
+      if (name === 'report_cash_flow') return json(reportCashFlowOf(tables, args.p_from!, args.p_to!));
+      if (name === 'report_summary') return json(reportSummaryOf(tables, args.p_from!, args.p_to!, args.p_compare_from!));
+      if (name === 'net_worth_by_account') return json(netWorthByAccountOf(tables));
+      if (name === 'net_worth_change') return json(netWorthChangeOf(tables, args.p_from!, args.p_to!));
       return json(null);
     }
 

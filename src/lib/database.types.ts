@@ -451,7 +451,7 @@ export type Database = {
           budget_id: string;
           category_id: string;
           category_name: string;
-          group_id: string | null;
+          group_id: string;
           month: string;
           planned_minor: number;
           spent_minor: number;
@@ -460,8 +460,8 @@ export type Database = {
           pace_minor: number;
           gap_minor: number;
           days_left: number;
-          per_day_minor: number | null;
-          status: 'over' | 'ahead' | 'on_pace';
+          per_day_minor: number;
+          status: string;
         }[];
       };
       category_top_descriptions: {
@@ -518,7 +518,7 @@ export type Database = {
         }[];
       };
       report_cash_flow: {
-        Args: { p_from: string; p_to: string; p_account_ids?: string[] | null };
+        Args: { p_from: string; p_to: string; p_account_ids?: string[] };
         Returns: {
           month: string;
           money_in_minor: number;
@@ -532,9 +532,9 @@ export type Database = {
         }[];
       };
       report_summary: {
-        Args: { p_from: string; p_to: string; p_compare_from: string; p_account_ids?: string[] | null };
+        Args: { p_from: string; p_to: string; p_compare_from: string; p_account_ids?: string[] };
         Returns: {
-          period: 'current' | 'compare';
+          period: string;
           period_from: string;
           period_to: string;
           money_in_minor: number;

@@ -65,52 +65,12 @@ export function useNetWorth(months = 12) {
   });
 }
 
-export type CashFlowSummary = { moneyIn: number; moneyOut: number; net: number; months: number };
-
-export function summarizeCashFlow(rows: CashFlowMonth[]): CashFlowSummary {
-  return rows.reduce(
-    (total, row) => ({
-      moneyIn: total.moneyIn + row.money_in_minor,
-      moneyOut: total.moneyOut + row.money_out_minor,
-      net: total.net + row.net_minor,
-      months: total.months + 1,
-    }),
-    { moneyIn: 0, moneyOut: 0, net: 0, months: 0 },
-  );
-}
-
 // ---------------------------------------------------------------------------
-// The Reports page counts calendar months. monthly_cash_flow has a row only
-// for a month with something recorded, so "the last 12 rows" could reach back
-// more than a year and drop empty months from the chart. The range is chosen
-// by date instead: it ends with the last complete month (the current one is
-// still partial) and starts no earlier than the first month with activity,
-// so a new account isn't padded with months from before it began.
+// The Reports hub and its reports. Every total comes from a database
+// function (report_cash_flow, report_summary, net_worth_by_account,
+// net_worth_change); the browser only formats. A period is complete calendar
+// months, from `from` up to, not including, `to`.
 // ---------------------------------------------------------------------------
-
-// A calendar month in a report's range. An empty month has no row in the
-// view; it is kept, as zeros, so every month has its slot on the chart.
-export type ReportMonth = CashFlowMonth & { active: boolean };
-
-export function reportStart(currentMonth: string, months: number, firstMonth: string | null): string {
-  const from = addMonths(currentMonth, -months);
-  return firstMonth && firstMonth > from ? firstMonth : from;
-}
-
-// One row per calendar month from `from` up to, not including, `to`.
-export function fillMonths(rows: CashFlowMonth[], from: string, to: string): ReportMonth[] {
-  const byMonth = new Map(rows.map((row) => [row.month, row]));
-  const filled: ReportMonth[] = [];
-  for (let month = from; month < to; month = addMonths(month, 1)) {
-    const row = byMonth.get(month);
-    filled.push(
-      row
-        ? { ...row, active: true }
-        : { month, money_in_minor: 0, money_out_minor: 0, net_minor: 0, active: false },
-    );
-  }
-  return filled;
-}
 
 function toCashFlowMonth(row: {
   month: string | null;
@@ -126,38 +86,177 @@ function toCashFlowMonth(row: {
   };
 }
 
-// The complete months of the range, oldest first, empty ones as zeros.
-export function useCashFlowReport(months: number, currentMonth: string) {
+// The first month with any income or expense, so a period never starts
+// before the person began.
+export function useFirstActivityMonth() {
   return useQuery({
-    queryKey: [...reportsKey, 'cash-flow-range', months, currentMonth],
-    queryFn: async (): Promise<ReportMonth[]> => {
-      const first = await db()
-        .from('monthly_cash_flow')
-        .select('month')
-        .lt('month', currentMonth)
-        .order('month', { ascending: true })
-        .limit(1);
-      if (first.error) throw first.error;
-      const firstMonth = first.data
-        .map((row) => (row.month ?? '').slice(0, 10))
-        .filter((m) => m !== '' && m < currentMonth)
-        .sort()[0];
-      if (!firstMonth) return [];
-
-      const from = reportStart(currentMonth, months, firstMonth);
+    queryKey: [...reportsKey, 'first-month'],
+    queryFn: async (): Promise<string | null> => {
       const { data, error } = await db()
         .from('monthly_cash_flow')
-        .select('*')
-        .gte('month', from)
-        .lt('month', currentMonth)
-        .order('month', { ascending: true });
+        .select('month')
+        .order('month', { ascending: true })
+        .limit(1);
       if (error) throw error;
-      return fillMonths(data.map(toCashFlowMonth), from, currentMonth);
+      return (
+        data
+          .map((row) => (row.month ?? '').slice(0, 10))
+          .filter((m) => m !== '')
+          .sort()[0] ?? null
+      );
     },
   });
 }
 
-// The current month on its own: shown as "so far", never added to the range.
+// A calendar month of a report. An empty month is kept, as zeros, so every
+// month has its slot on the chart; `active` says whether anything happened.
+export type ReportMonth = CashFlowMonth & {
+  to_goals_minor: number;
+  from_goals_minor: number;
+  moved_in_minor: number;
+  moved_out_minor: number;
+  active: boolean;
+};
+
+export function useReportCashFlow(from: string, to: string, accountIds: string[] | null, enabled = true) {
+  return useQuery({
+    queryKey: [...reportsKey, 'cash-flow', from, to, accountIds],
+    enabled: enabled && from < to,
+    queryFn: async (): Promise<ReportMonth[]> => {
+      // Left out, the scope defaults to every account in Postgres.
+      const { data, error } = await db().rpc('report_cash_flow', {
+        p_from: from,
+        p_to: to,
+        p_account_ids: accountIds ?? undefined,
+      });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({ ...row, month: row.month.slice(0, 10) }));
+    },
+  });
+}
+
+export type ReportTotals = {
+  // 'current' or 'compare'.
+  period: string;
+  period_from: string;
+  period_to: string;
+  money_in_minor: number;
+  money_out_minor: number;
+  net_minor: number;
+  to_goals_minor: number;
+  from_goals_minor: number;
+  card_payments_minor: number;
+  loan_payments_minor: number;
+  cash_withdrawals_minor: number;
+  other_transfers_minor: number;
+  months: number;
+  active_months: number;
+};
+
+export function useReportSummary(from: string, to: string, compareFrom: string, accountIds: string[] | null) {
+  return useQuery({
+    queryKey: [...reportsKey, 'summary', from, to, compareFrom, accountIds],
+    enabled: from < to,
+    queryFn: async (): Promise<{ current: ReportTotals; compare: ReportTotals } | null> => {
+      const { data, error } = await db().rpc('report_summary', {
+        p_from: from,
+        p_to: to,
+        p_compare_from: compareFrom,
+        p_account_ids: accountIds ?? undefined,
+      });
+      if (error) throw error;
+      const current = (data ?? []).find((row) => row.period === 'current');
+      const compare = (data ?? []).find((row) => row.period === 'compare');
+      return current && compare ? { current, compare } : null;
+    },
+  });
+}
+
+// The transfers of a period, each in exactly one bucket.
+export function transfersOf(totals: ReportTotals): { label: string; note?: string; minor: number }[] {
+  return [
+    { label: 'Card payments', note: 'purchases already counted', minor: totals.card_payments_minor },
+    { label: 'Into goal accounts', minor: totals.to_goals_minor },
+    { label: 'Out of goal accounts', minor: totals.from_goals_minor },
+    { label: 'Loan payments', minor: totals.loan_payments_minor },
+    { label: 'Cash withdrawals', note: 'cash spending counted', minor: totals.cash_withdrawals_minor },
+    { label: 'Other transfers', minor: totals.other_transfers_minor },
+  ];
+}
+
+// Net worth at each month end from the month before `from` (where the period
+// began) to the last month of the period.
+export function useNetWorthRange(from: string, to: string) {
+  return useQuery({
+    queryKey: [...reportsKey, 'net-worth-range', from, to],
+    enabled: from < to,
+    queryFn: async (): Promise<NetWorthMonth[]> => {
+      const { data, error } = await db()
+        .from('net_worth_by_month')
+        .select('*')
+        .gte('month', addMonths(from, -1))
+        .lt('month', to)
+        .order('month', { ascending: true });
+      if (error) throw error;
+      return data
+        .map((row) => ({
+          month: (row.month ?? '').slice(0, 10),
+          assets_minor: row.assets_minor ?? 0,
+          liabilities_minor: row.liabilities_minor ?? 0,
+          net_worth_minor: row.net_worth_minor ?? 0,
+        }))
+        .filter((row) => row.month >= addMonths(from, -1) && row.month < to)
+        .sort((a, b) => a.month.localeCompare(b.month));
+    },
+  });
+}
+
+export type AccountChange = {
+  account_id: string;
+  name: string;
+  type: string;
+  is_liability: boolean;
+  include_in_net_worth: boolean;
+  archived_at: string | null;
+  start_minor: number;
+  end_minor: number;
+  change_minor: number;
+};
+
+export function useNetWorthByAccount(from: string, to: string) {
+  return useQuery({
+    queryKey: [...reportsKey, 'net-worth-accounts', from, to],
+    enabled: from < to,
+    queryFn: async (): Promise<AccountChange[]> => {
+      const { data, error } = await db().rpc('net_worth_by_account', { p_from: from, p_to: to });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export type NetWorthBridge = {
+  start_minor: number;
+  end_minor: number;
+  change_minor: number;
+  cash_flow_minor: number;
+  openings_minor: number;
+  moved_minor: number;
+};
+
+export function useNetWorthChange(from: string, to: string) {
+  return useQuery({
+    queryKey: [...reportsKey, 'net-worth-change', from, to],
+    enabled: from < to,
+    queryFn: async (): Promise<NetWorthBridge | null> => {
+      const { data, error } = await db().rpc('net_worth_change', { p_from: from, p_to: to });
+      if (error) throw error;
+      return (data ?? [])[0] ?? null;
+    },
+  });
+}
+
+// The current month on its own: shown as "so far", never added to a period.
 export function useCurrentMonthFlow(currentMonth: string) {
   return useQuery({
     queryKey: [...reportsKey, 'cash-flow-current', currentMonth],
@@ -173,44 +272,16 @@ export function useCurrentMonthFlow(currentMonth: string) {
   });
 }
 
-// Net worth over the same months, ending with now. The view has a row for
-// every month from the first activity, so no filling is needed.
-export function useNetWorthReport(months: number, currentMonth: string) {
-  return useQuery({
-    queryKey: [...reportsKey, 'net-worth-range', months, currentMonth],
-    queryFn: async (): Promise<NetWorthMonth[]> => {
-      const { data, error } = await db()
-        .from('net_worth_by_month')
-        .select('*')
-        .gte('month', addMonths(currentMonth, -months))
-        .lte('month', currentMonth)
-        .order('month', { ascending: true });
-      if (error) throw error;
-      return data
-        .map((row) => ({
-          month: (row.month ?? '').slice(0, 10),
-          assets_minor: row.assets_minor ?? 0,
-          liabilities_minor: row.liabilities_minor ?? 0,
-          net_worth_minor: row.net_worth_minor ?? 0,
-        }))
-        .sort((a, b) => a.month.localeCompare(b.month));
-    },
-  });
+// A typical month: the period's net over the months that had activity. The
+// sums are the database's; this only divides, for display.
+export function typicalNet(totals: ReportTotals): number | null {
+  return totals.active_months > 0 ? Math.round(totals.net_minor / totals.active_months) : null;
 }
 
-export type TypicalMonth = CashFlowSummary & { emptyMonths: number };
-
-// A typical month: the average of the months with activity. Empty months are
-// left out, and counted, so the page can say how many.
-export function averagePerMonth(rows: ReportMonth[]): TypicalMonth | null {
-  const active = rows.filter((row) => row.active);
-  if (active.length === 0) return null;
-  const total = summarizeCashFlow(active);
-  return {
-    moneyIn: Math.round(total.moneyIn / active.length),
-    moneyOut: Math.round(total.moneyOut / active.length),
-    net: Math.round(total.net / active.length),
-    months: active.length,
-    emptyMonths: rows.length - active.length,
-  };
+// What a typical month is the average of, in words.
+export function typicalBasis(totals: ReportTotals): string {
+  const months = `${totals.active_months} ${totals.active_months === 1 ? 'month' : 'months'}`;
+  const empty = totals.months - totals.active_months;
+  if (empty === 0) return `average of ${months}`;
+  return `average of ${months} with activity; ${empty} empty ${empty === 1 ? 'month' : 'months'} left out`;
 }
