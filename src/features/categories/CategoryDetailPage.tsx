@@ -5,6 +5,7 @@ import { addMonths, formatMonth, monthStartInZone, todayInZone } from '../../lib
 import { activityPath, budgetLinePath, isUuid, lastTwelveMonths, monthRange } from '../../lib/routes';
 import { categoryFindings } from '../../lib/standsOut';
 import { percentChange, share } from '../../lib/percent';
+import { ScrollTable } from '../../ui/ScrollTable';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
 import { DetailHeader, DetailNotFound, SectionHead } from '../../ui/Detail';
@@ -201,30 +202,32 @@ function CategoryDetail({ category }: { category: Category }) {
             {top.isError && <Notice tone="err">{dataErrorMessage(top.error)}</Notice>}
             {top.data && top.data.length === 0 && <p className="secondary flush">Nothing in the last 12 months.</p>}
             {top.data && top.data.length > 0 && (
-              <table className="ledger compact category-top">
-                <tbody>
-                  {top.data.map((t) => (
-                    <tr key={t.description}>
-                      <th scope="row">
-                        {t.description}
-                        <small>
-                          {' '}
-                          · {t.txn_count} × <Amount minor={Math.round(t.total_minor / Math.max(1, t.txn_count))} currency={currency} />
-                        </small>
-                      </th>
-                      <td className="month-cat-bar" aria-hidden="true">
-                        <span className="bar-track">
-                          <i style={{ width: `${Math.max(2, Math.round((t.total_minor / topMax) * 100))}%` }} />
-                        </span>
-                      </td>
-                      <td className="num">
-                        <Amount minor={t.total_minor} currency={currency} />
-                      </td>
-                      <td className="num secondary">{st ? share(t.total_minor, st.total_minor) : ''}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <ScrollTable label="Descriptions table">
+                <table className="ledger compact category-top">
+                  <tbody>
+                    {top.data.map((t) => (
+                      <tr key={t.description}>
+                        <th scope="row">
+                          {t.description}
+                          <small>
+                            {' '}
+                            · {t.txn_count} × <Amount minor={Math.round(t.total_minor / Math.max(1, t.txn_count))} currency={currency} />
+                          </small>
+                        </th>
+                        <td className="month-cat-bar" aria-hidden="true">
+                          <span className="bar-track">
+                            <i style={{ width: `${Math.max(2, Math.round((t.total_minor / topMax) * 100))}%` }} />
+                          </span>
+                        </td>
+                        <td className="num">
+                          <Amount minor={t.total_minor} currency={currency} />
+                        </td>
+                        <td className="num secondary">{st ? share(t.total_minor, st.total_minor) : ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollTable>
             )}
           </section>
 
@@ -236,40 +239,42 @@ function CategoryDetail({ category }: { category: Category }) {
               {plans.data && pastPlans.length === 0 ? (
                 <p className="secondary flush">No plans in the last 12 months.</p>
               ) : (
-                <table className="ledger compact">
-                  <thead>
-                    <tr>
-                      <th scope="col">Month</th>
-                      <th scope="col" className="num">
-                        Planned
-                      </th>
-                      <th scope="col" className="num">
-                        Spent
-                      </th>
-                      <th scope="col" className="num">
-                        Left
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pastPlans.map((p) => (
-                      <tr key={p.month}>
-                        <th scope="row">
-                          <Link to={budgetLinePath(p.month, category.id)}>{formatMonth(p.month)}</Link>
+                <ScrollTable label="Plans table">
+                  <table className="ledger compact">
+                    <thead>
+                      <tr>
+                        <th scope="col">Month</th>
+                        <th scope="col" className="num">
+                          Planned
                         </th>
-                        <td className="num">
-                          <Amount minor={p.planned_minor} currency={currency} />
-                        </td>
-                        <td className="num">
-                          <Amount minor={p.spent_minor} currency={currency} />
-                        </td>
-                        <td className="num">
-                          <Amount minor={p.left_minor} currency={currency} signed />
-                        </td>
+                        <th scope="col" className="num">
+                          Spent
+                        </th>
+                        <th scope="col" className="num">
+                          Left
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {pastPlans.map((p) => (
+                        <tr key={p.month}>
+                          <th scope="row">
+                            <Link to={budgetLinePath(p.month, category.id)}>{formatMonth(p.month)}</Link>
+                          </th>
+                          <td className="num">
+                            <Amount minor={p.planned_minor} currency={currency} />
+                          </td>
+                          <td className="num">
+                            <Amount minor={p.spent_minor} currency={currency} />
+                          </td>
+                          <td className="num">
+                            <Amount minor={p.left_minor} currency={currency} signed />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </ScrollTable>
               )}
             </section>
           )}

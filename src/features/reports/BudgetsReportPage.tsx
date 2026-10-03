@@ -8,6 +8,7 @@ import { budgetLinePath, budgetMonthPath } from '../../lib/routes';
 import { budgetFindings } from '../../lib/standsOut';
 import { Amount } from '../../ui/Amount';
 import { Notice } from '../../ui/Notice';
+import { ScrollTable } from '../../ui/ScrollTable';
 import { PlanGrid, type PlanRow } from '../../ui/PlanGrid';
 import { Select } from '../../ui/Select';
 import { dataErrorMessage } from '../auth/errors';
@@ -208,7 +209,7 @@ function PlannedSpent({
         </h2>
         <p className="footnote flush">Grey bar: spent. Tick: the plan. Hatching: the part over plan. Variance is what is left (+) or over (−).</p>
       </div>
-      <div className="table-wrap">
+      <ScrollTable label="Plans against spending, table">
         <table className="ledger compact plan-table">
           <thead>
             <tr>
@@ -298,7 +299,7 @@ function PlannedSpent({
             </tr>
           </tbody>
         </table>
-      </div>
+      </ScrollTable>
     </section>
   );
 }

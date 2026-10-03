@@ -60,8 +60,10 @@ export function RunningTotalChart({
   const drawn = days.filter((d) => !d.after_today);
   const inProgress = drawn.length < days.length;
   const last = drawn[drawn.length - 1];
+  // At least 100 units, so a month with no spending yet gets a readable
+  // axis rather than five lines all labelled "$0".
   const largest = Math.max(
-    1,
+    10000,
     ...drawn.map((d) => d.running_minor),
     ...(showTypical ? days.map((d) => d.typical_running_minor) : []),
     hasPlan ? plan : 0,

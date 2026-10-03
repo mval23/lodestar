@@ -201,7 +201,8 @@ export function useGoalPace(goalId: string | undefined) {
       const row = data.find((r) => r.goal_id === goalId);
       if (!row) return null;
       return {
-        needed_monthly_minor: row.needed_monthly_minor,
+        // ?? null: a database without these columns yet leaves them out.
+        needed_monthly_minor: row.needed_monthly_minor ?? null,
         avg_put_in_minor: row.avg_put_in_minor ?? 0,
         months_put_in: row.months_put_in ?? 0,
         estimated_month: row.estimated_month ? row.estimated_month.slice(0, 10) : null,

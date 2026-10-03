@@ -26,7 +26,6 @@ export function SplitBars({ rows, currency, label }: { rows: SplitRow[]; currenc
         const parts = row.parts
           .filter((part) => part.minor > 0)
           .map((part) => ({ ...part, share: (part.minor / scale) * 100 }));
-        const narrow = parts.filter((part) => part.share < LABEL_SHARE);
         return (
           <div key={row.label} className="split-row">
             {/* What the bar shows, read as a sentence. */}
@@ -50,10 +49,12 @@ export function SplitBars({ rows, currency, label }: { rows: SplitRow[]; currenc
                 </span>
               ))}
             </div>
-            {narrow.length > 0 && (
+            {/* Every part, named under the bar: the narrow ones always, the wide
+                ones only on a phone, where nothing fits inside the bar. */}
+            {parts.length > 0 && (
               <p className="split-legend" aria-hidden="true">
-                {narrow.map((part) => (
-                  <span key={part.label}>
+                {parts.map((part) => (
+                  <span key={part.label} className={part.share >= LABEL_SHARE ? 'split-inbar' : undefined}>
                     <span className={`swatch split-swatch-${part.tone}`} />
                     {part.label} <Amount minor={part.minor} currency={currency} />
                   </span>

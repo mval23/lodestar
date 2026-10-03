@@ -41,7 +41,9 @@ export function ChartFrame({
 
       <div id={regionId}>
         {asTable ? (
-          <div className="table-wrap">{table}</div>
+          <div className="table-wrap table-scroll" tabIndex={0} role="region" aria-label={`${title}, as a table`}>
+            {table}
+          </div>
         ) : (
           <>
             {children}

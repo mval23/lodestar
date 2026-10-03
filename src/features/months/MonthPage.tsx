@@ -14,6 +14,7 @@ import {
   monthRange,
 } from '../../lib/routes';
 import { monthFindings } from '../../lib/standsOut';
+import { ScrollTable } from '../../ui/ScrollTable';
 import { Amount } from '../../ui/Amount';
 import { Comparison } from '../../ui/Comparison';
 import { DetailHeader, DetailNotFound, SectionHead } from '../../ui/Detail';
@@ -328,50 +329,52 @@ function CategoryTable({
   const shown = rows.filter((r) => r.spent_minor > 0 || r.typical_minor > 0);
   const largest = Math.max(1, ...shown.map((r) => r.spent_minor));
   return (
-    <table className="ledger compact month-categories">
-      <thead>
-        <tr>
-          <th scope="col">Category</th>
-          <th scope="col">
-            <span className="visually-hidden">Share</span>
-          </th>
-          <th scope="col" className="num">
-            Spent
-          </th>
-          {comparable && (
+    <ScrollTable label="Categories table">
+      <table className="ledger compact month-categories">
+        <thead>
+          <tr>
+            <th scope="col">Category</th>
+            <th scope="col">
+              <span className="visually-hidden">Share</span>
+            </th>
             <th scope="col" className="num">
-              vs typical
+              Spent
             </th>
-          )}
-        </tr>
-      </thead>
-      <tbody>
-        {shown.map((row) => (
-          <tr key={row.category_id ?? 'none'}>
-            <th scope="row">
-              {row.category_id ? (
-                <Link to={categoryPath(row.category_id)}>{nameOf(row)}</Link>
-              ) : (
-                <Link to={activityPath({ kind: 'expense', categoryId: 'none', from: monthStart, to: monthLast })}>{nameOf(row)}</Link>
-              )}
-            </th>
-            <td className="month-cat-bar" aria-hidden="true">
-              <span className="bar-track">
-                <i style={{ width: `${row.spent_minor > 0 ? Math.max(2, Math.round((row.spent_minor / largest) * 100)) : 0}%` }} />
-              </span>
-            </td>
-            <td className="num">
-              <Amount minor={row.spent_minor} currency={currency} />
-            </td>
             {comparable && (
-              <td className="num secondary">
-                <Amount minor={row.spent_minor - row.typical_minor} currency={currency} signed />
-              </td>
+              <th scope="col" className="num">
+                vs typical
+              </th>
             )}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {shown.map((row) => (
+            <tr key={row.category_id ?? 'none'}>
+              <th scope="row">
+                {row.category_id ? (
+                  <Link to={categoryPath(row.category_id)}>{nameOf(row)}</Link>
+                ) : (
+                  <Link to={activityPath({ kind: 'expense', categoryId: 'none', from: monthStart, to: monthLast })}>{nameOf(row)}</Link>
+                )}
+              </th>
+              <td className="month-cat-bar" aria-hidden="true">
+                <span className="bar-track">
+                  <i style={{ width: `${row.spent_minor > 0 ? Math.max(2, Math.round((row.spent_minor / largest) * 100)) : 0}%` }} />
+                </span>
+              </td>
+              <td className="num">
+                <Amount minor={row.spent_minor} currency={currency} />
+              </td>
+              {comparable && (
+                <td className="num secondary">
+                  <Amount minor={row.spent_minor - row.typical_minor} currency={currency} signed />
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </ScrollTable>
   );
 }
 

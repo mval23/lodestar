@@ -410,7 +410,7 @@ export function useGoalPaces() {
       if (error) throw error;
       return data.map((row) => ({
         goal_id: row.goal_id ?? '',
-        needed_monthly_minor: row.needed_monthly_minor,
+        needed_monthly_minor: row.needed_monthly_minor ?? null,
         avg_put_in_minor: row.avg_put_in_minor ?? 0,
         months_put_in: row.months_put_in ?? 0,
         estimated_month: row.estimated_month ? row.estimated_month.slice(0, 10) : null,
