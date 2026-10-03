@@ -268,12 +268,15 @@ export function MonthLine({
   currentMonth,
   valueLabel,
   aheadLabel,
+  mark,
 }: {
   title: string;
   caption?: string;
   rows: LinePoint[];
   ahead?: LinePoint[];
   target?: number | null;
+  // A month to mark with a dashed rule, such as a goal's target date.
+  mark?: { month: string; label: string } | null;
   currency: Currency;
   currentMonth: string;
   valueLabel: string;
@@ -304,6 +307,7 @@ export function MonthLine({
           items={[
             { className: 'swatch-in', label: valueLabel },
             ...(ahead.length > 0 && aheadLabel ? [{ className: 'swatch-out swatch-line', label: aheadLabel }] : []),
+            ...(target !== undefined && target !== null ? [{ className: 'swatch-dash', label: 'Target' }] : []),
             { className: 'swatch-now', label: 'This month' },
           ]}
         />
@@ -325,6 +329,14 @@ export function MonthLine({
             {showZero && <line className="chart-zero" x1={0} x2={innerW} y1={amounts(0)} y2={amounts(0)} />}
             {target !== undefined && target !== null && (
               <line className="chart-target" x1={0} x2={innerW} y1={amounts(target)} y2={amounts(target)} />
+            )}
+            {mark && months(mark.month) !== undefined && (
+              <>
+                <line className="chart-target" x1={months(mark.month)} x2={months(mark.month)} y1={0} y2={INNER_H} />
+                <text className="chart-axis-label" x={(months(mark.month) ?? 0) - 4} y={INNER_H - 6} textAnchor="end">
+                  {mark.label}
+                </text>
+              </>
             )}
             {rows.length > 0 && <polyline className="line-net" points={points(rows)} />}
             {ahead.length > 0 && lastPast && <polyline className="line-ahead" points={points([lastPast, ...ahead])} />}

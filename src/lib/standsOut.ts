@@ -453,3 +453,91 @@ export function savingsFindings(
   }
   return findings;
 }
+
+// ---------------------------------------------------------------------------
+// A budget line: where it stands against its pace this month, and whether the
+// plan is realistic given how past months went.
+
+export function budgetLineFindings(
+  name: string,
+  line: (PaceLine & { per_day_minor: number | null }) | null,
+  history: { within: number; planned: number; typical_minor: number | null },
+): Finding[] {
+  const findings: Finding[] = [];
+  if (line) {
+    const left = line.planned_minor - line.spent_minor;
+    if (line.status === 'over') {
+      findings.push({ key: 'now', weight: 2, parts: [`${name} is over plan by `, { minor: -left }, '.'] });
+    } else if (line.days_left > 0) {
+      const gap = line.gap_minor;
+      findings.push({
+        key: 'now',
+        weight: 2,
+        parts: [
+          `${name} is `,
+          { minor: Math.abs(gap) },
+          ` ${gap > 0 ? 'ahead of' : 'under'} pace, with `,
+          { minor: left },
+          ` left for ${days(line.days_left)}.`,
+        ],
+      });
+    }
+  }
+  if (history.planned >= 3) {
+    const over = history.planned - history.within;
+    if (history.within * 2 >= history.planned) {
+      findings.push({ key: 'realistic', weight: 1, parts: ['Most months land within the plan.'] });
+    } else {
+      findings.push({
+        key: 'realistic',
+        weight: 1,
+        parts:
+          history.typical_minor !== null
+            ? [`It went over plan in ${over} of ${history.planned} months; a typical month is `, { minor: history.typical_minor }, '.']
+            : [`It went over plan in ${over} of ${history.planned} months.`],
+      });
+    }
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// A goal: when its recent pace reaches the target, against the date, and what
+// it needs a month to arrive on time.
+
+export function goalFindings(
+  name: string,
+  pace: { avg_put_in_minor: number; estimated_month: string | null; needed_monthly_minor: number | null },
+  targetMonth: string | null,
+  // "Apr 2027", "Jun 30, 2027": formatted by the page.
+  words: { estimate: string | null; target: string | null },
+): Finding[] {
+  const findings: Finding[] = [];
+  if (pace.estimated_month && words.estimate) {
+    let timing = '';
+    if (targetMonth) {
+      const [ey, em] = pace.estimated_month.split('-').map(Number);
+      const [ty, tm] = targetMonth.split('-').map(Number);
+      const diff = ((ty ?? 0) - (ey ?? 0)) * 12 + ((tm ?? 0) - (em ?? 0));
+      timing =
+        diff > 0
+          ? `, ${diff === 1 ? 'a month' : `${diff} months`} early`
+          : diff < 0
+            ? `, ${-diff === 1 ? 'a month' : `${-diff} months`} late`
+            : ', right on time';
+    }
+    findings.push({
+      key: 'estimate',
+      weight: 2,
+      parts: ['At ', { minor: pace.avg_put_in_minor }, ` a month, ${name} is reached around ${words.estimate}${timing}.`],
+    });
+  }
+  if (pace.needed_monthly_minor !== null && words.target) {
+    findings.push({
+      key: 'needed',
+      weight: 1,
+      parts: ['It needs ', { minor: pace.needed_monthly_minor }, ` a month to arrive by ${words.target}.`],
+    });
+  }
+  return findings;
+}

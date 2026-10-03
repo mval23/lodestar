@@ -6,6 +6,8 @@ import { BudgetLinePage } from './BudgetLinePage';
 const useBudgets = vi.fn();
 const useCategory = vi.fn();
 const setBudget = vi.fn();
+const useBudgetHistory = vi.fn();
+const useCategoryStats = vi.fn();
 
 const CAT = '0a8f7b2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b';
 const THIS_MONTH = '2026-09-01';
@@ -43,7 +45,7 @@ vi.mock('./queries', async (importOriginal) => {
   return {
     ...actual,
     useBudgets: () => useBudgets(),
-    useBudgetHistory: () => ({ data: [], isError: false }),
+    useBudgetHistory: () => useBudgetHistory(),
     useSetBudget: () => ({ mutateAsync: setBudget, isPending: false }),
   };
 });
@@ -57,6 +59,42 @@ vi.mock('../categories/queries', async (importOriginal) => {
     useCategoryMonths: () => ({ data: [{ month: THIS_MONTH, total_minor: 48260, txn_count: 5 }], isError: false }),
     useCategories: () => ({ data: [category()] }),
     useCategoryUsage: () => ({ data: [] }),
+    useCategoryStats: () => useCategoryStats(),
+  };
+});
+
+vi.mock('../months/queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../months/queries')>();
+  return {
+    ...actual,
+    useDailySpending: () => ({
+      data: Array.from({ length: 30 }, (_, i) => ({
+        day: `2026-09-${String(i + 1).padStart(2, '0')}`,
+        day_of_month: i + 1,
+        spent_minor: 0,
+        running_minor: i < 18 ? 48260 : 48260,
+        typical_running_minor: 0,
+        typical_months: 6,
+        after_today: i + 1 > 18,
+      })),
+    }),
+  };
+});
+
+vi.mock('../overview/queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../overview/queries')>();
+  return {
+    ...actual,
+    // Plan 520.00 by day 18 of 30: 312.00 on pace; 482.60 spent, so 170.60 ahead.
+    useBudgetPace: () => ({
+      data: [
+        {
+          budget_id: 'b1', category_id: CAT, category_name: 'Groceries', group_id: null, month: THIS_MONTH,
+          planned_minor: 52000, spent_minor: 48260, bills_month_minor: 0, bills_due_minor: 0, pace_minor: 31200,
+          gap_minor: 17060, days_left: 12, per_day_minor: 311, status: 'ahead',
+        },
+      ],
+    }),
   };
 });
 
@@ -100,7 +138,11 @@ beforeEach(() => {
   setBudget.mockReset().mockResolvedValue(undefined);
   useCategory.mockReturnValue({ data: category(), isSuccess: true, isError: false });
   useBudgets.mockReturnValue({ data: [line()], isError: false });
+  useBudgetHistory.mockReturnValue({ data: [], isError: false });
+  useCategoryStats.mockReturnValue({ data: { typical_minor: 51000, months: 11 }, isError: false });
 });
+
+const plan = (month: string, planned: number, spent: number) => ({ ...line(), month, planned_minor: planned, spent_minor: spent, left_minor: planned - spent });
 
 describe('BudgetLinePage', () => {
   it('refuses a month that is not one', () => {
@@ -116,7 +158,7 @@ describe('BudgetLinePage', () => {
 
   it('leads with what is left', () => {
     renderPage();
-    expect(screen.getByText('Left this month')).toBeInTheDocument();
+    expect(screen.getByText('Left to spend')).toBeInTheDocument();
     expect(screen.getAllByText('$37.40').length).toBeGreaterThan(0);
   });
 
@@ -151,10 +193,35 @@ describe('BudgetLinePage', () => {
     });
   });
 
-  it('states the pace without grading it', () => {
+  it('gives what is left a day, as Postgres worked it out', () => {
     renderPage();
-    // 482.60 over 18 days, carried to a 30-day month.
-    expect(screen.getByText(/At this rate, about/)).toBeInTheDocument();
-    expect(screen.getByText(/over the plan/)).toBeInTheDocument();
+    const band = screen.getByRole('region', { name: 'This budget line' });
+    // 37.40 left over 12 days.
+    expect(band).toHaveTextContent(/\$3\.11.*a day/);
+    expect(band).toHaveTextContent('for the 12 days left');
+    expect(band).toHaveTextContent(/\$170\.60.*ahead of pace/);
+  });
+
+  it('suggests the usual amount as a plan only when the plan keeps missing, and only on a tap', async () => {
+    useBudgetHistory.mockReturnValue({
+      data: [plan('2026-05-01', 52000, 56000), plan('2026-06-01', 52000, 58000), plan('2026-07-01', 52000, 50000), plan('2026-08-01', 52000, 61000)],
+      isError: false,
+    });
+    useCategoryStats.mockReturnValue({ data: { typical_minor: 57500, months: 11 }, isError: false });
+    renderPage();
+    expect(screen.getByText(/over plan in 3 of 4 months/)).toBeInTheDocument();
+    expect(setBudget).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: /Use .*\$575\.00 for September/ }));
+    expect(setBudget).toHaveBeenCalledWith({ budgetId: 'b1', categoryId: CAT, month: THIS_MONTH, amountMinor: 57500 });
+  });
+
+  it('suggests nothing when most months land within the plan', () => {
+    useBudgetHistory.mockReturnValue({
+      data: [plan('2026-06-01', 52000, 50000), plan('2026-07-01', 52000, 49000), plan('2026-08-01', 52000, 61000)],
+      isError: false,
+    });
+    renderPage();
+    expect(screen.getByText(/no change suggested/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Use / })).not.toBeInTheDocument();
   });
 });

@@ -148,22 +148,64 @@ export function useGoal(id: string | undefined) {
   });
 }
 
-// Where the recent pace leads: the average of the last complete months'
-// contributions, and the month the target is reached at that rate. `arrives`
-// is null when there is no target, nothing is coming in, or the target is
-// already reached. Stated as arithmetic, never as a grade.
-export function paceOf(
-  goal: Pick<GoalProgress, 'target_minor' | 'balance_minor'>,
-  contributions: number[],
-  currentMonth: string,
-): { average: number; arrives: string | null } {
-  const average =
-    contributions.length > 0 ? Math.round(contributions.reduce((a, b) => a + b, 0) / contributions.length) : 0;
-  if (goal.target_minor === null || average <= 0 || goal.balance_minor >= goal.target_minor) {
-    return { average, arrives: null };
-  }
-  const months = Math.ceil((goal.target_minor - goal.balance_minor) / average);
-  const [y, m] = currentMonth.split('-').map(Number);
-  const date = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1 + months, 1));
-  return { average, arrives: date.toISOString().slice(0, 10) };
+
+export type GoalMonth = { month: string; put_in_minor: number; taken_out_minor: number; closing_balance_minor: number };
+
+// The goal month by month since its account began: what went in, what came
+// out, and the balance at each month's end (goal_month_flow).
+export function useGoalMonths(goalId: string | undefined) {
+  return useQuery({
+    queryKey: [...goalsKey, 'months', goalId],
+    enabled: Boolean(goalId),
+    queryFn: async (): Promise<GoalMonth[]> => {
+      const { data, error } = await db()
+        .from('goal_month_flow')
+        .select('goal_id, month, put_in_minor, taken_out_minor, closing_balance_minor')
+        .eq('goal_id', goalId!)
+        .order('month', { ascending: true });
+      if (error) throw error;
+      return data
+        .filter((row) => row.goal_id === goalId)
+        .map((row) => ({
+          month: (row.month ?? '').slice(0, 10),
+          put_in_minor: row.put_in_minor ?? 0,
+          taken_out_minor: row.taken_out_minor ?? 0,
+          closing_balance_minor: row.closing_balance_minor ?? 0,
+        }));
+    },
+  });
+}
+
+export type GoalPace = {
+  // What a dated target needs each month from here; null without one.
+  needed_monthly_minor: number | null;
+  // The average put in over the 6 complete months before this one.
+  avg_put_in_minor: number;
+  months_put_in: number;
+  // At that pace, when the target is reached; only from 3 or more months of it.
+  estimated_month: string | null;
+};
+
+// One goal's pace, worked out in Postgres (goal_progress).
+export function useGoalPace(goalId: string | undefined) {
+  return useQuery({
+    queryKey: [...goalsKey, 'pace', goalId],
+    enabled: Boolean(goalId),
+    queryFn: async (): Promise<GoalPace | null> => {
+      const { data, error } = await db()
+        .from('goal_progress')
+        .select('goal_id, needed_monthly_minor, avg_put_in_minor, months_put_in, estimated_month')
+        .eq('goal_id', goalId!)
+        .limit(1);
+      if (error) throw error;
+      const row = data.find((r) => r.goal_id === goalId);
+      if (!row) return null;
+      return {
+        needed_monthly_minor: row.needed_monthly_minor,
+        avg_put_in_minor: row.avg_put_in_minor ?? 0,
+        months_put_in: row.months_put_in ?? 0,
+        estimated_month: row.estimated_month ? row.estimated_month.slice(0, 10) : null,
+      };
+    },
+  });
 }
