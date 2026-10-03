@@ -4,9 +4,12 @@ import {
   budgetFindings,
   budgetLineFindings,
   categoryFindings,
+  debtFindings,
   monthFindings,
   netWorthFindings,
   overviewFindings,
+  recurringFindings,
+  runwayFindings,
   savingsFindings,
   spendingFindings,
   type MonthSoFar,
@@ -260,5 +263,37 @@ describe('goalFindings', () => {
   it('gives no estimate without one', () => {
     const pace = { avg_put_in_minor: 0, estimated_month: null, needed_monthly_minor: null };
     expect(said(goalFindings('Home', pace, null, { estimate: null, target: null }))).toBe('');
+  });
+});
+
+describe('recurringFindings', () => {
+  it('gives the yearly cost, the item that carries most of it, and what else looks recurring', () => {
+    expect(said(recurringFindings(2461207, { name: 'Rent', yearly_minor: 1980000 }, { found: 4, yearly_minor: 44688 }))).toBe(
+      'Bills and subscriptions you’ve set up come to [2461207] a year, and Rent is 80% of that. 4 more expenses look recurring but aren’t set up: together about [44688] a year.',
+    );
+    expect(said(recurringFindings(0, null, { found: 1, yearly_minor: 3588 }))).toBe(
+      '1 more expense looks recurring but isn’t set up: together about [3588] a year.',
+    );
+  });
+});
+
+describe('runwayFindings', () => {
+  it('gives the runway, a group alone, and what cash covers without goal accounts', () => {
+    expect(said(runwayFindings(9.8, 1.9, { name: 'Essentials', months: 13.4 }))).toBe(
+      'Cash and goal savings would cover about 9.8 months of spending at the recent average, or 13.4 months of Essentials alone. Without touching goal accounts, available cash covers 1.9 months.',
+    );
+    expect(said(runwayFindings(null, null, null))).toBe('');
+  });
+});
+
+describe('debtFindings', () => {
+  it('says how what is owed moved, where payments went, the card paid in full, and the payoff', () => {
+    const debts = [
+      { name: 'Car loan', type: 'loan', paid_minor: 462000, months_with_purchases: 0, months_paid_full: 0 },
+      { name: 'Visa card', type: 'credit_card', paid_minor: 2033744, months_with_purchases: 12, months_paid_full: 12 },
+    ];
+    expect(said(debtFindings(455744, debts, { name: 'Car loan', recent_minor: 38500, month: 'December 2027' }, 12))).toBe(
+      'What’s owed fell by [455744] in 12 months; the most went to the Visa card: [2033744]. The Visa card was paid in full every month, so its balance is only the latest purchases. At [38500] a month, the Car loan would be cleared around December 2027.',
+    );
   });
 });

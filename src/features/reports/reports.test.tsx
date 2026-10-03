@@ -30,6 +30,9 @@ vi.mock('./queries', async (importOriginal) => {
     useCurrentMonthFlow: () => useCurrentMonthFlow(),
     useFirstActivityMonth: () => useFirstActivityMonth(),
     useBudgetSummary: () => ({ data: { lines: 9, within: 7 }, isPending: false, isError: false }),
+    useRecurringCosts: () => ({ data: [], isPending: false, isError: false }),
+    useCashRunway: () => ({ data: [], isPending: false, isError: false }),
+    useDebtSummary: () => ({ data: [], isPending: false, isError: false }),
   };
 });
 vi.mock('../accounts/queries', async (importOriginal) => {

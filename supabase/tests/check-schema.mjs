@@ -1164,6 +1164,124 @@ await test('goal_progress gives the monthly need, the recent pace and an estimat
   await sql(`delete from auth.users where id = $1`, [D]);
 });
 
+await test('recurring_costs prices each bill a year, and report_fixed_flexible splits spending by it', async () => {
+  const rows = (await asUser(C, `select recurring_item_id, yearly_minor, paid_12m_minor, payments_12m, total_yearly_minor,
+                                        total_monthly_minor, subscriptions_yearly_minor, items
+                                   from public.recurring_costs($1)`, [TODAY])).rows
+    .map((x) => [x.recurring_item_id === c.rentBill ? 'rent' : 'lesson', num(x.yearly_minor), num(x.paid_12m_minor), x.payments_12m,
+      num(x.total_yearly_minor), num(x.total_monthly_minor), num(x.subscriptions_yearly_minor), x.items]);
+  eq(rows, [
+    // 1,500.00 a month; paid once (March) through Mark as paid.
+    ['rent', 1800000, 150000, 1, 1904000, 158667, 104000, 2],
+    // 20.00 a week, 52 weeks.
+    ['lesson', 104000, 0, 0, 1904000, 158667, 104000, 2],
+  ], 'C at the 10th of March');
+  const split = (await asUser(C, `select month::text as m, fixed_minor, flexible_minor, fixed_total_minor, all_total_minor
+                                    from public.report_fixed_flexible('2026-02-01', '2026-04-01')`)).rows
+    .map((x) => [x.m.slice(0, 10), num(x.fixed_minor), num(x.flexible_minor), num(x.fixed_total_minor), num(x.all_total_minor)]);
+  eq(split, [
+    ['2026-02-01', 0, 30000, 150000, 200499],
+    ['2026-03-01', 150000, 20499, 150000, 200499],
+  ], 'fixed is what was paid through a bill');
+});
+
+// A fifth person for the safety reports, with cards, a loan and repeating
+// expenses, everything from September 2025 to February 2026 (and the card
+// payment for February on March 3). Today is March 10.
+const E = '00000000-0000-4000-8000-00000000000e';
+const e = {};
+
+await test('user E sets up cards, a loan and repeating expenses', async () => {
+  await sql(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'user-e@example.test', '{"timezone":"UTC"}')`, [E]);
+  e.chk = (await insertAs(E, 'accounts', { name: 'E Checking', type: 'checking', opening_balance_minor: 500000 })).id;
+  e.wallet = (await insertAs(E, 'accounts', { name: 'E Wallet', type: 'cash', opening_balance_minor: 20000 })).id;
+  e.card = (await insertAs(E, 'accounts', { name: 'E Card', type: 'credit_card' })).id;
+  e.fund = (await insertAs(E, 'accounts', { name: 'E Fund', type: 'savings' })).id;
+  e.loan = (await insertAs(E, 'accounts', { name: 'E Loan', type: 'loan', opening_balance_minor: -1200000 })).id;
+  await insertAs(E, 'goals', { account_id: e.fund, name: 'E goal' });
+  await insertAs(E, 'recurring_items', {
+    name: 'Rent', label: 'bill', kind: 'expense', amount_minor: 100000, from_account_id: e.chk,
+    cadence_unit: 'month', anchor_on: '2025-10-01', next_due_on: '2026-03-01' });
+  const t = (row) => insertAs(E, 'transactions', row);
+  const months = ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02'];
+  for (const [i, m] of months.entries()) {
+    await t({ kind: 'income', occurred_on: `${m}-01`, amount_minor: 300000, to_account_id: e.chk, description: 'Salary' });
+    await t({ kind: 'transfer', occurred_on: `${m}-02`, amount_minor: 10000, from_account_id: e.chk, to_account_id: e.fund, description: 'To fund' });
+    await t({ kind: 'expense', occurred_on: `${m}-05`, amount_minor: 40000, from_account_id: e.chk, description: 'Groceries run' });
+    await t({ kind: 'expense', occurred_on: `${m}-10`, amount_minor: 999, from_account_id: e.card, description: 'Streaming' });
+    await t({ kind: 'transfer', occurred_on: `${m}-20`, amount_minor: 30000, from_account_id: e.chk, to_account_id: e.loan, description: 'Loan payment' });
+    const next = months[i + 1] ?? '2026-03';
+    await t({ kind: 'transfer', occurred_on: `${next}-03`, amount_minor: 999, from_account_id: e.chk, to_account_id: e.card, description: 'Card payment' });
+    // Rent by hand, never through Mark as paid; its name is a bill's.
+    if (i > 0) await t({ kind: 'expense', occurred_on: `${m}-01`, amount_minor: 100000, from_account_id: e.chk, description: 'Rent' });
+  }
+  for (const m of ['2025-11', '2025-12', '2026-01']) {
+    await t({ kind: 'expense', occurred_on: `${m}-15`, amount_minor: 4500, from_account_id: e.chk, description: 'Gym' });
+  }
+  for (const [m, amount] of [['2025-12', 1000], ['2026-01', 2000], ['2026-02', 1000]]) {
+    await t({ kind: 'expense', occurred_on: `${m}-12`, amount_minor: amount, from_account_id: e.chk, description: 'Cafe' });
+  }
+});
+
+await test('possible_recurring finds steady repeating expenses, and leaves out bills and uneven ones', async () => {
+  const rows = (await asUser(E, `select description, typical_minor, yearly_minor, months_seen, run_months, last_on::text as last,
+                                        confidence, found, found_yearly_minor
+                                   from public.possible_recurring('2025-09-01')`)).rows
+    .map((x) => [x.description, num(x.typical_minor), num(x.yearly_minor), x.months_seen, x.run_months, x.last.slice(0, 10),
+      x.confidence, x.found, num(x.found_yearly_minor)]);
+  // Rent is a bill's name; Cafe varies by more than 10%.
+  eq(rows, [
+    ['Groceries run', 40000, 480000, 6, 6, '2026-02-05', 'medium', 3, 545988],
+    ['Gym', 4500, 54000, 3, 3, '2026-01-15', 'medium', 3, 545988],
+    ['Streaming', 999, 11988, 6, 6, '2026-02-10', 'medium', 3, 545988],
+  ], 'E since September');
+  // Set up as a bill, Streaming leaves the list.
+  const bill = await insertAs(E, 'recurring_items', {
+    name: 'Streaming', label: 'subscription', kind: 'expense', amount_minor: 999, from_account_id: e.card,
+    cadence_unit: 'month', anchor_on: '2026-03-10', next_due_on: '2026-03-10' });
+  const after = (await asUser(E, `select description from public.possible_recurring('2025-09-01')`)).rows.map((x) => x.description);
+  eq(after, ['Groceries run', 'Gym'], 'after the bill');
+  await asUser(E, `delete from public.recurring_items where id = $1`, [bill.id]);
+});
+
+await test('cash_runway works out every line it shows, and the months each covers', async () => {
+  const rows = (await asUser(E, `select line, name, amount_minor, months, n from public.cash_runway(6, null, $1)`, [TODAY])).rows
+    .map((x) => [x.line, x.name, num(x.amount_minor), x.months === null ? null : Number(x.months), x.n]);
+  eq(rows, [
+    // 5,000.00 + 18,000.00 in, less groceries, rent, gym, cafe, the loan,
+    // the fund and six card payments of 9.99.
+    ['account', 'E Checking', 1296506, null, null],
+    ['account', 'E Wallet', 20000, null, null],
+    // Six purchases of 9.99, six payments: nothing owed now.
+    ['account', 'E Card', 0, null, null],
+    ['available', null, 1316506, 10.3, null],
+    ['goal', 'E Fund', 60000, 0.5, null],
+    ['goals', null, 60000, 0.5, null],
+    // September to February: 7,634.94 over 6 months.
+    ['spending', null, 127249, null, 6],
+    ['loan_payments', null, 30000, null, 6],
+    ['runway', null, 1376506, 10.8, null],
+    ['runway_loans', null, 1376506, 8.8, null],
+  ], 'E on March 10');
+});
+
+await test('debt_summary follows each card and loan, and estimates the payoff from recent payments', async () => {
+  const rows = (await asUser(E, `select name, start_minor, end_minor, balance_minor, paid_minor, purchases_minor,
+                                        months_with_purchases, months_paid_full, recent_payment_minor, payments_left,
+                                        payoff_month::text as payoff, total_start_minor, total_end_minor, total_paid_minor
+                                   from public.debt_summary('2025-09-01', '2026-03-01', $1)`, [TODAY])).rows
+    .map((x) => [x.name, num(x.start_minor), num(x.end_minor), num(x.balance_minor), num(x.paid_minor), num(x.purchases_minor),
+      x.months_with_purchases, x.months_paid_full, num(x.recent_payment_minor), x.payments_left, x.payoff ? x.payoff.slice(0, 10) : null,
+      num(x.total_start_minor), num(x.total_end_minor), num(x.total_paid_minor)]);
+  eq(rows, [
+    // 10,200.00 still owed at 300.00 a month: 34 payments, the last in December 2028.
+    ['E Loan', -1200000, -1020000, -1020000, 180000, 0, 0, 0, 30000, 34, '2028-12-01', -1200000, -1020999, 184995],
+    // Each month's purchases paid by the next month's payment, February's on March 3.
+    ['E Card', 0, -999, 0, 4995, 5994, 6, 6, 999, null, null, -1200000, -1020999, 184995],
+  ], 'September to February');
+  await sql(`delete from auth.users where id = $1`, [E]);
+});
+
 await test('an account left out of net worth leaves it, history and all, but stays in account_balances', async () => {
   const latest = `select net_worth_minor from public.net_worth_by_month order by month desc limit 1`;
   const held = (await insertAs(C, 'accounts', { name: 'C held for someone', type: 'other_asset', opening_balance_minor: 50000 })).id;
@@ -1259,6 +1377,14 @@ await test("the report functions show A none of C's money", async () => {
   assert(!names.some((n) => n.startsWith('C ')), "A sees none of C's accounts");
 });
 
+await test("the safety report functions show A nothing of C's", async () => {
+  eq((await asUser(A, `select * from public.recurring_costs('2026-03-10') where recurring_item_id = $1`, [c.rentBill])).rows.length, 0,
+     'recurring_costs');
+  eq((await asUser(A, `select * from public.possible_recurring('2025-09-01') where category_id = any ($1)`,
+       [[c.rent, c.groceries, c.lessons, c.fun]])).rows.length, 0, 'possible_recurring');
+  eq((await asUser(A, `select * from public.cash_runway(6, null, '2026-03-10') where name like 'C %'`)).rows.length, 0, 'cash_runway');
+});
+
 await test("the Phase 5 report functions show A nothing of C's", async () => {
   const ids = [c.rent, c.groceries, c.lessons, c.fun];
   for (const call of [
@@ -1327,6 +1453,11 @@ await test('anon cannot call any RPC', async () => {
     `select * from public.report_category_totals('2026-01-01', '2026-04-01', '2025-10-01')`,
     `select * from public.budget_month_results('2026-01-01', '2026-04-01')`,
     `select * from public.budget_month_summary('2026-03-01')`,
+    `select * from public.recurring_costs()`,
+    `select * from public.report_fixed_flexible('2026-01-01', '2026-04-01')`,
+    `select * from public.possible_recurring('2026-01-01')`,
+    `select * from public.cash_runway()`,
+    `select * from public.debt_summary('2026-01-01', '2026-04-01')`,
   ]) {
     await expectError(asAnon(call), /permission denied/, call);
   }

@@ -541,3 +541,112 @@ export function goalFindings(
   }
   return findings;
 }
+
+// ---------------------------------------------------------------------------
+// Recurring payments: what the set-up items cost a year, the one that
+// carries most of it, and what else looks recurring.
+
+export function recurringFindings(
+  totalYearly: number,
+  largest: { name: string; yearly_minor: number } | null,
+  possible: { found: number; yearly_minor: number },
+): Finding[] {
+  const findings: Finding[] = [];
+  if (totalYearly > 0) {
+    const carries = largest && largest.yearly_minor >= totalYearly * LARGE_SHARE ? `, and ${largest.name} is ${percent(largest.yearly_minor / totalYearly)} of that` : '';
+    findings.push({
+      key: 'total',
+      weight: 2,
+      parts: ['Bills and subscriptions you’ve set up come to ', { minor: totalYearly }, ` a year${carries}.`],
+    });
+  }
+  if (possible.found > 0) {
+    findings.push({
+      key: 'possible',
+      weight: 1,
+      parts: [
+        `${possible.found} more ${possible.found === 1 ? 'expense looks' : 'expenses look'} recurring but ${possible.found === 1 ? 'isn’t' : 'aren’t'} set up: together about `,
+        { minor: possible.yearly_minor },
+        ' a year.',
+      ],
+    });
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// Cash runway: how long cash and goal savings would last, with a group's
+// spending alone, and without touching goal accounts. Months come from
+// Postgres, already rounded.
+
+const months = (n: number) => `${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n)} months`;
+
+export function runwayFindings(
+  runway: number | null,
+  available: number | null,
+  group: { name: string; months: number } | null,
+): Finding[] {
+  const findings: Finding[] = [];
+  if (runway !== null) {
+    findings.push({
+      key: 'runway',
+      weight: 2,
+      parts: [
+        `Cash and goal savings would cover about ${months(runway)} of spending at the recent average${group ? `, or ${months(group.months)} of ${group.name} alone` : ''}.`,
+      ],
+    });
+  }
+  if (available !== null && runway !== null && available < runway) {
+    findings.push({
+      key: 'available',
+      weight: 1,
+      parts: [`Without touching goal accounts, available cash covers ${months(available)}.`],
+    });
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// Debt repayment: how what is owed moved, the debt paid down most, and when
+// a loan would be cleared at its recent payment.
+
+export type DebtFigures = { name: string; type: string; paid_minor: number; months_with_purchases: number; months_paid_full: number };
+
+export function debtFindings(
+  owedChange: number,
+  debts: DebtFigures[],
+  payoff: { name: string; recent_minor: number; month: string } | null,
+  months: number,
+): Finding[] {
+  const findings: Finding[] = [];
+  const most = [...debts].sort((a, b) => b.paid_minor - a.paid_minor)[0];
+  if (owedChange !== 0) {
+    findings.push({
+      key: 'change',
+      weight: 2,
+      parts: [
+        `What’s owed ${owedChange > 0 ? 'fell' : 'rose'} by `,
+        { minor: Math.abs(owedChange) },
+        ` in ${months === 1 ? '1 month' : `${months} months`}`,
+        ...(most && most.paid_minor > 0 ? [`; the most went to the ${most.name}: `, { minor: most.paid_minor }, '.'] : ['.']),
+      ],
+    });
+  }
+  for (const card of debts.filter((d) => d.type === 'credit_card' && d.months_with_purchases > 0)) {
+    if (card.months_paid_full === card.months_with_purchases) {
+      findings.push({
+        key: `card-${card.name}`,
+        weight: 1,
+        parts: [`The ${card.name} was paid in full every month, so its balance is only the latest purchases.`],
+      });
+    }
+  }
+  if (payoff) {
+    findings.push({
+      key: 'payoff',
+      weight: 1,
+      parts: ['At ', { minor: payoff.recent_minor }, ` a month, the ${payoff.name} would be cleared around ${payoff.month}.`],
+    });
+  }
+  return findings;
+}

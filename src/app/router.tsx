@@ -20,7 +20,10 @@ import { GoalsPage } from '../features/goals/GoalsPage';
 import { ImportExportPage } from '../features/import-export/ImportExportPage';
 import { CashFlowReportPage } from '../features/reports/CashFlowReportPage';
 import { BudgetsReportPage } from '../features/reports/BudgetsReportPage';
+import { DebtReportPage } from '../features/reports/DebtReportPage';
 import { NetWorthReportPage } from '../features/reports/NetWorthReportPage';
+import { RecurringReportPage } from '../features/reports/RecurringReportPage';
+import { RunwayReportPage } from '../features/reports/RunwayReportPage';
 import { SavingsReportPage } from '../features/reports/SavingsReportPage';
 import { SpendingReportPage } from '../features/reports/SpendingReportPage';
 import { ReportsPage } from '../features/reports/ReportsPage';
@@ -74,6 +77,9 @@ export const routes: RouteObject[] = [
               { path: '/reports/spending', element: <SpendingReportPage /> },
               { path: '/reports/budgets', element: <BudgetsReportPage /> },
               { path: '/reports/savings', element: <SavingsReportPage /> },
+              { path: '/reports/recurring', element: <RecurringReportPage /> },
+              { path: '/reports/runway', element: <RunwayReportPage /> },
+              { path: '/reports/debt', element: <DebtReportPage /> },
               // A month is a range over the ledger, never a table of its own.
               { path: '/months/:month', element: <MonthPage /> },
               // Categories have a page of their own, reached from Budgets and

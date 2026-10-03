@@ -418,3 +418,178 @@ export function useGoalPaces() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Recurring payments, Cash runway, Debt repayment.
+
+export type RecurringCost = {
+  recurring_item_id: string;
+  yearly_minor: number;
+  paid_12m_minor: number;
+  payments_12m: number;
+  last_paid_on: string | null;
+  total_yearly_minor: number;
+  total_monthly_minor: number;
+  subscriptions_yearly_minor: number;
+  items: number;
+};
+
+// Each bill and subscription at its yearly cost, with the totals (recurring_costs).
+export function useRecurringCosts() {
+  return useQuery({
+    queryKey: [...reportsKey, 'recurring-costs'],
+    queryFn: async (): Promise<RecurringCost[]> => {
+      const { data, error } = await db().rpc('recurring_costs', {});
+      if (error) throw error;
+      return (data ?? []).map((row) => ({ ...row, last_paid_on: ((row.last_paid_on as string | null) ?? null)?.slice(0, 10) ?? null }));
+    },
+  });
+}
+
+export type FixedFlexibleMonth = {
+  month: string;
+  fixed_minor: number;
+  flexible_minor: number;
+  total_minor: number;
+  fixed_total_minor: number;
+  all_total_minor: number;
+};
+
+// Each month's spending, through bills and the rest (report_fixed_flexible).
+export function useFixedFlexible(from: string, to: string, accountIds: string[] | null) {
+  return useQuery({
+    queryKey: [...reportsKey, 'fixed-flexible', from, to, accountIds],
+    enabled: from < to,
+    queryFn: async (): Promise<FixedFlexibleMonth[]> => {
+      const { data, error } = await db().rpc('report_fixed_flexible', {
+        p_from: from,
+        p_to: to,
+        p_account_ids: accountIds ?? undefined,
+      });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({ ...row, month: row.month.slice(0, 10) }));
+    },
+  });
+}
+
+export type PossibleRecurring = {
+  description: string;
+  category_id: string | null;
+  account_id: string | null;
+  typical_minor: number;
+  yearly_minor: number;
+  months_seen: number;
+  run_months: number;
+  last_on: string;
+  confidence: 'high' | 'medium';
+  found: number;
+  found_yearly_minor: number;
+};
+
+// Expenses that repeat like a bill but are not one (possible_recurring).
+export function usePossibleRecurring(since: string) {
+  return useQuery({
+    queryKey: [...reportsKey, 'possible-recurring', since],
+    queryFn: async (): Promise<PossibleRecurring[]> => {
+      const { data, error } = await db().rpc('possible_recurring', { p_since: since });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        ...row,
+        category_id: (row.category_id as string | null) ?? null,
+        account_id: (row.account_id as string | null) ?? null,
+        last_on: row.last_on.slice(0, 10),
+        confidence: row.confidence === 'high' ? 'high' : 'medium',
+      }));
+    },
+  });
+}
+
+export type RunwayLine = {
+  line: 'account' | 'available' | 'goal' | 'goals' | 'spending' | 'group_spending' | 'loan_payments' | 'runway' | 'runway_loans' | 'group_runway';
+  account_id: string | null;
+  name: string | null;
+  amount_minor: number;
+  // Null when there is no spending to divide by.
+  months: number | null;
+  n: number | null;
+};
+
+// The runway, line by line (cash_runway).
+export function useCashRunway(months: number, groupId: string | null) {
+  return useQuery({
+    queryKey: [...reportsKey, 'cash-runway', months, groupId],
+    queryFn: async (): Promise<RunwayLine[]> => {
+      const { data, error } = await db().rpc('cash_runway', { p_months: months, ...(groupId ? { p_group_id: groupId } : {}) });
+      if (error) throw error;
+      // The generator calls every column non-null; four can be null.
+      return (data ?? []).map((row) => ({
+        line: row.line as RunwayLine['line'],
+        account_id: (row.account_id as string | null) ?? null,
+        name: (row.name as string | null) ?? null,
+        amount_minor: row.amount_minor,
+        months: (row.months as number | null) === null ? null : Number(row.months),
+        n: (row.n as number | null) ?? null,
+      }));
+    },
+  });
+}
+
+export type DebtLine = {
+  account_id: string;
+  name: string;
+  type: string;
+  start_minor: number;
+  end_minor: number;
+  balance_minor: number;
+  paid_minor: number;
+  purchases_minor: number;
+  months_with_purchases: number;
+  months_paid_full: number;
+  recent_payment_minor: number;
+  payments_left: number | null;
+  payoff_month: string | null;
+  total_start_minor: number;
+  total_end_minor: number;
+  total_paid_minor: number;
+};
+
+// Each card and loan over the period, with a payoff estimate (debt_summary).
+export function useDebtSummary(from: string, to: string) {
+  return useQuery({
+    queryKey: [...reportsKey, 'debt-summary', from, to],
+    enabled: from < to,
+    queryFn: async (): Promise<DebtLine[]> => {
+      const { data, error } = await db().rpc('debt_summary', { p_from: from, p_to: to });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        ...row,
+        payments_left: (row.payments_left as number | null) ?? null,
+        payoff_month: ((row.payoff_month as string | null) ?? null)?.slice(0, 10) ?? null,
+      }));
+    },
+  });
+}
+
+export type AccountMonthFlow = { account_id: string; month: string; closing_balance_minor: number; transfer_in_minor: number };
+
+// Every account's month-end balance and money transferred in, month by
+// month, for the debt charts (account_month_flow).
+export function useAccountMonthFlows(from: string, toInclusive: string) {
+  return useQuery({
+    queryKey: [...reportsKey, 'account-month-flows', from, toInclusive],
+    queryFn: async (): Promise<AccountMonthFlow[]> => {
+      const { data, error } = await db()
+        .from('account_month_flow')
+        .select('account_id, month, closing_balance_minor, transfer_in_minor')
+        .gte('month', from)
+        .lte('month', toInclusive);
+      if (error) throw error;
+      return data.map((row) => ({
+        account_id: row.account_id ?? '',
+        month: (row.month ?? '').slice(0, 10),
+        closing_balance_minor: row.closing_balance_minor ?? 0,
+        transfer_in_minor: row.transfer_in_minor ?? 0,
+      }));
+    },
+  });
+}
