@@ -8,7 +8,9 @@ import { Amount } from '../../ui/Amount';
 import { Comparison } from '../../ui/Comparison';
 import { PaceCapsule } from '../../ui/PaceCapsule';
 import { Sparkline } from '../../ui/Sparkline';
+import { Notice } from '../../ui/Notice';
 import { StandsOut } from '../../ui/StandsOut';
+import { dataErrorMessage } from '../auth/errors';
 import { netWorthOf, type AccountBalance } from '../accounts/queries';
 import { useGoals } from '../goals/queries';
 import { useNetWorth } from '../reports/queries';
@@ -29,6 +31,9 @@ const lastDayOf = (month: string) => monthRange(month).to;
 export function OverviewStandsOut({ month, currency }: { month: string; currency: Currency }) {
   const pace = useBudgetPace(month);
   const soFar = useMonthToDate(month);
+  // The month's figures failed to load: said once, here, above them.
+  const error = pace.error ?? soFar.error;
+  if (error) return <Notice tone="err">{dataErrorMessage(error)}</Notice>;
   if (!pace.data || soFar.data === undefined) return null;
   return <StandsOut findings={overviewFindings(pace.data, soFar.data, monthShort(month))} currency={currency} />;
 }
@@ -99,7 +104,9 @@ export function ThisMonthBand({ accounts, month, currency }: { accounts: Account
         <h2 className="caption">
           <TitleLink to={budgetMonthPath(month)}>{`${over ? 'Over plan by' : 'Left to spend'} · ${formatMonth(month).split(' ')[0]}`}</TitleLink>
         </h2>
-        {pace.isPending ? (
+        {pace.isError ? (
+          <p className="footnote flush">Not available</p>
+        ) : pace.isPending ? (
           <p className="footnote flush">Loading…</p>
         ) : lines.length === 0 ? (
           <p className="footnote flush">
@@ -126,7 +133,9 @@ export function ThisMonthBand({ accounts, month, currency }: { accounts: Account
         <h2 className="caption">
           <TitleLink to={monthPath(month)}>Money in so far</TitleLink>
         </h2>
-        {soFar.isPending ? (
+        {soFar.isError ? (
+          <p className="footnote flush">Not available</p>
+        ) : soFar.isPending ? (
           <p className="footnote flush">Loading…</p>
         ) : (
           <>
@@ -148,7 +157,9 @@ export function ThisMonthBand({ accounts, month, currency }: { accounts: Account
         <h2 className="caption">
           <TitleLink to={monthPath(month)}>Money out so far</TitleLink>
         </h2>
-        {soFar.isPending ? (
+        {soFar.isError ? (
+          <p className="footnote flush">Not available</p>
+        ) : soFar.isPending ? (
           <p className="footnote flush">Loading…</p>
         ) : (
           <>
@@ -170,7 +181,9 @@ export function ThisMonthBand({ accounts, month, currency }: { accounts: Account
         <h2 className="caption">
           <TitleLink to="/goals">Into goals this month</TitleLink>
         </h2>
-        {soFar.isPending ? (
+        {soFar.isError ? (
+          <p className="footnote flush">Not available</p>
+        ) : soFar.isPending ? (
           <p className="footnote flush">Loading…</p>
         ) : (
           <>
@@ -226,35 +239,26 @@ export function ThisMonthBand({ accounts, month, currency }: { accounts: Account
 }
 
 // ---------------------------------------------------------------------------
-// Budgets that need a look: over plan, then ahead of pace. The first three,
-// then a line for the rest.
+// Budgets: every line planned this month, over plan first, then ahead of
+// pace, then the rest by share of the plan used.
 // ---------------------------------------------------------------------------
-const NEED_SHOWN = 3;
-
-export function restNote(more: number, ahead: number): string {
-  if (ahead === 0) return `${more} more, all on pace or under.`;
-  if (ahead === more) return `${more} more, all ahead of pace or over.`;
-  return `${more} more: ${ahead} ahead of pace or over, ${more - ahead} on pace or under.`;
-}
-
-export function NeedsALook({ month, currency }: { month: string; currency: Currency }) {
+export function BudgetsGroup({ month, currency }: { month: string; currency: Currency }) {
   const pace = useBudgetPace(month);
   const rows = [...(pace.data ?? [])].sort(byNeed);
-  const shown = rows.slice(0, NEED_SHOWN);
-  const rest = rows.slice(NEED_SHOWN);
-  const restAhead = rest.filter((row) => row.status !== 'on_pace').length;
 
   return (
     <section className="group wide-group" aria-labelledby="overview-needs">
       <div className="wide-head">
         <h2 className="headline" id="overview-needs">
-          Budgets that need a look
+          Budgets
         </h2>
         <Link className="footnote" to={budgetMonthPath(month)}>
-          {rows.length > 0 ? `All ${rows.length}` : 'Budgets'}
+          {formatMonth(month).split(' ')[0]}
         </Link>
       </div>
-      {pace.isPending ? (
+      {pace.isError ? (
+        <p className="footnote wide-empty">Not available</p>
+      ) : pace.isPending ? (
         <p className="footnote wide-empty">Loading…</p>
       ) : rows.length === 0 ? (
         <p className="footnote wide-empty">
@@ -263,7 +267,7 @@ export function NeedsALook({ month, currency }: { month: string; currency: Curre
         </p>
       ) : (
         <>
-          {shown.map((row) => (
+          {rows.map((row) => (
             <Link key={row.category_id} className="need-row" to={budgetLinePath(month, row.category_id)}>
               <span className="need-top">
                 <span className="need-name">{row.category_name}</span>
@@ -286,7 +290,6 @@ export function NeedsALook({ month, currency }: { month: string; currency: Curre
             </Link>
           ))}
           <p className="caption need-note">
-            {rest.length > 0 && `${restNote(rest.length, restAhead)} `}
             Blue tick: where spending would be today, with bills on their due dates and the rest spread evenly.
           </p>
         </>

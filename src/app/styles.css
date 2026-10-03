@@ -2813,7 +2813,7 @@ a:hover {
   font-weight: 600;
 }
 
-/* Budgets that need a look, where you stand, and goals. */
+/* Budgets, where you stand, and goals. */
 .wide-three {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);

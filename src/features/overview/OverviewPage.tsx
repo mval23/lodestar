@@ -14,7 +14,7 @@ import { AccountSheet } from '../accounts/AccountSheet';
 import { useAccounts } from '../accounts/queries';
 import { describeDue, dueStateOf, useBills } from '../bills/queries';
 import { TransactionSheet } from '../transactions/TransactionSheet';
-import { GoalsGroup, NeedsALook, OverviewStandsOut, ThisMonthBand, WhereYouStand } from './Dashboard';
+import { GoalsGroup, BudgetsGroup, OverviewStandsOut, ThisMonthBand, WhereYouStand } from './Dashboard';
 import { hasSeenTour, useTour } from '../tour/Tour';
 import { navTarget } from '../tour/steps';
 import { PHONE, useMediaQuery } from '../../lib/media';
@@ -78,7 +78,7 @@ export function OverviewPage() {
                 the rest folded so the month's figures fit on one screen. */}
             <OverviewStandsOut month={thisMonth} currency={currency} />
             <ThisMonthBand accounts={rows} month={thisMonth} currency={currency} />
-            <NeedsALook month={thisMonth} currency={currency} />
+            <BudgetsGroup month={thisMonth} currency={currency} />
             <details className="fold">
               <summary className="fold-summary">Where you stand</summary>
               <div className="fold-body">

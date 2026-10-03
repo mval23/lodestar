@@ -21,7 +21,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/readme/overview-dark.png">
-    <img src="docs/readme/overview.png" alt="The Overview: left to spend this month against its pace, money in and out so far against a typical month, into goals, net worth, the budgets that need a look, where you stand, goals and bills coming up">
+    <img src="docs/readme/overview.png" alt="The Overview: left to spend this month against its pace, money in and out so far against a typical month, into goals, net worth, every budget line against its pace, where you stand, goals and bills coming up">
   </picture>
 </p>
 
