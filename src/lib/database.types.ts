@@ -319,6 +319,22 @@ export type Database = {
           remaining_minor: number | null;
           this_month: string | null;
           this_month_contributed_minor: number | null;
+          needed_monthly_minor: number | null;
+          avg_put_in_minor: number | null;
+          months_put_in: number | null;
+          estimated_month: string | null;
+        };
+        Relationships: [];
+      };
+      goal_month_flow: {
+        Row: {
+          user_id: string | null;
+          goal_id: string | null;
+          account_id: string | null;
+          month: string | null;
+          put_in_minor: number | null;
+          taken_out_minor: number | null;
+          closing_balance_minor: number | null;
         };
         Relationships: [];
       };
@@ -445,6 +461,38 @@ export type Database = {
       };
     };
     Functions: {
+      report_category_months: {
+        Args: { p_from: string; p_to: string; p_account_ids?: string[] };
+        Returns: { category_id: string; month: string; total_minor: number }[];
+      };
+      report_category_totals: {
+        Args: { p_from: string; p_to: string; p_compare_from: string; p_account_ids?: string[] };
+        Returns: { category_id: string; total_minor: number; txn_count: number; compare_minor: number }[];
+      };
+      budget_month_results: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          category_id: string;
+          month: string;
+          planned_minor: number;
+          spent_minor: number;
+          within_plan: boolean;
+        }[];
+      };
+      budget_month_summary: {
+        Args: { p_month: string };
+        Returns: {
+          planned_minor: number;
+          spent_planned_minor: number;
+          unplanned_minor: number;
+          uncategorized_minor: number;
+          lines: number;
+          within: number;
+          history_lines: number;
+          history_within: number;
+          first_month: string;
+        }[];
+      };
       budget_pace: {
         Args: { p_month: string; p_today?: string };
         Returns: {
@@ -565,6 +613,48 @@ export type Database = {
           typical_out_minor: number;
           typical_to_goals_minor: number;
           typical_months: number;
+        }[];
+      };
+      // Returns-table columns come out non-null from the generator, even
+      // where Postgres can return null; the hooks say which can.
+      daily_spending: {
+        Args: { p_month: string; p_category_id?: string; p_today?: string };
+        Returns: {
+          day: string;
+          day_of_month: number;
+          spent_minor: number;
+          running_minor: number;
+          typical_running_minor: number;
+          typical_months: number;
+          after_today: boolean;
+        }[];
+      };
+      month_categories: {
+        Args: { p_month: string; p_today?: string };
+        Returns: {
+          category_id: string;
+          spent_minor: number;
+          typical_minor: number;
+          typical_months: number;
+        }[];
+      };
+      category_stats: {
+        Args: { p_category_id: string; p_month: string };
+        Returns: {
+          this_month_minor: number;
+          plan_minor: number;
+          typical_minor: number;
+          low_minor: number;
+          high_minor: number;
+          months: number;
+          last3_minor: number;
+          prev3_minor: number;
+          total_minor: number;
+          kind_total_minor: number;
+          rank: number;
+          ranked: number;
+          planned_months: number;
+          over_plan_months: number;
         }[];
       };
     };

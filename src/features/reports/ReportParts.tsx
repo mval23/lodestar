@@ -123,11 +123,15 @@ export function ReportHead({
   subtitle,
   back,
   showScope,
+  controls,
 }: {
   title: string;
   subtitle: ReactNode;
   back?: string;
   showScope?: boolean;
+  // In place of the shared filters, for a report that picks something else
+  // (Budget vs actual picks one month).
+  controls?: ReactNode;
 }) {
   return (
     <header className="detail-head">
@@ -142,7 +146,7 @@ export function ReportHead({
           <h1 className="large-title">{title}</h1>
           <p className="footnote flush">{subtitle}</p>
         </div>
-        <ReportFiltersBar showScope={showScope} />
+        {controls ?? <ReportFiltersBar showScope={showScope} />}
       </div>
     </header>
   );
@@ -188,20 +192,6 @@ export function AboutFigures({ items }: { items: ReactNode[] }) {
 export const REFUND_NOTE =
   'A refund recorded as income raises both money in and money out, since Lodestar has no refund kind yet.';
 
-// A share as a percentage, one decimal: "19.6%".
-export function share(part: number, whole: number): string {
-  if (whole === 0) return '—';
-  return new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 1 }).format(part / whole);
-}
-
-// A signed percentage change, true minus: "+4.4%", "−0.1%".
-export function percentChange(current: number, before: number): string {
-  if (before === 0) return '';
-  const text = new Intl.NumberFormat('en-US', {
-    style: 'percent',
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-    signDisplay: 'exceptZero',
-  }).format((current - before) / Math.abs(before));
-  return text.replace('-', '−');
-}
+// Shares and changes as percentages live in lib/percent, shared with the
+// Category page; re-exported here for the report pages.
+export { percentChange, share } from '../../lib/percent';

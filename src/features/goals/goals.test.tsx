@@ -1,9 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { GoalsPage } from './GoalsPage';
 import { standingOf, type GoalProgress } from './queries';
 
 const useGoals = vi.fn();
+const updateGoal = vi.fn();
 
 vi.mock('./queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./queries')>();
@@ -11,7 +13,7 @@ vi.mock('./queries', async (importOriginal) => {
     ...actual,
     useGoals: () => useGoals(),
     useCreateGoal: () => ({ mutateAsync: vi.fn(), isPending: false }),
-    useUpdateGoal: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useUpdateGoal: () => ({ mutateAsync: updateGoal, isPending: false }),
     useDeleteGoal: () => ({ mutateAsync: vi.fn(), isPending: false }),
   };
 });
@@ -139,14 +141,18 @@ describe('GoalsPage', () => {
     expect(screen.getAllByText('$300.00').length).toBeGreaterThan(0);
   });
 
-  it('leaves an archived goal off the list', () => {
+  it('puts an archived goal away under Archived, where it can be restored', async () => {
     useGoals.mockReturnValue({
-      data: [goal({ archived_at: '2026-01-01T00:00:00Z' })],
+      data: [goal({ goal_id: 'g2', name: 'Trip', archived_at: '2026-01-01T00:00:00Z' }), goal()],
       isPending: false,
       isError: false,
       isSuccess: true,
     });
     render(<MemoryRouter><GoalsPage /></MemoryRouter>);
-    expect(screen.queryByText('Emergency fund')).not.toBeInTheDocument();
+    const fold = screen.getByText('Archived · 1').closest('details')!;
+    expect(within(fold).getByText('Trip')).toBeInTheDocument();
+    expect(screen.getAllByText('Trip')).toHaveLength(1);
+    await userEvent.click(within(fold).getByRole('button', { name: 'Restore “Trip”' }));
+    expect(updateGoal).toHaveBeenCalledWith({ id: 'g2', changes: { archived_at: null } });
   });
 });

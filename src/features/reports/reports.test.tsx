@@ -29,6 +29,7 @@ vi.mock('./queries', async (importOriginal) => {
     useNetWorthChange: (...args: unknown[]) => useNetWorthChange(...args),
     useCurrentMonthFlow: () => useCurrentMonthFlow(),
     useFirstActivityMonth: () => useFirstActivityMonth(),
+    useBudgetSummary: () => ({ data: { lines: 9, within: 7 }, isPending: false, isError: false }),
   };
 });
 vi.mock('../accounts/queries', async (importOriginal) => {

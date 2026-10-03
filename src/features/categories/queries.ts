@@ -243,3 +243,45 @@ export function useTopDescriptions(id: string | undefined, from: string, to: str
     },
   });
 }
+
+export type CategoryStats = {
+  this_month_minor: number;
+  plan_minor: number | null;
+  // Null when the category was not used in the 12 complete months.
+  typical_minor: number | null;
+  low_minor: number | null;
+  high_minor: number | null;
+  months: number;
+  last3_minor: number;
+  prev3_minor: number;
+  total_minor: number;
+  kind_total_minor: number;
+  rank: number | null;
+  ranked: number;
+  planned_months: number;
+  over_plan_months: number;
+};
+
+// One category over the 12 complete months before `month` (category_stats).
+export function useCategoryStats(id: string | undefined, month: string) {
+  return useQuery({
+    queryKey: ['transactions', 'category-stats', id, month],
+    enabled: Boolean(id),
+    queryFn: async (): Promise<CategoryStats | null> => {
+      const { data, error } = await db().rpc('category_stats', { p_category_id: id!, p_month: month });
+      if (error) throw error;
+      const row = (data ?? [])[0];
+      if (!row) return null;
+      // The generator calls every column non-null; these four can be null.
+      const maybe = (value: number) => (value as number | null) ?? null;
+      return {
+        ...row,
+        plan_minor: maybe(row.plan_minor),
+        typical_minor: maybe(row.typical_minor),
+        low_minor: maybe(row.low_minor),
+        high_minor: maybe(row.high_minor),
+        rank: maybe(row.rank),
+      };
+    },
+  });
+}

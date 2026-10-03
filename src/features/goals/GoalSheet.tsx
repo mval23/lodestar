@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useCurrency } from '../../lib/profile';
 import { parseMoney, toAmountInput } from '../../lib/money';
 import { Button } from '../../ui/Button';
+import { DatePicker } from '../../ui/DatePicker';
 import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
 import { Select } from '../../ui/Select';
@@ -118,7 +119,7 @@ export function GoalSheet({ goal, onClose }: { goal?: GoalProgress; onClose: () 
             />
           </FormRow>
           <FormRow label="By" htmlFor="goal-date">
-            <input id="goal-date" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+            <DatePicker id="goal-date" label="By" placeholder="Optional" clearable value={targetDate} onChange={setTargetDate} />
           </FormRow>
           <FormRow label="Monthly plan" htmlFor="goal-monthly">
             <input
@@ -148,6 +149,30 @@ export function GoalSheet({ goal, onClose }: { goal?: GoalProgress; onClose: () 
 
       {goal && (
         <div className="sheet-danger">
+          <p className="footnote flush">
+            {goal.archived_at
+              ? 'This goal is archived. Restoring it puts it back on Goals and the Overview.'
+              : 'Archive a goal you are done with: it leaves Goals and the Overview, and its account and transfers stay. You can restore it from Archived on the Goals page.'}
+          </p>
+          <div className="actions">
+            <Button
+              variant="secondary"
+              busy={update.isPending}
+              onClick={async () => {
+                try {
+                  await update.mutateAsync({
+                    id: goal.goal_id,
+                    changes: { archived_at: goal.archived_at ? null : new Date().toISOString() },
+                  });
+                  onClose();
+                } catch (cause) {
+                  setError(dataErrorMessage(cause));
+                }
+              }}
+            >
+              {goal.archived_at ? 'Restore goal' : 'Archive goal'}
+            </Button>
+          </div>
           <p className="footnote flush">
             Removing a goal keeps the account and every transfer in it. Only the intention goes away.
           </p>

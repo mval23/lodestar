@@ -3,6 +3,7 @@ import { useCurrency } from '../../lib/profile';
 import { formatMoney, parseMoney, toAmountInput, type Currency } from '../../lib/money';
 import { todayInZone } from '../../lib/dates';
 import { Button } from '../../ui/Button';
+import { DatePicker } from '../../ui/DatePicker';
 import { FieldErrors, FormGroup, FormRow } from '../../ui/Form';
 import { Notice } from '../../ui/Notice';
 import { Select } from '../../ui/Select';
@@ -261,12 +262,7 @@ export function TransactionSheet({
           )}
 
           <FormRow label="Date" htmlFor="txn-date">
-            <input
-              id="txn-date"
-              type="date"
-              value={values.occurred_on}
-              onChange={(e) => set('occurred_on', e.target.value)}
-            />
+            <DatePicker id="txn-date" label="Date" value={values.occurred_on} onChange={(next) => set('occurred_on', next)} />
           </FormRow>
 
           <FormRow label="Notes" htmlFor="txn-notes">

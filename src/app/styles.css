@@ -909,8 +909,7 @@ a:hover {
   gap: var(--space-2);
   align-items: center;
 }
-.filters select,
-.filters input[type='date'] {
+.filters select {
   font: inherit;
   font-size: 13px;
   padding: 7px 10px;
@@ -1367,9 +1366,21 @@ a:hover {
   align-items: flex-end;
   gap: var(--space-2);
 }
-.bill-confirm label {
+.bill-confirm label,
+.bill-paid-on {
   display: grid;
   gap: 2px;
+}
+.bill-paid-on .select-trigger {
+  justify-content: space-between;
+  min-height: 36px;
+  width: 150px;
+  padding: 6px 10px;
+  font-size: 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
 }
 .bill-confirm input {
   font: inherit;
@@ -1738,9 +1749,6 @@ a:hover {
   background: var(--surface);
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--blue) 50%, transparent);
 }
-.quick-add-date {
-  width: 150px;
-}
 .quick-add-description {
   flex: 1 1 180px;
   min-width: 140px;
@@ -1828,9 +1836,6 @@ a:hover {
   min-height: 32px;
   padding-block: 4px;
 }
-.cell-input[type='date'] {
-  min-width: 140px;
-}
 .cell-input[aria-invalid='true'] {
   box-shadow: inset 0 0 0 2px var(--err);
 }
@@ -1858,6 +1863,31 @@ a:hover {
 .select-trigger.cell-category:hover svg,
 .select-trigger.cell-category:focus-visible svg {
   opacity: 1;
+}
+/* Activity edited in place: the same cells, and the category and accounts
+   as pickers at the size of the text around them. */
+.activity-sheet td.cell {
+  padding: 4px var(--space-2);
+}
+.select-trigger.cell-picker {
+  min-height: 28px;
+  padding: 4px var(--space-2);
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+.select-trigger.cell-picker:hover {
+  background: var(--sunk);
+}
+.cell-transfer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 var(--space-1);
+}
+.cell-static {
+  display: block;
+  padding: 4px var(--space-2);
 }
 .activity-full-col {
   width: 44px;
@@ -1905,10 +1935,6 @@ a:hover {
   .cell-button.num {
     min-width: 0;
     max-width: 112px;
-  }
-  .cell-input[type='date'] {
-    min-width: 0;
-    width: 128px;
   }
   .activity-full-col {
     width: 36px;
@@ -2087,6 +2113,10 @@ a:hover {
 @media (min-width: 1100px) {
   .report-pair {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* A dashboard: the chart wider, the lists beside it. */
+  .report-pair.wide-left {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
   }
 }
 .report-figure {
@@ -2813,7 +2843,7 @@ a:hover {
   font-weight: 600;
 }
 
-/* Budgets that need a look, where you stand, and goals. */
+/* Budgets, where you stand, and goals. */
 .wide-three {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr);
@@ -2922,6 +2952,24 @@ a:hover {
 }
 .fold[open] > .fold-summary::after {
   transform: rotate(-135deg);
+}
+/* An archived goal: its name, what its account holds, and Restore. */
+.archived-goal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+}
+.archived-goal-name {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  color: var(--ink);
+  text-decoration: none;
+}
+.archived-goal-name small {
+  font-size: 12px;
+  color: var(--ink-3);
 }
 .fold-body {
   display: grid;
@@ -3090,4 +3138,598 @@ a:hover {
   .choice-chip {
     min-height: 44px;
   }
+}
+
+/* ---------- Date picker ----------
+   The calendar in the same floating panel as a picker's list: ink days on
+   white, the chosen day filled in blue (it is the control), today ringed. */
+.date-trigger {
+  white-space: nowrap;
+}
+.date-popup {
+  padding: var(--space-3);
+  max-height: none;
+}
+.date-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+.date-nav,
+.date-title,
+.date-foot-button,
+.date-month,
+.date-day {
+  font: inherit;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.date-nav {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  color: var(--ink-2);
+}
+.date-nav svg {
+  width: 18px;
+  height: 18px;
+}
+.date-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+}
+.date-nav:hover,
+.date-title:hover,
+.date-foot-button:hover,
+.date-month:hover {
+  background: var(--sunk);
+}
+.date-grid {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.date-grid th {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-align: center;
+  padding: var(--space-2) 0 var(--space-1);
+}
+.date-grid th,
+.date-grid td {
+  border: 0;
+}
+.date-grid td {
+  padding: 1px;
+  text-align: center;
+}
+.date-day {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.date-day:hover {
+  background: var(--sunk);
+}
+.date-day.outside {
+  color: var(--ink-3);
+}
+.date-day.today {
+  box-shadow: inset 0 0 0 1.5px var(--blue);
+}
+.date-day.chosen {
+  background: var(--blue);
+  color: var(--on-blue);
+  font-weight: 600;
+}
+.date-day:disabled {
+  color: var(--ink-3);
+  opacity: 0.4;
+  cursor: default;
+  background: transparent;
+}
+.date-day:focus-visible,
+.date-month:focus-visible,
+.date-nav:focus-visible,
+.date-title:focus-visible,
+.date-foot-button:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+.date-months {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-1);
+  padding-block: var(--space-2);
+}
+.date-month {
+  min-height: 44px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+}
+.date-month.current {
+  background: var(--blue);
+  color: var(--on-blue);
+  font-weight: 600;
+}
+.date-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+  margin-top: var(--space-1);
+}
+.date-foot:empty {
+  display: none;
+}
+.date-foot-button {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  color: var(--blue);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* ---------- Month and Category dashboards ---------- */
+/* A month still in progress is a lighter grey; the part of a month above
+   its plan is hatched ink, as on a budget's capsule. */
+.bar-partial {
+  fill: var(--line-strong);
+  opacity: 0.55;
+}
+.hatch-ground {
+  fill: var(--ink-3);
+}
+.hatch-line {
+  fill: var(--ink);
+}
+.swatch-hatch {
+  background: repeating-linear-gradient(45deg, var(--ink) 0 2px, var(--ink-3) 2px 4px);
+}
+.swatch-partial {
+  background: var(--line-strong);
+  opacity: 0.55;
+}
+
+/* Split bars: spent and saved above what came in, a shortfall hatched. */
+.split-bars {
+  display: grid;
+  gap: var(--space-2);
+}
+.split-bar {
+  display: flex;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--sunk);
+}
+.split-part {
+  display: flex;
+  align-items: center;
+  min-width: 2px;
+  overflow: hidden;
+}
+/* The words sit on a small surface chip, so they read the same on grey,
+   ink and hatching, in light and dark. */
+.split-text {
+  margin-left: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.split-out {
+  background: var(--out);
+}
+.split-in {
+  background: var(--in);
+}
+.split-base {
+  background: var(--sunk);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.split-short {
+  background: repeating-linear-gradient(45deg, var(--ink-2) 0 2px, var(--surface) 2px 7px);
+  box-shadow: inset 0 0 0 1px var(--ink-2);
+}
+.split-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.split-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.split-swatch-out {
+  background: var(--out);
+}
+.split-swatch-in {
+  background: var(--in);
+}
+.split-swatch-base {
+  background: var(--sunk);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.split-swatch-short {
+  background: repeating-linear-gradient(45deg, var(--ink-2) 0 2px, var(--surface) 2px 4px);
+}
+
+/* A figure in its usual range: low to high, a tick at typical, the figure
+   itself as the blue "now" square. */
+.range-bar {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+.range-track {
+  position: relative;
+  height: 12px;
+}
+.range-track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5px;
+  height: 2px;
+  background: var(--sunk);
+  border-radius: var(--radius-pill);
+}
+.range-span {
+  position: absolute;
+  top: 4px;
+  height: 4px;
+  background: var(--line-strong);
+  border-radius: var(--radius-pill);
+}
+.range-typical {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  background: var(--ink);
+}
+.range-now {
+  position: absolute;
+  top: 1px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: var(--fix);
+}
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* The Month page: the largest expense named as a figure, the categories
+   with a share bar, and the bills as a checklist. */
+.month-largest {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.month-cat-bar {
+  width: 32%;
+}
+.month-cat-bar .bar-track {
+  display: block;
+}
+.bill-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.bill-checklist li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 15px;
+}
+.bill-checklist li svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-3);
+}
+.bill-checklist li.paid svg {
+  color: var(--ink);
+}
+.bill-checklist li > a {
+  color: var(--ink);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bill-checklist li > .secondary {
+  font-size: 13px;
+}
+.bill-checklist li > :last-child {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* The Category page: this month (with its range) wider than the rest. */
+.group.fig-band.category-band {
+  grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
+}
+.group.fig-band.category-band.three {
+  grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 1179px) {
+  .group.fig-band.category-band,
+  .group.fig-band.category-band.three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .group.fig-band.category-band > :first-child {
+    grid-column: span 2;
+  }
+}
+.category-top th small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+/* ---------- Spending by category, Budget vs actual, Savings ---------- */
+/* The breakdown colours, in their fixed order; the fixed base is grey and
+   spending with no category is hatched (its fill is the SVG pattern). */
+.stack-fixed { fill: var(--out); }
+.stack-c2 { fill: var(--c2); }
+.stack-c3 { fill: var(--c3); }
+.stack-c4 { fill: var(--c4); }
+.stack-c5 { fill: var(--c5); }
+.stack-c6 { fill: var(--c6); }
+.stack-c7 { fill: var(--c7); }
+.stack-c8 { fill: var(--c8); }
+.stack-swatch-fixed { background: var(--out); }
+.stack-swatch-c2 { background: var(--c2); }
+.stack-swatch-c3 { background: var(--c3); }
+.stack-swatch-c4 { background: var(--c4); }
+.stack-swatch-c5 { background: var(--c5); }
+.stack-swatch-c6 { background: var(--c6); }
+.stack-swatch-c7 { background: var(--c7); }
+.stack-swatch-c8 { background: var(--c8); }
+.stack-swatch-none {
+  background: repeating-linear-gradient(45deg, var(--ink) 0 2px, var(--ink-3) 2px 4px);
+}
+
+/* The plan grid: squares by month, solid within plan, hatched over it. */
+.plan-grid {
+  border-collapse: separate;
+  border-spacing: 4px 6px;
+  width: 100%;
+  font-size: 15px;
+}
+.plan-grid th[scope='row'] {
+  text-align: left;
+  font-weight: 400;
+  white-space: nowrap;
+  padding-right: var(--space-3);
+}
+.plan-grid .plan-month {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-3);
+  text-align: center;
+}
+.plan-grid abbr {
+  text-decoration: none;
+}
+.plan-grid td {
+  padding: 0;
+  text-align: center;
+}
+.plan-cell {
+  display: block;
+  width: 100%;
+  min-width: 14px;
+  height: 18px;
+  border-radius: var(--radius-xs);
+}
+.plan-within {
+  background: var(--out);
+}
+.plan-over {
+  background: repeating-linear-gradient(45deg, var(--ink) 0 2px, var(--surface) 2px 5px);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.plan-none {
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.plan-now {
+  display: block;
+  width: 6px;
+  height: 6px;
+  margin: 0 auto;
+  background: var(--fix);
+}
+
+/* Budget vs actual: spent as a grey bar, the plan as an ink tick, and the
+   part over plan hatched, on a square-root scale. */
+.plan-bar-cell {
+  width: 26%;
+  min-width: 120px;
+}
+.plan-bar {
+  position: relative;
+  display: block;
+  height: 16px;
+}
+.plan-bar > i {
+  position: absolute;
+  display: block;
+}
+.plan-bar-spent {
+  left: 0;
+  top: 4px;
+  height: 8px;
+  background: var(--out);
+  border-radius: var(--radius-pill) 0 0 var(--radius-pill);
+}
+.plan-bar-over {
+  top: 4px;
+  height: 8px;
+  background: repeating-linear-gradient(45deg, var(--ink) 0 2px, var(--ink-3) 2px 4px);
+}
+.plan-bar-tick {
+  top: 0;
+  width: 2px;
+  height: 16px;
+  margin-left: -1px;
+  background: var(--ink);
+}
+.plan-result {
+  white-space: nowrap;
+}
+.num.strong {
+  font-weight: 600;
+}
+.ranked th .swatch {
+  vertical-align: -1px;
+}
+
+/* Savings: the zero line solid, each month's rate over its bar, and the
+   goals as a list with their capsules. */
+.chart-zero-solid {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.savings-rate {
+  font-weight: 600;
+  fill: var(--ink);
+}
+.savings-goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.savings-goals > li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.savings-goals > li:last-child {
+  border-bottom: 0;
+}
+.savings-goal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.savings-goal-head a {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.savings-goal-head small {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.savings-no-target {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: repeating-linear-gradient(90deg, var(--sunk) 0 8px, transparent 8px 11px);
+}
+.estimate-tag {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  margin-right: var(--space-1);
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+/* Savings: the zero line solid, each month's rate over its bar, and the
+   goals as a list with their capsules. */
+.chart-zero-solid {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.savings-rate {
+  font-weight: 600;
+  fill: var(--ink);
+}
+.savings-goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.savings-goals > li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.savings-goals > li:last-child {
+  border-bottom: 0;
+}
+.savings-goal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.savings-goal-head a {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.savings-goal-head small {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.savings-no-target {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: repeating-linear-gradient(90deg, var(--sunk) 0 8px, transparent 8px 11px);
+}
+.estimate-tag {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  margin-right: var(--space-1);
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.plan-grid-wrap:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }

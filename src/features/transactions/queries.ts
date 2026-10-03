@@ -64,7 +64,9 @@ export function useTransactions(filters: Filters, pageSize: number = PAGE_SIZE) 
       if (filters.accountId !== 'all') {
         query = query.or(`from_account_id.eq.${filters.accountId},to_account_id.eq.${filters.accountId}`);
       }
-      if (filters.categoryId !== 'all') query = query.eq('category_id', filters.categoryId);
+      // 'none' asks for the rows with no category, such as unsorted imports.
+      if (filters.categoryId === 'none') query = query.is('category_id', null);
+      else if (filters.categoryId !== 'all') query = query.eq('category_id', filters.categoryId);
       if (filters.from) query = query.gte('occurred_on', filters.from);
       if (filters.to) query = query.lte('occurred_on', filters.to);
 

@@ -22,7 +22,7 @@ vi.mock('./queries', async (importOriginal) => {
   };
 });
 
-vi.mock('../../lib/profile', () => ({ useCurrency: () => 'USD' }));
+vi.mock('../../lib/profile', () => ({ useCurrency: () => 'USD', useProfile: () => ({ data: { timezone: 'UTC' } }) }));
 
 function balance(over: Partial<AccountBalance>): AccountBalance {
   return {

@@ -3,7 +3,6 @@ import { MemoryRouter } from 'react-router';
 import { addMonths } from '../../lib/dates';
 import type { AccountBalance } from '../accounts/queries';
 import type { BudgetPace, MonthToDate } from './queries';
-import { restNote } from './Dashboard';
 import { OverviewPage } from './OverviewPage';
 
 const useAccounts = vi.fn();
@@ -258,8 +257,8 @@ describe('What stands out', () => {
   });
 });
 
-describe('Budgets that need a look', () => {
-  it('lists over plan first, then ahead of pace, three at most, each opening its budget line', () => {
+describe('Budgets', () => {
+  it('lists every budget line, over plan first, then ahead of pace, each opening its budget line', () => {
     loaded();
     useBudgetPace.mockReturnValue({
       data: [
@@ -272,22 +271,28 @@ describe('Budgets that need a look', () => {
       isPending: false,
     });
     show();
-    const group = screen.getByRole('region', { name: 'Budgets that need a look' });
+    const group = screen.getByRole('region', { name: 'Budgets' });
     const rows = within(group).getAllByRole('link').filter((link) => link.classList.contains('need-row'));
-    expect(rows.map((row) => row.querySelector('.need-name')?.textContent)).toEqual(['Subscriptions', 'Dining out', 'Health']);
+    expect(rows.map((row) => row.querySelector('.need-name')?.textContent)).toEqual([
+      'Subscriptions',
+      'Dining out',
+      'Health',
+      'Rent',
+      'Groceries',
+    ]);
     expect(rows[0]).toHaveTextContent('Over plan by');
     expect(rows[1]).toHaveTextContent('ahead of pace');
     expect(rows[0]).toHaveAttribute('href', expect.stringContaining('c-Subscriptions'));
-    expect(group).toHaveTextContent('2 more, all on pace or under.');
-    expect(within(group).getByRole('link', { name: 'All 5' })).toBeInTheDocument();
   });
-});
 
-describe('restNote', () => {
-  it('says how the budgets not shown stand', () => {
-    expect(restNote(2, 0)).toBe('2 more, all on pace or under.');
-    expect(restNote(6, 6)).toBe('6 more, all ahead of pace or over.');
-    expect(restNote(6, 2)).toBe('6 more: 2 ahead of pace or over, 4 on pace or under.');
+  it('says the figures could not load, rather than that nothing is planned', () => {
+    loaded();
+    const behind = { code: 'PGRST202', message: 'Could not find the function public.budget_pace' };
+    useBudgetPace.mockReturnValue({ data: undefined, isPending: false, isError: true, error: behind });
+    show();
+    expect(screen.getByText(/newer than the database/)).toBeInTheDocument();
+    expect(screen.queryByText('No plan for this month yet.')).not.toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Budgets' })).getByText('Not available')).toBeInTheDocument();
   });
 });
 
@@ -362,7 +367,7 @@ describe('OverviewPage on a phone', () => {
     useBudgetPace.mockReturnValue({ data: [pace('Groceries', 55000, 38043, 44000)], isPending: false });
     show();
     expect(screen.getByRole('region', { name: 'This month' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Budgets that need a look' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Budgets' })).toBeInTheDocument();
     const folds = Array.from(document.querySelectorAll('details.fold'));
     expect(folds.map((fold) => fold.querySelector('summary')?.textContent)).toEqual(['Where you stand', 'Coming up']);
     for (const fold of folds) expect(fold).not.toHaveAttribute('open');

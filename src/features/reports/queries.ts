@@ -287,3 +287,134 @@ export function typicalBasis(totals: ReportTotals): string {
   if (empty === 0) return `average of ${months}`;
   return `average of ${months} with activity; ${empty} empty ${empty === 1 ? 'month' : 'months'} left out`;
 }
+
+// ---------------------------------------------------------------------------
+// Spending by category, Budget vs actual, Savings rate and goals.
+
+export type CategoryMonthTotal = { category_id: string | null; month: string; total_minor: number };
+
+// Spending per category per month, for the stacked bars (report_category_months).
+export function useReportCategoryMonths(from: string, to: string, accountIds: string[] | null) {
+  return useQuery({
+    queryKey: [...reportsKey, 'category-months', from, to, accountIds],
+    enabled: from < to,
+    queryFn: async (): Promise<CategoryMonthTotal[]> => {
+      const { data, error } = await db().rpc('report_category_months', {
+        p_from: from,
+        p_to: to,
+        p_account_ids: accountIds ?? undefined,
+      });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        category_id: (row.category_id as string | null) ?? null,
+        month: row.month.slice(0, 10),
+        total_minor: row.total_minor,
+      }));
+    },
+  });
+}
+
+export type CategoryTotal = { category_id: string | null; total_minor: number; txn_count: number; compare_minor: number };
+
+// Each category over the period and the comparison period, largest first
+// (report_category_totals).
+export function useReportCategoryTotals(from: string, to: string, compareFrom: string, accountIds: string[] | null) {
+  return useQuery({
+    queryKey: [...reportsKey, 'category-totals', from, to, compareFrom, accountIds],
+    enabled: from < to,
+    queryFn: async (): Promise<CategoryTotal[]> => {
+      const { data, error } = await db().rpc('report_category_totals', {
+        p_from: from,
+        p_to: to,
+        p_compare_from: compareFrom,
+        p_account_ids: accountIds ?? undefined,
+      });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({ ...row, category_id: (row.category_id as string | null) ?? null }));
+    },
+  });
+}
+
+export type BudgetResult = {
+  category_id: string | null;
+  month: string;
+  // Null without a plan.
+  planned_minor: number | null;
+  spent_minor: number;
+  within_plan: boolean | null;
+};
+
+// Every plan and every category with spending, per month (budget_month_results).
+export function useBudgetResults(from: string, to: string) {
+  return useQuery({
+    queryKey: [...reportsKey, 'budget-results', from, to],
+    enabled: from < to,
+    queryFn: async (): Promise<BudgetResult[]> => {
+      const { data, error } = await db().rpc('budget_month_results', { p_from: from, p_to: to });
+      if (error) throw error;
+      // The generator calls every column non-null; three can be null.
+      return (data ?? []).map((row) => ({
+        category_id: (row.category_id as string | null) ?? null,
+        month: row.month.slice(0, 10),
+        planned_minor: (row.planned_minor as number | null) ?? null,
+        spent_minor: row.spent_minor,
+        within_plan: (row.within_plan as boolean | null) ?? null,
+      }));
+    },
+  });
+}
+
+export type BudgetSummary = {
+  planned_minor: number;
+  spent_planned_minor: number;
+  unplanned_minor: number;
+  uncategorized_minor: number;
+  lines: number;
+  within: number;
+  history_lines: number;
+  history_within: number;
+  first_month: string | null;
+};
+
+// One month's plans in a line, and how plans held over 12 months.
+export function useBudgetSummary(month: string) {
+  return useQuery({
+    queryKey: [...reportsKey, 'budget-summary', month],
+    queryFn: async (): Promise<BudgetSummary | null> => {
+      const { data, error } = await db().rpc('budget_month_summary', { p_month: month });
+      if (error) throw error;
+      const row = (data ?? [])[0];
+      if (!row) return null;
+      return { ...row, first_month: ((row.first_month as string | null) ?? null)?.slice(0, 10) ?? null };
+    },
+  });
+}
+
+export type GoalPace = {
+  goal_id: string;
+  needed_monthly_minor: number | null;
+  avg_put_in_minor: number;
+  months_put_in: number;
+  estimated_month: string | null;
+};
+
+// What each goal needs a month, its recent pace and, from 3 months of that
+// pace, when it is reached (goal_progress).
+export function useGoalPaces() {
+  return useQuery({
+    queryKey: ['goals', 'pace'],
+    queryFn: async (): Promise<GoalPace[]> => {
+      const { data, error } = await db()
+        .from('goal_progress')
+        .select('goal_id, needed_monthly_minor, avg_put_in_minor, months_put_in, estimated_month');
+      if (error) throw error;
+      return data.map((row) => ({
+        goal_id: row.goal_id ?? '',
+        needed_monthly_minor: row.needed_monthly_minor,
+        avg_put_in_minor: row.avg_put_in_minor ?? 0,
+        months_put_in: row.months_put_in ?? 0,
+        estimated_month: row.estimated_month ? row.estimated_month.slice(0, 10) : null,
+      }));
+    },
+  });
+}

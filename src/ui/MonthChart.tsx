@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Link } from 'react-router';
 import { AxisBottom } from '@visx/axis';
 import { Group } from '@visx/group';
@@ -47,6 +48,10 @@ export function MonthBars({
   valueLabel,
   planLabel,
   linkFor,
+  typical,
+  typicalLabel,
+  hatchOverPlan = false,
+  partialLabel,
 }: {
   title: string;
   caption?: string;
@@ -57,11 +62,22 @@ export function MonthBars({
   valueLabel: string;
   planLabel?: string;
   linkFor?: (month: string) => string;
+  // A typical month, drawn as a dashed line across.
+  typical?: number | null;
+  typicalLabel?: string;
+  // The part of a bar above its plan, hatched: over plan, at a glance.
+  hatchOverPlan?: boolean;
+  // Given, the current month's bar is lighter and named so: "September so far".
+  partialLabel?: string;
 }) {
   const { ref, width } = useChartWidth();
+  const hatchId = useId();
   const innerW = width - MARGIN.left - MARGIN.right;
   const months = scaleBand({ domain: rows.map((r) => r.month), range: [0, innerW], padding: 0.3 });
-  const largest = Math.max(1, ...rows.map((r) => Math.max(r.value, r.plan ?? 0)));
+  const showTypical = typical !== undefined && typical !== null;
+  const largest = Math.max(1, ...rows.map((r) => Math.max(r.value, r.plan ?? 0)), showTypical ? typical : 0);
+  const overPlan = (r: BarRow) => hatchOverPlan && r.plan !== undefined && r.plan !== null && r.value > r.plan;
+  const anyOver = rows.some(overPlan);
   const amounts = scaleLinear({ domain: [0, largest], range: [INNER_H, 0], nice: true });
   const hasPlan = rows.some((r) => r.plan !== undefined && r.plan !== null);
   const centers = rows.map((r) => (months(r.month) ?? 0) + months.bandwidth() / 2);
@@ -78,7 +94,9 @@ export function MonthBars({
           items={[
             { className: swatch, label: valueLabel },
             ...(hasPlan && planLabel ? [{ className: 'swatch-in swatch-line', label: planLabel }] : []),
-            { className: 'swatch-now', label: 'This month' },
+            ...(showTypical && typicalLabel ? [{ className: 'swatch-dash', label: typicalLabel }] : []),
+            ...(anyOver ? [{ className: 'swatch-hatch', label: 'Over plan' }] : []),
+            ...(partialLabel ? [{ className: 'swatch-partial', label: partialLabel }] : [{ className: 'swatch-now', label: 'This month' }]),
           ]}
         />
       }
@@ -94,6 +112,14 @@ export function MonthBars({
           aria-label={`${title}, ${rows.length} months. The table view has the exact figures.`}
           {...hover.handlers}
         >
+          {anyOver && (
+            <defs>
+              <pattern id={hatchId} width={6} height={6} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect className="hatch-ground" width={6} height={6} />
+                <rect className="hatch-line" width={3} height={6} />
+              </pattern>
+            </defs>
+          )}
           <Group left={MARGIN.left} top={MARGIN.top}>
             <ValueAxis scale={amounts} innerWidth={innerW} currency={currency} />
             {hover.index !== null && (
@@ -109,15 +135,31 @@ export function MonthBars({
             )}
             {rows.map((row) => {
               const x = months(row.month) ?? 0;
+              const partial = Boolean(partialLabel) && row.month === currentMonth;
+              const over = overPlan(row);
+              // Over plan, the bar stops at the plan and the rest is hatched.
+              const top = over ? amounts(row.plan!) : amounts(row.value);
               const bar = (
-                <Bar
-                  className={tone === 'in' ? 'bar-in' : 'bar-out'}
-                  x={x}
-                  y={amounts(row.value)}
-                  width={months.bandwidth()}
-                  height={INNER_H - amounts(row.value)}
-                  rx={2}
-                />
+                <g>
+                  <Bar
+                    className={partial ? 'bar-partial' : tone === 'in' ? 'bar-in' : 'bar-out'}
+                    x={x}
+                    y={top}
+                    width={months.bandwidth()}
+                    height={INNER_H - top}
+                    rx={2}
+                  />
+                  {over && (
+                    <Bar
+                      fill={`url(#${hatchId})`}
+                      x={x}
+                      y={amounts(row.value)}
+                      width={months.bandwidth()}
+                      height={top - amounts(row.value)}
+                      rx={2}
+                    />
+                  )}
+                </g>
               );
               return (
                 <Group key={row.month}>
@@ -137,6 +179,7 @@ export function MonthBars({
                 </Group>
               );
             })}
+            {showTypical && <line className="line-prior" x1={0} x2={innerW} y1={amounts(typical)} y2={amounts(typical)} />}
             <AxisBottom
               top={INNER_H}
               scale={months}

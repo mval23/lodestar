@@ -6,29 +6,29 @@ const CONTEXT = { currency: 'USD' as const, fallbackDescription: 'Housing & Util
 
 describe('nextCell', () => {
   it('moves along a row with Tab, and wraps onto the next', () => {
-    expect(nextCell(ROWS, { row: 'a', field: 'date' }, 'right')).toEqual({ row: 'a', field: 'description' });
-    expect(nextCell(ROWS, { row: 'a', field: 'amount' }, 'right')).toEqual({ row: 'b', field: 'date' });
+    expect(nextCell(ROWS, { row: 'a', field: 'description' }, 'right')).toEqual({ row: 'a', field: 'amount' });
+    expect(nextCell(ROWS, { row: 'a', field: 'amount' }, 'right')).toEqual({ row: 'b', field: 'description' });
   });
 
   it('moves back with Shift+Tab, and wraps onto the previous row', () => {
-    expect(nextCell(ROWS, { row: 'b', field: 'description' }, 'left')).toEqual({ row: 'b', field: 'date' });
-    expect(nextCell(ROWS, { row: 'b', field: 'date' }, 'left')).toEqual({ row: 'a', field: 'amount' });
+    expect(nextCell(ROWS, { row: 'b', field: 'amount' }, 'left')).toEqual({ row: 'b', field: 'description' });
+    expect(nextCell(ROWS, { row: 'b', field: 'description' }, 'left')).toEqual({ row: 'a', field: 'amount' });
   });
 
   it('keeps the column with Enter and Shift+Enter', () => {
     expect(nextCell(ROWS, { row: 'a', field: 'amount' }, 'down')).toEqual({ row: 'b', field: 'amount' });
-    expect(nextCell(ROWS, { row: 'c', field: 'date' }, 'up')).toEqual({ row: 'b', field: 'date' });
+    expect(nextCell(ROWS, { row: 'c', field: 'description' }, 'up')).toEqual({ row: 'b', field: 'description' });
   });
 
   it('ends the edit off the edge of the table', () => {
     expect(nextCell(ROWS, { row: 'c', field: 'amount' }, 'down')).toBeNull();
     expect(nextCell(ROWS, { row: 'c', field: 'amount' }, 'right')).toBeNull();
-    expect(nextCell(ROWS, { row: 'a', field: 'date' }, 'up')).toBeNull();
-    expect(nextCell(ROWS, { row: 'a', field: 'date' }, 'left')).toBeNull();
+    expect(nextCell(ROWS, { row: 'a', field: 'description' }, 'up')).toBeNull();
+    expect(nextCell(ROWS, { row: 'a', field: 'description' }, 'left')).toBeNull();
   });
 
   it('goes nowhere from a row it does not know', () => {
-    expect(nextCell(ROWS, { row: 'gone', field: 'date' }, 'down')).toBeNull();
+    expect(nextCell(ROWS, { row: 'gone', field: 'description' }, 'down')).toBeNull();
   });
 });
 

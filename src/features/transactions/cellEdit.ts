@@ -7,9 +7,9 @@ import type { TransactionUpdate } from './queries';
 
 export type Field = 'date' | 'description' | 'amount';
 
-// Left to right, as the columns read. The category is chosen from a picker,
-// not typed, so Tab passes over it.
-export const FIELDS: Field[] = ['date', 'description', 'amount'];
+// Left to right, as the columns read. The date and category are chosen from
+// pickers, not typed, so Tab passes over them.
+export const FIELDS: Field[] = ['description', 'amount'];
 
 export type Cell = { row: string; field: Field };
 export type Move = 'right' | 'left' | 'down' | 'up';

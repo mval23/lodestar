@@ -1000,6 +1000,170 @@ await test('budget_pace counts bills on their due dates and spreads the rest of 
   ], 'March 2026 on the 10th');
 });
 
+await test('daily_spending runs the month day by day against a typical month, and ends at money out', async () => {
+  const rows = (await asUser(C, `select day::text as day, day_of_month, spent_minor, running_minor, typical_running_minor,
+                                        typical_months, after_today
+                                   from public.daily_spending('2026-03-01', null, $1)`, [TODAY])).rows;
+  eq(rows.length, 31, 'a row for every day of March');
+  const at = (d) => rows[d - 1];
+  const view = (d) => [num(at(d).spent_minor), num(at(d).running_minor), num(at(d).typical_running_minor)];
+  // Rent 1,500.00 on the 1st; a typical month has spent nothing by then.
+  eq(view(1), [150000, 150000, 0], 'the 1st');
+  // Lesson on the 3rd, groceries on the 4th; typical groceries 100.00 land on the 5th.
+  eq(view(4), [7000, 159000, 0], 'the 4th');
+  eq(view(5), [0, 159000, 10000], 'the 5th');
+  eq(view(20), [0, 170499, 30000], 'the 20th, after the 99.99 on the 15th');
+  // The last day is the month's money out to the cent, and February (28 days)
+  // holds its whole-month total on the 29th to the 31st.
+  eq(view(31), [0, 170499, 30000], 'the 31st');
+  eq([at(1).typical_months, at(10).after_today, at(11).after_today], [5, false, true], 'months used, and today');
+});
+
+await test('daily_spending narrows to a category, and a past month has no day after today', async () => {
+  const g = (await asUser(C, `select running_minor, typical_running_minor from public.daily_spending('2026-03-01', $1, $2)`,
+    [c.groceries, TODAY])).rows;
+  eq([num(g[2].running_minor), num(g[3].running_minor), num(g[14].running_minor), num(g[30].typical_running_minor)],
+     [0, 7000, 16999, 30000], 'groceries only');
+  const feb = (await asUser(C, `select after_today, running_minor from public.daily_spending('2026-02-01', null, $1)`, [TODAY])).rows;
+  eq([feb.length, feb.some((r) => r.after_today), num(feb[27].running_minor)], [28, false, 30000], 'February whole');
+});
+
+await test('month_categories compares each category so far with a typical month cut at the same day', async () => {
+  const rows = (await asUser(C, `select category_id, spent_minor, typical_minor, typical_months
+                                   from public.month_categories('2026-03-01', $1)`, [TODAY])).rows
+    .map((x) => [x.category_id, num(x.spent_minor), num(x.typical_minor), x.typical_months]);
+  eq(rows, [
+    [c.rent, 150000, 0, 5],
+    // 70.00 so far (the 99.99 on the 15th is after today); 100.00 by the 10th in a typical month.
+    [c.groceries, 7000, 10000, 5],
+    [c.lessons, 2000, 0, 5],
+    [c.fun, 1500, 0, 5],
+  ], 'March to the 10th');
+  const feb = (await asUser(C, `select category_id, spent_minor, typical_minor, typical_months
+                                  from public.month_categories('2026-02-01', $1)`, [TODAY])).rows
+    .map((x) => [x.category_id, num(x.spent_minor), num(x.typical_minor), x.typical_months]);
+  // Aug - Jan, with August (before tracking) and November (empty) left out.
+  eq(feb, [[c.groceries, 30000, 30000, 4]], 'February whole');
+});
+
+await test('category_stats gives a category its range, trend, share and plans over 12 complete months', async () => {
+  const r = await one(asUser(C, `select * from public.category_stats($1, '2026-03-01')`, [c.groceries]));
+  eq([num(r.this_month_minor), num(r.plan_minor)], [16999, 40000], 'March, whole, and its plan');
+  // First used in September: six months, November quiet at zero.
+  eq([num(r.typical_minor), num(r.low_minor), num(r.high_minor), r.months], [25000, 0, 30000, 6], 'range');
+  eq([num(r.last3_minor), num(r.prev3_minor)], [90000, 60000], 'Dec - Feb against Sep - Nov');
+  eq([num(r.total_minor), num(r.kind_total_minor), r.rank, r.ranked], [150000, 150000, 1, 1], 'share and rank');
+  eq([r.planned_months, r.over_plan_months], [0, 0], 'no plans before March');
+  const unused = await one(asUser(C, `select typical_minor, months, rank from public.category_stats($1, '2026-03-01')`, [c.fun]));
+  eq([unused.typical_minor, unused.months, unused.rank], [null, 0, null], 'a category first used this month');
+});
+
+await test('category_month_totals counts spending with no category as one row a month', async () => {
+  const loose = await insertAs(C, 'transactions', {
+    kind: 'expense', occurred_on: '2026-03-08', amount_minor: 1234, from_account_id: c.chk, description: 'Synthetic',
+  });
+  try {
+    const rows = (await asUser(C, `select category_id, kind, total_minor, txn_count from public.category_month_totals
+                                     where month = '2026-03-01' and category_id is null`)).rows;
+    eq(rows.map((x) => [x.kind, num(x.total_minor), num(x.txn_count)]), [['expense', 1234, 1]], 'March, uncategorized');
+    const mc = (await asUser(C, `select spent_minor from public.month_categories('2026-03-01', $1) where category_id is null`, [TODAY])).rows;
+    eq(mc.map((x) => num(x.spent_minor)), [1234], 'month_categories has it too');
+  } finally {
+    await asUser(C, `delete from public.transactions where id = $1`, [loose.id]);
+  }
+});
+
+await test('report_category_months splits each month\'s spending by category, largest first', async () => {
+  const rows = (await asUser(C, `select category_id, month::text as month, total_minor
+                                   from public.report_category_months('2026-02-01', '2026-04-01')`)).rows
+    .map((x) => [x.category_id, x.month.slice(0, 10), num(x.total_minor)]);
+  eq(rows, [
+    [c.groceries, '2026-02-01', 30000],
+    [c.rent, '2026-03-01', 150000],
+    [c.groceries, '2026-03-01', 16999],
+    [c.lessons, '2026-03-01', 2000],
+    [c.fun, '2026-03-01', 1500],
+  ], 'February and March');
+  eq((await asUser(C, `select * from public.report_category_months('2026-02-01', '2026-04-01', array[$1]::uuid[])`, [c.fund])).rows.length,
+     0, 'nothing left the fund');
+});
+
+await test('report_category_totals ranks the period and gives the comparison period of the same length', async () => {
+  const rows = (await asUser(C, `select category_id, total_minor, txn_count, compare_minor
+                                   from public.report_category_totals('2025-12-01', '2026-04-01', '2025-08-01')`)).rows
+    .map((x) => [x.category_id, num(x.total_minor), x.txn_count, num(x.compare_minor)]);
+  eq(rows, [
+    [c.rent, 150000, 1, 0],
+    // Dec, Jan, Feb at 300.00 and March's 169.99; Aug - Nov had Sep and Oct.
+    [c.groceries, 106999, 8, 60000],
+    [c.lessons, 2000, 1, 0],
+    [c.fun, 1500, 1, 0],
+  ], 'Dec - Mar against Aug - Nov');
+  // The categories add up to report_summary's money out, to the cent.
+  const out = await one(asUser(C, `select money_out_minor from public.report_summary('2025-12-01', '2026-04-01', '2025-08-01')
+                                    where period = 'current'`));
+  eq(rows.reduce((sum, x) => sum + x[1], 0), num(out.money_out_minor), 'adds up to money out');
+});
+
+await test('budget_month_results gives each plan its spending and agrees with budget_progress', async () => {
+  const rows = (await asUser(C, `select category_id, month::text as month, planned_minor, spent_minor, within_plan
+                                   from public.budget_month_results('2026-02-01', '2026-04-01')`)).rows
+    .map((x) => [x.category_id, x.month.slice(0, 10), x.planned_minor === null ? null : num(x.planned_minor), num(x.spent_minor), x.within_plan]);
+  eq(rows, [
+    // February had no plans: spending without one.
+    [c.groceries, '2026-02-01', null, 30000, null],
+    [c.rent, '2026-03-01', 150000, 150000, true],
+    [c.groceries, '2026-03-01', 40000, 16999, true],
+    [c.lessons, '2026-03-01', 10000, 2000, true],
+    [c.fun, '2026-03-01', 1000, 1500, false],
+  ], 'February and March');
+  const progress = (await asUser(C, `select category_id, spent_minor from public.budget_progress where month = '2026-03-01'`)).rows;
+  for (const p of progress) {
+    eq(num(rows.find((r) => r[0] === p.category_id && r[1] === '2026-03-01')[3]), num(p.spent_minor), 'spent agrees');
+  }
+});
+
+await test('budget_month_summary sums the month and counts plans held over 12 months', async () => {
+  const r = await one(asUser(C, `select *, first_month::text as first from public.budget_month_summary('2026-03-01')`));
+  eq([num(r.planned_minor), num(r.spent_planned_minor), num(r.unplanned_minor), num(r.uncategorized_minor)],
+     [201000, 170499, 0, 0], 'March');
+  eq([r.lines, r.within, r.history_lines, r.history_within, r.first.slice(0, 10)], [4, 3, 4, 3, '2026-03-01'], 'held');
+});
+
+await test('goal_month_flow gives each goal what went in and out, and its balance at month end', async () => {
+  const rows = (await asUser(C, `select month::text as month, put_in_minor, taken_out_minor, closing_balance_minor
+                                   from public.goal_month_flow where month >= '2026-01-01' order by month`)).rows
+    .map((x) => [x.month.slice(0, 10), num(x.put_in_minor), num(x.taken_out_minor), num(x.closing_balance_minor)]);
+  eq(rows.slice(0, 3), [
+    ['2026-01-01', 100000, 0, 400000],
+    ['2026-02-01', 100000, 0, 500000],
+    ['2026-03-01', 5000, 0, 505000],
+  ], 'Jan - Mar');
+});
+
+await test('goal_progress gives the monthly need, the recent pace and an estimate from 3 months of it', async () => {
+  // D's dates follow the real calendar, as goal_progress does.
+  const D = '00000000-0000-4000-8000-00000000000d';
+  await sql(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'user-d@example.test', '{"timezone":"UTC"}')`, [D]);
+  const chk = (await insertAs(D, 'accounts', { name: 'D Checking', type: 'checking' })).id;
+  const fund = (await insertAs(D, 'accounts', { name: 'D Fund', type: 'savings' })).id;
+  const now = new Date();
+  const monthOf = (k) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 1)).toISOString().slice(0, 10);
+  await insertAs(D, 'goals', { account_id: fund, name: 'D goal', target_minor: 1000000, target_date: monthOf(10) });
+  for (const k of [-1, -2, -3]) {
+    await insertAs(D, 'transactions', {
+      kind: 'transfer', occurred_on: monthOf(k), amount_minor: 20000, from_account_id: chk, to_account_id: fund, description: 'Synthetic',
+    });
+  }
+  const r = await one(asUser(D, `select needed_monthly_minor, avg_put_in_minor, months_put_in, estimated_month::text as est
+                                  from public.goal_progress`));
+  // 9,400.00 to go over 10 months; 600.00 over 6 months is 100.00 a month,
+  // so 94 months at that pace.
+  eq([num(r.needed_monthly_minor), num(r.avg_put_in_minor), r.months_put_in, r.est.slice(0, 10)],
+     [94000, 10000, 3, monthOf(94)], 'D goal');
+  await sql(`delete from auth.users where id = $1`, [D]);
+});
+
 await test('an account left out of net worth leaves it, history and all, but stays in account_balances', async () => {
   const latest = `select net_worth_minor from public.net_worth_by_month order by month desc limit 1`;
   const held = (await insertAs(C, 'accounts', { name: 'C held for someone', type: 'other_asset', opening_balance_minor: 50000 })).id;
@@ -1095,6 +1259,28 @@ await test("the report functions show A none of C's money", async () => {
   assert(!names.some((n) => n.startsWith('C ')), "A sees none of C's accounts");
 });
 
+await test("the Phase 5 report functions show A nothing of C's", async () => {
+  const ids = [c.rent, c.groceries, c.lessons, c.fun];
+  for (const call of [
+    `select category_id from public.report_category_months('2025-09-01', '2026-04-01')`,
+    `select category_id from public.report_category_totals('2025-09-01', '2026-04-01', '2025-01-01')`,
+    `select category_id from public.budget_month_results('2025-09-01', '2026-04-01')`,
+  ]) {
+    eq((await asUser(A, call)).rows.filter((x) => ids.includes(x.category_id)).length, 0, call);
+  }
+  eq((await asUser(A, `select * from public.goal_month_flow where account_id = $1`, [c.fund])).rows.length, 0, 'goal_month_flow');
+});
+
+await test("the Month and Category functions show A nothing of C's", async () => {
+  // A has March 2026 spending of its own; it must be exactly A's, never C's.
+  const own = await one(asUser(A, `select coalesce(sum(expense_minor), 0) as m from public.month_summary where month = '2026-03-01'`));
+  const spent = await one(asUser(A, `select max(running_minor) as m from public.daily_spending('2026-03-01', null, '2026-03-10')`));
+  eq(num(spent.m), num(own.m), "daily_spending is A's own");
+  const cats = (await asUser(A, `select category_id from public.month_categories('2026-03-01', '2026-03-31')`)).rows;
+  eq(cats.filter((x) => [c.rent, c.groceries, c.lessons, c.fun].includes(x.category_id)).length, 0, 'month_categories');
+  eq((await asUser(A, `select * from public.category_stats($1, '2026-03-01')`, [c.groceries])).rows.length, 0, 'category_stats');
+});
+
 await test("month_to_date and budget_pace show A nothing of C's", async () => {
   // A's only rows in these months are its bill payments (Jan 31, Feb 27), so
   // none of C's salary, rent or goal transfers may show up.
@@ -1110,7 +1296,7 @@ group('anon sees nothing');
 const relations = ['currencies', 'profiles', 'accounts', 'category_groups', 'categories', 'import_batches',
   'recurring_items', 'transactions', 'budgets', 'goals', 'audit_events', 'account_entries', 'account_balances',
   'budget_progress', 'monthly_cash_flow', 'goal_progress', 'net_worth_by_month', 'category_usage',
-  'account_month_flow', 'account_ledger', 'category_month_totals', 'month_summary', 'recurring_item_months'];
+  'account_month_flow', 'account_ledger', 'category_month_totals', 'month_summary', 'recurring_item_months', 'goal_month_flow'];
 await test('anon cannot read any table or view', async () => {
   for (const rel of relations) {
     await expectError(asAnon(`select count(*) from public.${rel}`), /permission denied/, rel);
@@ -1134,6 +1320,13 @@ await test('anon cannot call any RPC', async () => {
     `select * from public.report_summary('2026-01-01', '2026-04-01', '2025-10-01')`,
     `select * from public.net_worth_by_account('2026-01-01', '2026-04-01')`,
     `select * from public.net_worth_change('2026-01-01', '2026-04-01')`,
+    `select * from public.daily_spending('2026-03-01')`,
+    `select * from public.month_categories('2026-03-01')`,
+    `select * from public.category_stats(gen_random_uuid(), '2026-03-01')`,
+    `select * from public.report_category_months('2026-01-01', '2026-04-01')`,
+    `select * from public.report_category_totals('2026-01-01', '2026-04-01', '2025-10-01')`,
+    `select * from public.budget_month_results('2026-01-01', '2026-04-01')`,
+    `select * from public.budget_month_summary('2026-03-01')`,
   ]) {
     await expectError(asAnon(call), /permission denied/, call);
   }

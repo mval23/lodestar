@@ -4,10 +4,10 @@ import { billPath } from '../../lib/routes';
 import { Amount } from '../../ui/Amount';
 import type { AccountBalance } from '../accounts/queries';
 import { describeDue, dueStateOf, useBills } from '../bills/queries';
-import { GoalsGroup, NeedsALook, OverviewStandsOut, ThisMonthBand, WhereYouStand } from './Dashboard';
+import { GoalsGroup, BudgetsGroup, OverviewStandsOut, ThisMonthBand, WhereYouStand } from './Dashboard';
 
 // The Overview on a wide screen: what stands out, then this month in one
-// band, then three columns: the budgets that need a look, where you stand,
+// band, then three columns: every budget line by need, where you stand,
 // and goals. What is coming up closes the page. A phone gets the same parts
 // stacked, with the last two folded away (OverviewPage decides which).
 
@@ -19,7 +19,7 @@ export function WideOverview({ accounts, today, month, currency }: Props) {
       <OverviewStandsOut month={month} currency={currency} />
       <ThisMonthBand accounts={accounts} month={month} currency={currency} />
       <div className="wide-three">
-        <NeedsALook month={month} currency={currency} />
+        <BudgetsGroup month={month} currency={currency} />
         <WhereYouStand accounts={accounts} month={month} currency={currency} />
         <GoalsGroup currency={currency} />
       </div>
