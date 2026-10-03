@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { ArrowDownUp, CalendarClock, ChartColumn, ChevronRight, type LucideIcon } from 'lucide-react';
+import { ArrowDownUp, CalendarClock, ChartColumn, ChevronRight, Flag, type LucideIcon } from 'lucide-react';
 import { useCurrency, useProfile, useUpdateProfile } from '../../lib/profile';
 import { CURRENCIES, type Currency } from '../../lib/money';
 import { formatDate, monthStartInZone, todayInZone } from '../../lib/dates';
@@ -174,6 +174,7 @@ function FirstRun({ onAddAccount }: { onAddAccount: () => void }) {
 // on a phone at all. On a wide screen the sidebar already lists them.
 const MORE: { to: string; label: string; hint: string; icon: LucideIcon }[] = [
   { to: '/bills', label: 'Bills', hint: 'Bills and subscriptions, and what’s due next', icon: CalendarClock },
+  { to: '/goals', label: 'Goals', hint: 'What you’re saving for, and how close you are', icon: Flag },
   { to: '/reports', label: 'Reports', hint: 'Cash flow and net worth, month by month', icon: ChartColumn },
   { to: '/import-export', label: 'Import & export', hint: 'Bring in a CSV, or take all your data', icon: ArrowDownUp },
 ];

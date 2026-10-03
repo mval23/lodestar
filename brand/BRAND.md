@@ -116,7 +116,7 @@ About 95% of every screen is Stone, white and ink; under 5% is blue. **Blue mean
 
 - **Spacing:** an 8 pt grid (4, 8, 12, 16, 20, 24, 32, 44, 64). Margins are 20 px on phones and 32 px or more on desktop.
 - **Corners:** continuous corners: 8 px on small controls, 12 px on fields and buttons, 16 px on grouped containers. Buttons may be capsules.
-- **Layout:** desktop uses a sidebar plus content, like macOS. Mobile uses a large title, white grouped lists on Stone, a "＋" in the navigation bar, and a tab bar (Overview, Activity, Budgets, Goals).
+- **Layout:** desktop uses a sidebar plus content, like macOS. Mobile uses a large title, white grouped lists on Stone, a "＋" in the navigation bar, and a tab bar (Overview, Activity, Accounts, Budgets).
 - **Materials:** translucent glass (blur plus saturation) only on navigation (sidebar, toolbar, tab bar). Content sits on solid white. Soft shadows only on floating layers (popovers, sheets, menus).
 - **Containers:** inset grouped lists for settings, accounts and forms. Dashboards use a few large white groups, not a mosaic of floating cards. Transactions go in one continuous table.
 - **Controls:** filled blue capsule for the primary action, a grey-filled button with blue text for secondary actions, segmented controls for view switches, and blue toggles.

@@ -393,8 +393,8 @@ test.describe('the shell', () => {
     const tabs = page.getByRole('navigation', { name: 'Tabs' });
     for (const [name, heading] of [
       ['Activity', 'Activity'],
+      ['Accounts', 'Accounts'],
       ['Budgets', 'Budgets'],
-      ['Goals', 'Goals'],
       ['Overview', 'Overview'],
     ] as const) {
       await tabs.getByRole('link', { name }).click();
