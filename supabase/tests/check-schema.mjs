@@ -1015,6 +1015,86 @@ await test('an account left out of net worth leaves it, history and all, but sta
   eq(num((await one(asUser(C, latest))).net_worth_minor), without, 'the new one is left out too');
 });
 
+// ===========================================================================
+// Reports: C's fixed history again. Each active month Sep 2025 – Feb 2026
+// (November empty): +3,000.00 salary, 1,000.00 into the fund, 300.00 out.
+// March 2026: +3,000.00, 1,704.99 out, 50.00 into the fund.
+
+await test('report_cash_flow gives every calendar month a row, an empty one as zeros', async () => {
+  const rows = (await asUser(C, `select month::text as m, money_in_minor, money_out_minor, net_minor, to_goals_minor,
+                                        from_goals_minor, moved_in_minor, moved_out_minor, active
+                                   from public.report_cash_flow('2025-09-01', '2026-04-01')`)).rows
+    .map((r) => [r.m, num(r.money_in_minor), num(r.money_out_minor), num(r.net_minor), num(r.to_goals_minor),
+      num(r.from_goals_minor), num(r.moved_in_minor), num(r.moved_out_minor), r.active]);
+  eq(rows, [
+    ['2025-09-01', 300000, 30000, 270000, 100000, 0, 0, 0, true],
+    ['2025-10-01', 300000, 30000, 270000, 100000, 0, 0, 0, true],
+    ['2025-11-01', 0, 0, 0, 0, 0, 0, 0, false],
+    ['2025-12-01', 300000, 30000, 270000, 100000, 0, 0, 0, true],
+    ['2026-01-01', 300000, 30000, 270000, 100000, 0, 0, 0, true],
+    ['2026-02-01', 300000, 30000, 270000, 100000, 0, 0, 0, true],
+    ['2026-03-01', 300000, 170499, 129501, 5000, 0, 0, 0, true],
+  ], 'Sep 2025 – Mar 2026');
+});
+
+await test('report_cash_flow scoped to one account calls transfers moved in or out, never income', async () => {
+  const r = await one(asUser(C, `select money_in_minor, money_out_minor, moved_in_minor, moved_out_minor, active
+                                   from public.report_cash_flow('2025-09-01', '2025-10-01', array[$1]::uuid[])`, [c.fund]));
+  eq([num(r.money_in_minor), num(r.money_out_minor), num(r.moved_in_minor), num(r.moved_out_minor), r.active],
+     [0, 0, 100000, 0, false], 'the fund in September');
+});
+
+await test('report_summary totals a period and a comparison period of the same length', async () => {
+  const rows = (await asUser(C, `select period, period_from::text as f, period_to::text as t, money_in_minor, money_out_minor,
+                                        net_minor, to_goals_minor, from_goals_minor, card_payments_minor, loan_payments_minor,
+                                        cash_withdrawals_minor, other_transfers_minor, months, active_months
+                                   from public.report_summary('2025-12-01', '2026-04-01', '2025-08-01')`)).rows
+    .map((r) => [r.period, r.f, r.t, num(r.money_in_minor), num(r.money_out_minor), num(r.net_minor), num(r.to_goals_minor),
+      num(r.from_goals_minor), num(r.card_payments_minor), num(r.loan_payments_minor), num(r.cash_withdrawals_minor),
+      num(r.other_transfers_minor), r.months, r.active_months]);
+  eq(rows, [
+    // Dec – Mar: three ordinary months and March.
+    ['current', '2025-12-01', '2026-04-01', 1200000, 260499, 939501, 305000, 0, 0, 0, 0, 0, 4, 4],
+    // Aug – Nov: August before tracking began, November empty.
+    ['compare', '2025-08-01', '2025-12-01', 600000, 60000, 540000, 200000, 0, 0, 0, 0, 0, 4, 2],
+  ], 'Dec – Mar against Aug – Nov');
+});
+
+await test('net_worth_change explains the change in parts that add up to it, to the cent', async () => {
+  // C moves 10.00 to an account left out of net worth: it leaves net worth
+  // without being spending.
+  await insertAs(C, 'transactions', {
+    kind: 'transfer', occurred_on: '2026-03-20', amount_minor: 1000, from_account_id: c.chk,
+    to_account_id: (await one(sql(`select id from public.accounts where name = 'C held for someone'`))).id,
+    description: 'Synthetic',
+  });
+  const r = await one(asUser(C, `select * from public.net_worth_change('2026-03-01', '2026-04-01')`));
+  // Checking 850,000.00 and the fund 500,000.00 at the end of February.
+  eq([num(r.start_minor), num(r.end_minor), num(r.change_minor)], [1350000, 1478501, 128501], 'start, end, change');
+  eq([num(r.cash_flow_minor), num(r.openings_minor), num(r.moved_minor)], [129501, 0, -1000], 'the parts');
+  eq(num(r.cash_flow_minor) + num(r.openings_minor) + num(r.moved_minor), num(r.change_minor), 'they add up');
+});
+
+await test('net_worth_by_account gives each account its start, end and change', async () => {
+  const rows = (await asUser(C, `select name, include_in_net_worth, start_minor, end_minor, change_minor
+                                   from public.net_worth_by_account('2026-03-01', '2026-04-01')
+                                  where name in ('C Checking', 'C Fund', 'C held for someone')`)).rows
+    .map((r) => [r.name, r.include_in_net_worth, num(r.start_minor), num(r.end_minor), num(r.change_minor)]);
+  eq(rows, [
+    ['C Checking', true, 850000, 973501, 123501],
+    ['C Fund', true, 500000, 505000, 5000],
+    ['C held for someone', false, 50000, 51000, 1000],
+  ], 'March 2026');
+});
+
+await test("the report functions show A none of C's money", async () => {
+  const sum = await one(asUser(A, `select money_in_minor from public.report_summary('2025-12-01', '2026-04-01', '2025-08-01')
+                                    where period = 'current'`));
+  eq(num(sum.money_in_minor), 0, "A's income over C's months");
+  const names = (await asUser(A, `select name from public.net_worth_by_account('2026-03-01', '2026-04-01')`)).rows.map((r) => r.name);
+  assert(!names.some((n) => n.startsWith('C ')), "A sees none of C's accounts");
+});
+
 await test("month_to_date and budget_pace show A nothing of C's", async () => {
   // A's only rows in these months are its bill payments (Jan 31, Feb 27), so
   // none of C's salary, rent or goal transfers may show up.
@@ -1050,6 +1130,10 @@ await test('anon cannot call any RPC', async () => {
     `select * from public.category_top_descriptions(gen_random_uuid(), '2026-01-01', '2026-02-01')`,
     `select * from public.month_to_date('2026-03-01')`,
     `select * from public.budget_pace('2026-03-01')`,
+    `select * from public.report_cash_flow('2026-01-01', '2026-04-01')`,
+    `select * from public.report_summary('2026-01-01', '2026-04-01', '2025-10-01')`,
+    `select * from public.net_worth_by_account('2026-01-01', '2026-04-01')`,
+    `select * from public.net_worth_change('2026-01-01', '2026-04-01')`,
   ]) {
     await expectError(asAnon(call), /permission denied/, call);
   }

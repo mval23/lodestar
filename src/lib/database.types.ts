@@ -492,6 +492,64 @@ export type Database = {
         Args: { p_source_id: string; p_target_id: string };
         Returns: number;
       };
+      net_worth_by_account: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          account_id: string;
+          name: string;
+          type: Database['public']['Enums']['account_type'];
+          is_liability: boolean;
+          include_in_net_worth: boolean;
+          archived_at: string | null;
+          start_minor: number;
+          end_minor: number;
+          change_minor: number;
+        }[];
+      };
+      net_worth_change: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          start_minor: number;
+          end_minor: number;
+          change_minor: number;
+          cash_flow_minor: number;
+          openings_minor: number;
+          moved_minor: number;
+        }[];
+      };
+      report_cash_flow: {
+        Args: { p_from: string; p_to: string; p_account_ids?: string[] | null };
+        Returns: {
+          month: string;
+          money_in_minor: number;
+          money_out_minor: number;
+          net_minor: number;
+          to_goals_minor: number;
+          from_goals_minor: number;
+          moved_in_minor: number;
+          moved_out_minor: number;
+          active: boolean;
+        }[];
+      };
+      report_summary: {
+        Args: { p_from: string; p_to: string; p_compare_from: string; p_account_ids?: string[] | null };
+        Returns: {
+          period: 'current' | 'compare';
+          period_from: string;
+          period_to: string;
+          money_in_minor: number;
+          money_out_minor: number;
+          net_minor: number;
+          to_goals_minor: number;
+          from_goals_minor: number;
+          card_payments_minor: number;
+          loan_payments_minor: number;
+          cash_withdrawals_minor: number;
+          other_transfers_minor: number;
+          months: number;
+          active_months: number;
+        }[];
+      };
       month_to_date: {
         Args: { p_month: string; p_today?: string };
         Returns: {
