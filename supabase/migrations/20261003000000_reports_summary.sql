@@ -81,7 +81,8 @@ $$;
 -- Totals for the period and for a comparison period of the same length that
 -- starts at p_compare_from (the previous period, or the same months a year
 -- earlier: the caller chooses). Transfers are split by where they go, each in
--- exactly one bucket, so the buckets add up to every transfer in scope.
+-- exactly one bucket, so the buckets add up to every transfer in scope; that
+-- total is transfers_minor, so the browser never adds them up.
 -- ---------------------------------------------------------------------------
 create function public.report_summary(
   p_from date, p_to date, p_compare_from date, p_account_ids uuid[] default null)
@@ -98,6 +99,7 @@ returns table (
   loan_payments_minor     bigint,
   cash_withdrawals_minor  bigint,
   other_transfers_minor   bigint,
+  transfers_minor         bigint,
   months                  integer,
   active_months           integer)
 language sql
@@ -165,7 +167,8 @@ as $$
            coalesce(sum(tr.amount_minor) filter (where tr.bucket = 'card'), 0)       as card,
            coalesce(sum(tr.amount_minor) filter (where tr.bucket = 'loan'), 0)       as loan,
            coalesce(sum(tr.amount_minor) filter (where tr.bucket = 'cash'), 0)       as cash,
-           coalesce(sum(tr.amount_minor) filter (where tr.bucket = 'other'), 0)      as other
+           coalesce(sum(tr.amount_minor) filter (where tr.bucket = 'other'), 0)      as other,
+           coalesce(sum(tr.amount_minor), 0)                                         as total
       from transfers tr
      group by tr.period
   )
@@ -181,6 +184,7 @@ as $$
          coalesce(mv.loan, 0)::bigint,
          coalesce(mv.cash, 0)::bigint,
          coalesce(mv.other, 0)::bigint,
+         coalesce(mv.total, 0)::bigint,
          p.n::integer,
          coalesce(f.active, 0)::integer
     from periods p

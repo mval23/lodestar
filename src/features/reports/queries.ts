@@ -149,6 +149,8 @@ export type ReportTotals = {
   loan_payments_minor: number;
   cash_withdrawals_minor: number;
   other_transfers_minor: number;
+  // Every transfer in scope: the buckets above, added up in Postgres.
+  transfers_minor: number;
   months: number;
   active_months: number;
 };

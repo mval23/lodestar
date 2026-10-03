@@ -58,6 +58,8 @@ function totals(over: Partial<ReportTotals> = {}): ReportTotals {
     loan_payments_minor: 462000,
     cash_withdrawals_minor: 120000,
     other_transfers_minor: 0,
+    // The buckets above, added up as Postgres returns them.
+    transfers_minor: 4320744,
     months: 12,
     active_months: 12,
     ...over,
@@ -265,8 +267,17 @@ describe('Cash flow report', () => {
     expect(compare).toHaveTextContent('Money in');
     expect(compare).toHaveTextContent('+4.4%');
     const transfers = screen.getByRole('region', { name: 'Left out of both: transfers' });
-    // 2,033,744 + 1,500,000 + 205,000 + 462,000 + 120,000 + 0.
+    // transfers_minor, the buckets added up in Postgres.
     expect(within(transfers).getByText('Every transfer').closest('tr')).toHaveTextContent('$43,207.44');
+  });
+
+  it('says what stands out about the period', () => {
+    show('/reports/cash-flow');
+    const standsOut = screen.getByRole('region', { name: 'What stands out' });
+    // Amount repeats each figure for screen readers, so match the words.
+    expect(standsOut).toHaveTextContent('Net cash flow held steady at +$20,131.55');
+    expect(standsOut).toHaveTextContent('below Oct 2024 – Sep 2025: money in rose $2,770.00');
+    expect(standsOut).toHaveTextContent('Every month ended positive');
   });
 
   it('says the typical month is the average of the months with activity', () => {

@@ -13,21 +13,31 @@ export function StandsOut({ findings, currency, max = 2 }: { findings: Finding[]
       <Info strokeWidth={1.75} aria-hidden />
       <span>
         <span className="visually-hidden">What stands out: </span>
-        {shown.map((finding, i) => (
-          <span key={finding.key}>
-            {i > 0 && ' '}
-            {finding.parts.map((part, j) =>
-              typeof part === 'string' ? (
-                <span key={j}>{part}</span>
-              ) : (
-                <strong key={j}>
-                  <Amount minor={part.minor} currency={currency} signed={part.signed} />
-                </strong>
-              ),
-            )}
-          </span>
-        ))}
+        <Findings findings={shown} currency={currency} />
       </span>
     </p>
+  );
+}
+
+// The sentences themselves, amounts in bold, for a page that heads them
+// itself (a report's "What stands out").
+export function Findings({ findings, currency }: { findings: Finding[]; currency: Currency }) {
+  return (
+    <>
+      {findings.map((finding, i) => (
+        <span key={finding.key}>
+          {i > 0 && ' '}
+          {finding.parts.map((part, j) =>
+            typeof part === 'string' ? (
+              <span key={j}>{part}</span>
+            ) : (
+              <strong key={j}>
+                <Amount minor={part.minor} currency={currency} signed={part.signed} />
+              </strong>
+            ),
+          )}
+        </span>
+      ))}
+    </>
   );
 }

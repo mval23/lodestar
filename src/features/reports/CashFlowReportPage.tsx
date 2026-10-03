@@ -1,6 +1,7 @@
 import { useCurrency } from '../../lib/profile';
 import type { Currency } from '../../lib/money';
-import { addMonths, formatDateShort } from '../../lib/dates';
+import { addMonths, formatDateShort, formatMonth } from '../../lib/dates';
+import { cashFlowFindings } from '../../lib/standsOut';
 import { Amount } from '../../ui/Amount';
 import { Comparison } from '../../ui/Comparison';
 import { Notice } from '../../ui/Notice';
@@ -16,7 +17,7 @@ import {
   useReportSummary,
   type ReportTotals,
 } from './queries';
-import { AboutFigures, REFUND_NOTE, ReportHead, percentChange, share, useReportRange } from './ReportParts';
+import { REFUND_NOTE, ReportClosing, ReportHead, percentChange, share, useReportRange } from './ReportParts';
 
 // Cash flow: money in and out each month with the net drawn on the chart,
 // last year's net beside it, the period against the comparison period, and
@@ -156,8 +157,16 @@ export function CashFlowReportPage() {
             <TransfersTable totals={totals} before={before} currency={currency} />
           </div>
 
-          <AboutFigures
-            items={[
+          <ReportClosing
+            currency={currency}
+            findings={cashFlowFindings(
+              totals,
+              comparable ? before : null,
+              rows,
+              rangeLabel({ from: before.period_from, to: before.period_to }),
+              formatMonth,
+            )}
+            about={[
               'Months follow each transaction’s date, in your time zone. A month with nothing recorded counts as zero here and is left out of the typical month.',
               'Card purchases count once, when they are made; paying the card is a transfer.',
               REFUND_NOTE,
@@ -223,7 +232,6 @@ function ComparisonTable({ totals, before, currency }: { totals: ReportTotals; b
 function TransfersTable({ totals, before, currency }: { totals: ReportTotals; before: ReportTotals; currency: Currency }) {
   const now = transfersOf(totals);
   const was = transfersOf(before);
-  const total = (lines: { minor: number }[]) => lines.reduce((sum, line) => sum + line.minor, 0);
   return (
     <section className="group stack-tight" aria-labelledby="cash-transfers">
       <h2 className="headline" id="cash-transfers">
@@ -258,14 +266,13 @@ function TransfersTable({ totals, before, currency }: { totals: ReportTotals; be
               </td>
             </tr>
           ))}
-          {/* The few buckets of one period, added up for their total line. */}
           <tr className="ledger-total">
             <th scope="row">Every transfer</th>
             <td className="num">
-              <Amount minor={total(was)} currency={currency} />
+              <Amount minor={before.transfers_minor} currency={currency} />
             </td>
             <td className="num">
-              <Amount minor={total(now)} currency={currency} />
+              <Amount minor={totals.transfers_minor} currency={currency} />
             </td>
           </tr>
         </tbody>

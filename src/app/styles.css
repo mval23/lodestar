@@ -2751,6 +2751,16 @@ a:hover {
 .stands-out strong {
   font-weight: 600;
 }
+/* A report's "What stands out": the same sentences, under their own caption. */
+.report-findings {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--ink);
+}
+.report-findings strong {
+  font-weight: 600;
+}
 
 /* The band holds five figures; left to spend gets a little more room. */
 .group.fig-band.fig-band-5 {

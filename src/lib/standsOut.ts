@@ -83,3 +83,124 @@ export function overviewFindings(lines: PaceLine[], soFar: MonthSoFar | null, mo
 
   return findings.sort((a, b) => b.weight - a.weight);
 }
+
+// ---------------------------------------------------------------------------
+// Reports. A report always has something to say about its period, so these
+// return a finding even when nothing is unusual: how the period went, against
+// the comparison period when that has anything in it. Every amount is a total
+// Postgres returned, or the difference of two; nothing is summed here.
+
+export type PeriodFlow = { money_in_minor: number; money_out_minor: number; net_minor: number; active_months: number };
+export type MonthNet = { month: string; net_minor: number; active: boolean };
+
+// A change within this share of the earlier figure reads as "held steady".
+export const STEADY_SHARE = 0.02;
+
+const steady = (change: number, before: number) => Math.abs(change) <= Math.abs(before) * STEADY_SHARE;
+const moved = (change: number, up: string, down: string) => (change > 0 ? up : down);
+
+function flowClause(name: string, change: number): FindingPart[] {
+  return change === 0 ? [`${name} was unchanged`] : [`${name} ${moved(change, 'rose', 'fell')} `, { minor: Math.abs(change) }];
+}
+
+// beforeLabel names the comparison period, as "Oct 2024 – Sep 2025";
+// monthName formats a month, as "November 2025".
+export function cashFlowFindings(
+  now: PeriodFlow,
+  before: PeriodFlow | null,
+  months: MonthNet[],
+  beforeLabel: string,
+  monthName: (month: string) => string,
+): Finding[] {
+  const findings: Finding[] = [];
+
+  if (before && before.active_months > 0) {
+    const change = now.net_minor - before.net_minor;
+    const lead: FindingPart[] = steady(change, before.net_minor)
+      ? ['Net cash flow held steady at ', { minor: now.net_minor, signed: true }]
+      : [`Net cash flow ${moved(change, 'rose', 'fell')} to `, { minor: now.net_minor, signed: true }];
+    findings.push({
+      key: 'net',
+      weight: 2,
+      parts: [
+        ...lead,
+        ...(change === 0 ? [`, the same as ${beforeLabel}: `] : [', ', { minor: Math.abs(change) }, ` ${moved(change, 'above', 'below')} ${beforeLabel}: `]),
+        ...flowClause('money in', now.money_in_minor - before.money_in_minor),
+        ' and ',
+        ...flowClause('money out', now.money_out_minor - before.money_out_minor),
+        '.',
+      ],
+    });
+  } else {
+    findings.push({ key: 'net', weight: 2, parts: ['Net cash flow was ', { minor: now.net_minor, signed: true }, ' over the period.'] });
+  }
+
+  const active = months.filter((m) => m.active);
+  if (active.length >= 2) {
+    const lowest = active.reduce((low, m) => (m.net_minor < low.net_minor ? m : low));
+    const negative = active.filter((m) => m.net_minor < 0).length;
+    const opening =
+      negative === 0
+        ? 'Every month ended positive; '
+        : negative === active.length
+          ? 'Every month ended negative; '
+          : `${negative} of ${active.length} months ended negative; `;
+    findings.push({
+      key: 'months',
+      weight: 1,
+      parts: [opening, `${monthName(lowest.month)} was the lowest at `, { minor: lowest.net_minor, signed: true }, '.'],
+    });
+  }
+
+  return findings;
+}
+
+export type WorthChange = { change_minor: number; cash_flow_minor: number; openings_minor: number; moved_minor: number };
+export type Balances = { start_minor: number; end_minor: number };
+
+// owned and owed are where the period began and ended; owed is negative.
+// mostlyFrom names the account behind most of a fall in what is owed.
+export function netWorthFindings(
+  now: WorthChange,
+  before: WorthChange | null,
+  months: number,
+  owned: Balances | null,
+  owed: Balances | null,
+  mostlyFrom: string | null,
+): Finding[] {
+  const findings: Finding[] = [];
+  const change = now.change_minor;
+  const span = months === 1 ? '1 month' : `${months} months`;
+
+  const lead: FindingPart[] =
+    change === 0
+      ? [`Net worth was unchanged over ${span}`]
+      : [`Net worth ${moved(change, 'rose', 'fell')} `, { minor: Math.abs(change) }, ` in ${span}`];
+  const against: FindingPart[] = !before
+    ? ['.']
+    : steady(change - before.change_minor, before.change_minor)
+      ? [', almost the same as the period before (', { minor: before.change_minor, signed: true }, ').']
+      : [', against ', { minor: before.change_minor, signed: true }, ' the period before.'];
+  const source: FindingPart[] =
+    change === 0
+      ? []
+      : now.openings_minor === 0 && now.moved_minor === 0
+        ? [' All of it came from net cash flow.']
+        : [' Net cash flow gave ', { minor: now.cash_flow_minor, signed: true }, ' of it.'];
+  findings.push({ key: 'change', weight: 2, parts: [...lead, ...against, ...source] });
+
+  if (owned && owed) {
+    const own = owned.end_minor - owned.start_minor;
+    // Owed is negative, so a rise in the balance is less owed.
+    const less = owed.end_minor - owed.start_minor;
+    const parts: FindingPart[] = [];
+    if (own !== 0) parts.push(`What you own ${moved(own, 'grew', 'fell')} by `, { minor: Math.abs(own) });
+    if (less !== 0) {
+      parts.push(own !== 0 ? ' and what you owe ' : 'What you owe ', `${moved(less, 'fell', 'rose')} by `, { minor: Math.abs(less) });
+      if (less > 0 && mostlyFrom) parts.push(`, mostly the ${mostlyFrom}`);
+    }
+    if (parts.length > 0) findings.push({ key: 'parts', weight: 1, parts: [...parts, '.'] });
+  }
+
+  return findings;
+}

@@ -1,4 +1,4 @@
-import { overviewFindings, type MonthSoFar, type PaceLine } from './standsOut';
+import { cashFlowFindings, netWorthFindings, overviewFindings, type MonthSoFar, type PaceLine } from './standsOut';
 
 function line(name: string, planned: number, spent: number, pace: number, daysLeft = 6): PaceLine {
   return {
@@ -66,5 +66,64 @@ describe('overviewFindings', () => {
       'Sep',
     ).map((f) => f.key);
     expect(keys).toEqual(['over', 'ahead', 'out']);
+  });
+});
+
+describe('cashFlowFindings', () => {
+  const month = (m: string) => ({ '2025-11-01': 'November 2025', '2026-01-01': 'January 2026' })[m] ?? m;
+  const now = { money_in_minor: 6607000, money_out_minor: 4593845, net_minor: 2013155, active_months: 12 };
+  const before = { money_in_minor: 6330000, money_out_minor: 4315464, net_minor: 2014536, active_months: 12 };
+  const months = [
+    { month: '2025-10-01', net_minor: 180000, active: true },
+    { month: '2025-11-01', net_minor: 105877, active: true },
+    { month: '2025-12-01', net_minor: 0, active: false },
+  ];
+  const text = (findings: ReturnType<typeof cashFlowFindings>) =>
+    findings.map((f) => f.parts.map((p) => (typeof p === 'string' ? p : `[${p.signed ? 's' : ''}${p.minor}]`)).join('')).join(' ');
+
+  it('says a net within 2% of the earlier one held steady, and why', () => {
+    expect(text(cashFlowFindings(now, before, months, 'Oct 2024 – Sep 2025', month))).toBe(
+      'Net cash flow held steady at [s2013155], [1381] below Oct 2024 – Sep 2025: money in rose [277000] and money out rose [278381].' +
+        ' Every month ended positive; November 2025 was the lowest at [s105877].',
+    );
+  });
+
+  it('says a net rose or fell when it moved further', () => {
+    const lower = { ...before, net_minor: 1500000 };
+    expect(text(cashFlowFindings(now, lower, [], 'the year before', month))).toMatch(/^Net cash flow rose to \[s2013155\], \[513155\] above the year before/);
+  });
+
+  it('counts the months that ended negative, ignoring empty ones', () => {
+    const mixed = [...months, { month: '2026-01-01', net_minor: -42000, active: true }];
+    expect(text(cashFlowFindings(now, null, mixed, '', month))).toBe(
+      'Net cash flow was [s2013155] over the period. 1 of 3 months ended negative; January 2026 was the lowest at [s-42000].',
+    );
+  });
+});
+
+describe('netWorthFindings', () => {
+  const text = (findings: ReturnType<typeof netWorthFindings>) =>
+    findings.map((f) => f.parts.map((p) => (typeof p === 'string' ? p : `[${p.signed ? 's' : ''}${p.minor}]`)).join('')).join(' ');
+  const change = { change_minor: 2013155, cash_flow_minor: 2013155, openings_minor: 0, moved_minor: 0 };
+
+  it('compares with the period before and names where the change came from', () => {
+    const before = { change_minor: 2014536, cash_flow_minor: 2014536, openings_minor: 0, moved_minor: 0 };
+    expect(
+      text(netWorthFindings(change, before, 12, { start_minor: 4000000, end_minor: 5557411 }, { start_minor: -1600000, end_minor: -1144256 }, 'Car loan')),
+    ).toBe(
+      'Net worth rose [2013155] in 12 months, almost the same as the period before ([s2014536]). All of it came from net cash flow.' +
+        ' What you own grew by [1557411] and what you owe fell by [455744], mostly the Car loan.',
+    );
+  });
+
+  it('gives the cash flow share when openings or moves played a part', () => {
+    const mixed = { change_minor: 300000, cash_flow_minor: 250000, openings_minor: 60000, moved_minor: -10000 };
+    expect(text(netWorthFindings(mixed, null, 6, null, null, null))).toBe('Net worth rose [300000] in 6 months. Net cash flow gave [s250000] of it.');
+  });
+
+  it('says what is owed rose without naming an account', () => {
+    expect(
+      text(netWorthFindings({ ...change, change_minor: -5000, cash_flow_minor: -5000 }, null, 1, { start_minor: 100, end_minor: 100 }, { start_minor: -100, end_minor: -5100 }, null)),
+    ).toBe('Net worth fell [5000] in 1 month. All of it came from net cash flow. What you owe rose by [5000].');
   });
 });

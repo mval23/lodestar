@@ -2,9 +2,12 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { ChevronLeft, Info } from 'lucide-react';
 import { useProfile } from '../../lib/profile';
-import { addMonths, formatDateShort, monthStartInZone, todayInZone } from '../../lib/dates';
+import type { Currency } from '../../lib/money';
+import type { Finding } from '../../lib/standsOut';
+import { addMonths, formatDate, monthStartInZone, todayInZone } from '../../lib/dates';
 import { monthRange } from '../../lib/routes';
 import { Select } from '../../ui/Select';
+import { Findings } from '../../ui/StandsOut';
 import { useAccounts } from '../accounts/queries';
 import {
   COMPARES,
@@ -61,9 +64,11 @@ function monthsOf(range: { from: string; to: string }): number {
   return ((ty ?? 0) - (fy ?? 0)) * 12 + ((tm ?? 0) - (fm ?? 0));
 }
 
-// The last day of a month, as "Sep 30": where a period ends or began.
+// The last day of a month, as "Sep 30, 2026": where a period ends or
+// began. With the year, since a 12-month period begins and ends on the same
+// day of the year.
 export function monthEnd(month: string): string {
-  return formatDateShort(monthRange(month).to);
+  return formatDate(monthRange(month).to);
 }
 
 export function ReportFiltersBar({ showScope = true }: { showScope?: boolean }) {
@@ -140,6 +145,26 @@ export function ReportHead({
         <ReportFiltersBar showScope={showScope} />
       </div>
     </header>
+  );
+}
+
+// What the period comes to, in a sentence or two, beside the limits of the
+// figures: the closing pair of every report page.
+export function ReportClosing({ findings, currency, about }: { findings: Finding[]; currency: Currency; about: ReactNode[] }) {
+  return (
+    <div className="report-pair">
+      {findings.length > 0 && (
+        <section className="group about-figures" aria-labelledby="stands-out">
+          <h2 className="caption" id="stands-out">
+            What stands out
+          </h2>
+          <p className="report-findings flush">
+            <Findings findings={findings} currency={currency} />
+          </p>
+        </section>
+      )}
+      <AboutFigures items={about} />
+    </div>
   );
 }
 

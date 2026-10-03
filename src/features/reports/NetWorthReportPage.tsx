@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { useCurrency } from '../../lib/profile';
 import type { Currency } from '../../lib/money';
 import { addMonths } from '../../lib/dates';
+import { netWorthFindings } from '../../lib/standsOut';
 import { accountPath } from '../../lib/routes';
 import { Amount } from '../../ui/Amount';
 import { Comparison } from '../../ui/Comparison';
@@ -11,7 +12,7 @@ import { accountTypeLabel, type AccountType } from '../accounts/queries';
 import { NetWorthChart } from './NetWorthChart';
 import { rangeLabel } from './filters';
 import { useNetWorthByAccount, useNetWorthChange, useNetWorthRange, type AccountChange } from './queries';
-import { AboutFigures, ReportHead, monthEnd, percentChange, useReportRange } from './ReportParts';
+import { ReportClosing, ReportHead, monthEnd, percentChange, useReportRange } from './ReportParts';
 
 // Net worth: each month end over the period, what you own above zero and
 // what you owe below; what each account added; and the change explained in
@@ -39,6 +40,10 @@ export function NetWorthReportPage() {
   // period's change, when there was anything in it.
   const percent = change ? percentChange(change.end_minor, change.start_minor) : '';
   const hadBefore = Boolean(lastYear.data && (lastYear.data.start_minor !== 0 || lastYear.data.end_minor !== 0));
+  // The debt behind most of a fall in what is owed, if one account is.
+  const owedLess = start && end ? end.liabilities_minor - start.liabilities_minor : 0;
+  const paidDown = counted.filter((a) => a.is_liability && a.change_minor > 0).sort((a, b) => b.change_minor - a.change_minor)[0];
+  const mostlyFrom = paidDown && owedLess > 0 && paidDown.change_minor * 2 > owedLess ? paidDown.name : null;
 
   return (
     <div className="page">
@@ -171,8 +176,17 @@ export function NetWorthReportPage() {
             </section>
           </div>
 
-          <AboutFigures
-            items={[
+          <ReportClosing
+            currency={currency}
+            findings={netWorthFindings(
+              change,
+              hadBefore ? (lastYear.data ?? null) : null,
+              monthsIn(range),
+              start && { start_minor: start.assets_minor, end_minor: end.assets_minor },
+              start && { start_minor: start.liabilities_minor, end_minor: end.liabilities_minor },
+              mostlyFrom,
+            )}
+            about={[
               'Only accounts in Lodestar count: a home or car you own is not included unless you add it as an account.',
               'An investment account is one balance with no prices: it changes only by transactions, so market gains are not shown.',
               'Cards and loans are negative balances, so net worth is a plain sum of balances.',

@@ -1047,16 +1047,16 @@ await test('report_cash_flow scoped to one account calls transfers moved in or o
 await test('report_summary totals a period and a comparison period of the same length', async () => {
   const rows = (await asUser(C, `select period, period_from::text as f, period_to::text as t, money_in_minor, money_out_minor,
                                         net_minor, to_goals_minor, from_goals_minor, card_payments_minor, loan_payments_minor,
-                                        cash_withdrawals_minor, other_transfers_minor, months, active_months
+                                        cash_withdrawals_minor, other_transfers_minor, transfers_minor, months, active_months
                                    from public.report_summary('2025-12-01', '2026-04-01', '2025-08-01')`)).rows
     .map((r) => [r.period, r.f, r.t, num(r.money_in_minor), num(r.money_out_minor), num(r.net_minor), num(r.to_goals_minor),
       num(r.from_goals_minor), num(r.card_payments_minor), num(r.loan_payments_minor), num(r.cash_withdrawals_minor),
-      num(r.other_transfers_minor), r.months, r.active_months]);
+      num(r.other_transfers_minor), num(r.transfers_minor), r.months, r.active_months]);
   eq(rows, [
     // Dec – Mar: three ordinary months and March.
-    ['current', '2025-12-01', '2026-04-01', 1200000, 260499, 939501, 305000, 0, 0, 0, 0, 0, 4, 4],
+    ['current', '2025-12-01', '2026-04-01', 1200000, 260499, 939501, 305000, 0, 0, 0, 0, 0, 305000, 4, 4],
     // Aug – Nov: August before tracking began, November empty.
-    ['compare', '2025-08-01', '2025-12-01', 600000, 60000, 540000, 200000, 0, 0, 0, 0, 0, 4, 2],
+    ['compare', '2025-08-01', '2025-12-01', 600000, 60000, 540000, 200000, 0, 0, 0, 0, 0, 200000, 4, 2],
   ], 'Dec – Mar against Aug – Nov');
 });
 

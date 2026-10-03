@@ -546,6 +546,7 @@ export type Database = {
           loan_payments_minor: number;
           cash_withdrawals_minor: number;
           other_transfers_minor: number;
+          transfers_minor: number;
           months: number;
           active_months: number;
         }[];
