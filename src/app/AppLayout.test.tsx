@@ -12,6 +12,7 @@ function show(path = '/') {
           <Route path="/activity" element={<h1>Activity</h1>} />
           <Route path="/accounts/:id" element={<h1>An account</h1>} />
           <Route path="/categories" element={<h1>Categories</h1>} />
+          <Route path="/goals/:id" element={<h1>A goal</h1>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -83,13 +84,19 @@ describe('which item is lit', () => {
   it('lights the item whose path matches, nested paths included', () => {
     show('/accounts/0a8f7b2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b');
     expect(lit('Main')).toEqual(['Accounts']);
-    expect(lit('Tabs')).toEqual(['Overview']);
+    expect(lit('Tabs')).toEqual(['Accounts']);
   });
 
   it('lights the owner of a page that does not nest under it', () => {
     show('/categories');
     expect(lit('Main')).toEqual(['Budgets']);
     expect(lit('Tabs')).toEqual(['Budgets']);
+  });
+
+  it('lights the Overview for Goals, which it opens on a phone', () => {
+    show('/goals/0a8f7b2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b');
+    expect(lit('Main')).toEqual(['Goals']);
+    expect(lit('Tabs')).toEqual(['Overview']);
   });
 
 });

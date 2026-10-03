@@ -81,7 +81,7 @@ Each person picks **USD or COP** at first run. Every amount uses that currency, 
   <img src="docs/readme/overview-phone-dark.png" alt="Overview on a phone, dark" width="280">
 </p>
 
-On a phone, a tab bar holds Overview, Activity, Budgets and Goals. Bills sits under Budgets, and Reports opens from Overview. The app follows the system's light or dark setting.
+On a phone, a tab bar holds Overview, Activity, Accounts and Budgets. Bills sits under Budgets, and Goals and Reports open from Overview. The app follows the system's light or dark setting.
 
 ## How it's built
 
