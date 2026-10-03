@@ -40,6 +40,7 @@ export function RunningTotalChart({
   valueLabel,
   typicalLabel,
   showTypical,
+  plan,
 }: {
   title: string;
   caption?: string;
@@ -50,7 +51,10 @@ export function RunningTotalChart({
   typicalLabel: string;
   // Off when there are no earlier months to make a typical one from.
   showTypical: boolean;
+  // A budget line's plan: drawn as a rule, with a dashed even path to it.
+  plan?: number | null;
 }) {
+  const hasPlan = plan !== undefined && plan !== null && plan > 0;
   const { ref, width } = useChartWidth();
   const innerW = width - MARGIN.left - MARGIN.right;
   const drawn = days.filter((d) => !d.after_today);
@@ -60,6 +64,7 @@ export function RunningTotalChart({
     1,
     ...drawn.map((d) => d.running_minor),
     ...(showTypical ? days.map((d) => d.typical_running_minor) : []),
+    hasPlan ? plan : 0,
   );
   const x = scaleLinear({ domain: [1, Math.max(2, days.length)], range: [0, innerW] });
   const y = scaleLinear({ domain: [0, largest], range: [INNER_H, 0], nice: true });
@@ -80,6 +85,7 @@ export function RunningTotalChart({
           items={[
             { className: 'swatch-in swatch-line', label: valueLabel },
             ...(showTypical ? [{ className: 'swatch-dash', label: typicalLabel }] : []),
+            ...(hasPlan ? [{ className: 'swatch-dash', label: 'Even path to the plan' }, { className: 'swatch-in swatch-line', label: 'Plan' }] : []),
             ...(inProgress ? [{ className: 'swatch-now', label: 'Today' }] : []),
           ]}
         />
@@ -99,6 +105,18 @@ export function RunningTotalChart({
           <Group left={MARGIN.left} top={MARGIN.top}>
             <ValueAxis scale={y} innerWidth={innerW} currency={currency} />
             {showTypical && <polyline className="line-prior" points={line(days, (d) => d.typical_running_minor)} />}
+            {hasPlan && (
+              <>
+                <line className="chart-plan" x1={0} x2={innerW} y1={y(plan)} y2={y(plan)} />
+                <line
+                  className="line-prior"
+                  x1={x(1)}
+                  y1={y(plan / days.length)}
+                  x2={x(days.length)}
+                  y2={y(plan)}
+                />
+              </>
+            )}
             {drawn.length > 0 && <polyline className="line-net" points={line(drawn, (d) => d.running_minor)} />}
             {inProgress && last && (
               <rect className="chart-now" x={x(last.day_of_month) - 4} y={y(last.running_minor) - 4} width={8} height={8} />

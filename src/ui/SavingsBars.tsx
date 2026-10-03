@@ -36,6 +36,9 @@ export function SavingsBars({
   months,
   plan,
   currency,
+  showRate = true,
+  inLabel = 'Into goals',
+  outLabel = 'Taken out',
 }: {
   title: string;
   caption?: string;
@@ -43,6 +46,10 @@ export function SavingsBars({
   // The goals' monthly plans together, or null without any.
   plan: number | null;
   currency: Currency;
+  // Off for one goal, where money in has no part.
+  showRate?: boolean;
+  inLabel?: string;
+  outLabel?: string;
 }) {
   const { ref, width } = useChartWidth();
   const innerW = width - MARGIN.left - MARGIN.right;
@@ -63,14 +70,14 @@ export function SavingsBars({
       legend={
         <ChartLegend
           items={[
-            { className: 'swatch-in', label: 'Into goals' },
-            { className: 'swatch-out', label: 'Taken out' },
+            { className: 'swatch-in', label: inLabel },
+            { className: 'swatch-out', label: outLabel },
             ...(plan ? [{ className: 'swatch-dash', label: 'Monthly plan' }] : []),
             { className: 'swatch-now', label: 'Latest month' },
           ]}
         />
       }
-      table={<SavingsTable months={months} currency={currency} />}
+      table={<SavingsTable months={months} currency={currency} showRate={showRate} inLabel={inLabel} outLabel={outLabel} />}
     >
       <div className="chart-plot" ref={ref}>
         <svg
@@ -94,9 +101,11 @@ export function SavingsBars({
                 <Group key={m.month}>
                   {m.in_minor > 0 && <rect className="bar-in" x={left} y={y(m.in_minor)} width={x.bandwidth()} height={zero - y(m.in_minor)} rx={2} />}
                   {m.out_minor > 0 && <rect className="bar-out" x={left} y={zero} width={x.bandwidth()} height={y(-m.out_minor) - zero} rx={2} />}
-                  <text className="chart-axis-label savings-rate" x={left + x.bandwidth() / 2} y={y(Math.max(m.in_minor, 0)) - 6} textAnchor="middle">
-                    {rateOf(m)}
-                  </text>
+                  {showRate && (
+                    <text className="chart-axis-label savings-rate" x={left + x.bandwidth() / 2} y={y(Math.max(m.in_minor, 0)) - 6} textAnchor="middle">
+                      {rateOf(m)}
+                    </text>
+                  )}
                   {m.month === latest && (
                     <rect className="chart-now" x={left + x.bandwidth() / 2 - 3} y={INNER_H + 4} width={6} height={6} />
                   )}
@@ -118,13 +127,13 @@ export function SavingsBars({
         </svg>
         {hovered && hover.index !== null && (
           <ChartReadout x={MARGIN.left + centers[hover.index]!} plotWidth={width} title={formatMonth(hovered.month)}>
-            <ReadoutLine label="Into goals" swatch="swatch-in">
+            <ReadoutLine label={inLabel} swatch="swatch-in">
               <Amount minor={hovered.in_minor} currency={currency} />
             </ReadoutLine>
-            <ReadoutLine label="Taken out" swatch="swatch-out">
+            <ReadoutLine label={outLabel} swatch="swatch-out">
               <Amount minor={hovered.out_minor} currency={currency} />
             </ReadoutLine>
-            <ReadoutLine label="Savings rate">{rateOf(hovered)}</ReadoutLine>
+            {showRate && <ReadoutLine label="Savings rate">{rateOf(hovered)}</ReadoutLine>}
           </ChartReadout>
         )}
       </div>
@@ -132,24 +141,40 @@ export function SavingsBars({
   );
 }
 
-function SavingsTable({ months, currency }: { months: SavingsMonth[]; currency: Currency }) {
+function SavingsTable({
+  months,
+  currency,
+  showRate,
+  inLabel,
+  outLabel,
+}: {
+  months: SavingsMonth[];
+  currency: Currency;
+  showRate: boolean;
+  inLabel: string;
+  outLabel: string;
+}) {
   return (
     <table className="ledger">
       <thead>
         <tr>
           <th scope="col">Month</th>
           <th scope="col" className="num">
-            Into goals
+            {inLabel}
           </th>
           <th scope="col" className="num">
-            Taken out
+            {outLabel}
           </th>
-          <th scope="col" className="num">
-            Money in
-          </th>
-          <th scope="col" className="num">
-            Savings rate
-          </th>
+          {showRate && (
+            <>
+              <th scope="col" className="num">
+                Money in
+              </th>
+              <th scope="col" className="num">
+                Savings rate
+              </th>
+            </>
+          )}
         </tr>
       </thead>
       <tbody>
@@ -162,10 +187,14 @@ function SavingsTable({ months, currency }: { months: SavingsMonth[]; currency: 
             <td className="num">
               <Amount minor={m.out_minor} currency={currency} />
             </td>
-            <td className="num">
-              <Amount minor={m.money_in_minor} currency={currency} />
-            </td>
-            <td className="num">{rateOf(m)}</td>
+            {showRate && (
+              <>
+                <td className="num">
+                  <Amount minor={m.money_in_minor} currency={currency} />
+                </td>
+                <td className="num">{rateOf(m)}</td>
+              </>
+            )}
           </tr>
         ))}
       </tbody>

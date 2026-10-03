@@ -1,6 +1,8 @@
 import {
   cashFlowFindings,
+  goalFindings,
   budgetFindings,
+  budgetLineFindings,
   categoryFindings,
   monthFindings,
   netWorthFindings,
@@ -228,5 +230,35 @@ describe('savingsFindings', () => {
       'You put [1500000] into goals and took [205000] back out. That nets to a 20% savings rate. Every month met the monthly plans for your goals.',
     );
     expect(said(savingsFindings(0, 0, 100000, null))).toBe('');
+  });
+});
+
+describe('budgetLineFindings', () => {
+  const line = { category_name: 'Groceries', planned_minor: 55000, spent_minor: 38043, pace_minor: 44000, gap_minor: -5957, days_left: 6, per_day_minor: 2826, status: 'on_pace' as const };
+
+  it('says where the line is against its pace, and that most months land within the plan', () => {
+    expect(said(budgetLineFindings('Groceries', line, { within: 6, planned: 11, typical_minor: 53163 }))).toBe(
+      'Groceries is [5957] under pace, with [16957] left for 6 days. Most months land within the plan.',
+    );
+  });
+
+  it('names the usual amount when the plan keeps missing, and says nothing of pace for a past month', () => {
+    expect(said(budgetLineFindings('Dining out', null, { within: 2, planned: 12, typical_minor: 35900 }))).toBe(
+      'It went over plan in 10 of 12 months; a typical month is [35900].',
+    );
+  });
+});
+
+describe('goalFindings', () => {
+  it('says when the pace arrives against the date, and what arriving on time needs', () => {
+    const pace = { avg_put_in_minor: 20000, estimated_month: '2027-04-01', needed_monthly_minor: 15556 };
+    expect(said(goalFindings('Travel', pace, '2027-06-01', { estimate: 'April 2027', target: 'Jun 30, 2027' }))).toBe(
+      'At [20000] a month, Travel is reached around April 2027, 2 months early. It needs [15556] a month to arrive by Jun 30, 2027.',
+    );
+  });
+
+  it('gives no estimate without one', () => {
+    const pace = { avg_put_in_minor: 0, estimated_month: null, needed_monthly_minor: null };
+    expect(said(goalFindings('Home', pace, null, { estimate: null, target: null }))).toBe('');
   });
 });
