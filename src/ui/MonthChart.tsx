@@ -52,6 +52,7 @@ export function MonthBars({
   typicalLabel,
   hatchOverPlan = false,
   partialLabel,
+  marks = [],
 }: {
   title: string;
   caption?: string;
@@ -69,6 +70,9 @@ export function MonthBars({
   hatchOverPlan?: boolean;
   // Given, the current month's bar is lighter and named so: "September so far".
   partialLabel?: string;
+  // Months to call out above their bar, such as a price change. Every one
+  // gets a tick; only the latest is labelled, so labels never collide.
+  marks?: { month: string; label: string }[];
 }) {
   const { ref, width } = useChartWidth();
   const hatchId = useId();
@@ -76,9 +80,12 @@ export function MonthBars({
   const months = scaleBand({ domain: rows.map((r) => r.month), range: [0, innerW], padding: 0.3 });
   const showTypical = typical !== undefined && typical !== null;
   const largest = Math.max(1, ...rows.map((r) => Math.max(r.value, r.plan ?? 0)), showTypical ? typical : 0);
+  const valueOf = new Map(rows.map((r) => [r.month, r.value]));
+  const lastMark = marks[marks.length - 1];
   const overPlan = (r: BarRow) => hatchOverPlan && r.plan !== undefined && r.plan !== null && r.value > r.plan;
   const anyOver = rows.some(overPlan);
-  const amounts = scaleLinear({ domain: [0, largest], range: [INNER_H, 0], nice: true });
+  // Room above the tallest bar for a mark's label.
+  const amounts = scaleLinear({ domain: [0, marks.length > 0 ? largest * 1.2 : largest], range: [INNER_H, 0], nice: true });
   const hasPlan = rows.some((r) => r.plan !== undefined && r.plan !== null);
   const centers = rows.map((r) => (months(r.month) ?? 0) + months.bandwidth() / 2);
   const hover = usePlotHover(centers);
@@ -180,6 +187,23 @@ export function MonthBars({
               );
             })}
             {showTypical && <line className="line-prior" x1={0} x2={innerW} y1={amounts(typical)} y2={amounts(typical)} />}
+            {marks.map((mark) => {
+              const left = months(mark.month);
+              if (left === undefined) return null;
+              const cx = left + months.bandwidth() / 2;
+              const top = amounts(Math.max(valueOf.get(mark.month) ?? 0, showTypical ? typical : 0));
+              const anchor = cx < innerW * 0.2 ? 'start' : cx > innerW * 0.8 ? 'end' : 'middle';
+              return (
+                <g key={mark.month}>
+                  <line className="chart-mark" x1={cx} x2={cx} y1={top - 14} y2={top - 3} />
+                  {mark === lastMark && (
+                    <text className="chart-mark-label" x={cx} y={top - 19} textAnchor={anchor}>
+                      {mark.label}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
             <AxisBottom
               top={INNER_H}
               scale={months}

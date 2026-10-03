@@ -527,6 +527,79 @@ export type Database = {
           total_paid_minor: number;
         }[];
       };
+      upcoming_items: {
+        Args: { p_days?: number; p_today?: string };
+        Returns: {
+          recurring_item_id: string;
+          name: string;
+          label: Database['public']['Enums']['recurring_label'];
+          kind: Database['public']['Enums']['txn_kind'];
+          due_on: string;
+          amount_minor: number;
+          amount_is_variable: boolean;
+          overdue: boolean;
+          week: number;
+          week_bills_minor: number;
+          week_in_minor: number;
+          bills_minor: number;
+          in_minor: number;
+        }[];
+      };
+      account_outflows: {
+        Args: { p_account_id: string; p_from: string; p_to: string };
+        Returns: {
+          line: string;
+          category_id: string;
+          to_account_id: string;
+          account_type: Database['public']['Enums']['account_type'];
+          name: string;
+          out_minor: number;
+          txn_count: number;
+          total_out_minor: number;
+        }[];
+      };
+      account_summary: {
+        Args: { p_account_id: string; p_from: string; p_to: string; p_today?: string };
+        Returns: {
+          months: number;
+          income_minor: number;
+          expense_minor: number;
+          transfer_in_minor: number;
+          transfer_out_minor: number;
+          in_minor: number;
+          out_minor: number;
+          avg_in_minor: number;
+          avg_out_minor: number;
+          avg_income_minor: number;
+          avg_expense_minor: number;
+          avg_transfer_in_minor: number;
+          avg_transfer_out_minor: number;
+          balance_minor: number;
+          month_end_on: string;
+          since_month_end_minor: number;
+          year_ago_on: string;
+          since_year_ago_minor: number;
+          lowest_minor: number;
+          lowest_on: string;
+          payments_left: number;
+        }[];
+      };
+      recurring_item_history: {
+        Args: { p_item_id: string; p_months?: number; p_today?: string };
+        Returns: {
+          month: string;
+          due_count: number;
+          paid_minor: number;
+          payment_count: number;
+          last_minor: number;
+          from_minor: number;
+          change_minor: number;
+          status: string;
+          months_due: number;
+          months_paid: number;
+          typical_month_minor: number;
+        }[];
+      };
       report_category_months: {
         Args: { p_from: string; p_to: string; p_account_ids?: string[] };
         Returns: { category_id: string; month: string; total_minor: number }[];

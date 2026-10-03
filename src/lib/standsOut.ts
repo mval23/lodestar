@@ -650,3 +650,93 @@ export function debtFindings(
   }
   return findings;
 }
+
+// ---------------------------------------------------------------------------
+// An account: how far its balance moved since the last month end, and how
+// low it went in the last 90 days. A debt reads as what is owed.
+
+export type AccountFigures = {
+  name: string;
+  liability: boolean;
+  since_month_end_minor: number;
+  // "Aug 31", already formatted.
+  month_end: string;
+  lowest_minor: number;
+  lowest_on: string;
+};
+
+export function accountFindings(f: AccountFigures): Finding[] {
+  const findings: Finding[] = [];
+  if (f.liability && f.since_month_end_minor !== 0) {
+    findings.push({
+      key: 'change',
+      weight: 2,
+      parts: [
+        `${f.name} owes `,
+        { minor: Math.abs(f.since_month_end_minor) },
+        ` ${f.since_month_end_minor < 0 ? 'more' : 'less'} than at ${f.month_end}.`,
+      ],
+    });
+  } else if (!f.liability && f.since_month_end_minor !== 0) {
+    findings.push({
+      key: 'change',
+      weight: 2,
+      parts: [
+        `${f.name} is `,
+        { minor: Math.abs(f.since_month_end_minor) },
+        ` ${f.since_month_end_minor < 0 ? 'lower' : 'higher'} than at ${f.month_end}.`,
+      ],
+    });
+  }
+  if (!f.liability && f.lowest_minor < 0) {
+    findings.unshift({
+      key: 'below-zero',
+      weight: 3,
+      parts: ['It went below zero in the last 90 days, to ', { minor: f.lowest_minor }, ` on ${f.lowest_on}.`],
+    });
+  } else if (!f.liability && f.lowest_minor > 0 && findings.length > 0) {
+    findings.push({ key: 'lowest', weight: 1, parts: ['It has stayed above ', { minor: f.lowest_minor }, ' for 90 days.'] });
+  }
+  return findings;
+}
+
+// ---------------------------------------------------------------------------
+// A bill: its share of a typical month, its last price change, and months
+// it fell due with nothing paid, judged against the current schedule.
+
+export type BillFigures = {
+  name: string;
+  // "43%", or null without a typical month or for income.
+  share_of_month: string | null;
+  last_change: { month: string; change_minor: number } | null;
+  missed: number;
+  months_due: number;
+};
+
+export function billFindings(f: BillFigures): Finding[] {
+  const findings: Finding[] = [];
+  if (f.missed > 0) {
+    findings.push({
+      key: 'missed',
+      weight: 3,
+      parts: [
+        `${f.missed} of the last ${f.months_due} months ${f.missed === 1 ? 'has' : 'have'} no payment recorded, judged against the current schedule.`,
+      ],
+    });
+  }
+  if (f.share_of_month) {
+    findings.push({ key: 'share', weight: 2, parts: [`${f.name} is ${f.share_of_month} of a typical month’s spending.`] });
+  }
+  if (f.last_change && f.last_change.change_minor !== 0) {
+    findings.push({
+      key: 'change',
+      weight: 1,
+      parts: [
+        `It last changed in ${f.last_change.month}, ${f.last_change.change_minor > 0 ? 'up' : 'down'} `,
+        { minor: Math.abs(f.last_change.change_minor) },
+        '.',
+      ],
+    });
+  }
+  return findings;
+}

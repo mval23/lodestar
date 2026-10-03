@@ -481,6 +481,86 @@ function debtSummaryOf(tables: Tables) {
   }));
 }
 
+// The Account and Bill dashboards and Coming up, from the stub's bills,
+// accounts and transactions. Each bill comes round once in the window.
+const dayDiff = (a: string, b: string) => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86400000);
+
+function upcomingOf(tables: Tables, days: number) {
+  const rows = tables.recurring_items
+    .filter((r) => !r.archived_at && dayDiff(String(r.next_due_on), today) < days)
+    .map((r) => {
+      const ahead = dayDiff(String(r.next_due_on), today);
+      return {
+        recurring_item_id: r.id, name: r.name, label: r.label, kind: r.kind, due_on: r.next_due_on, amount_minor: Number(r.amount_minor),
+        amount_is_variable: r.amount_is_variable, overdue: ahead < 0, week: ahead < 0 ? 0 : Math.min(Math.floor(ahead / 7), 3),
+      };
+    })
+    .sort((a, b) => a.week - b.week || String(a.due_on).localeCompare(String(b.due_on)));
+  const sum = (list: typeof rows, kind: string) => list.filter((r) => r.kind === kind).reduce((s, r) => s + r.amount_minor, 0);
+  return rows.map((r) => {
+    const week = rows.filter((x) => x.week === r.week);
+    return { ...r, week_bills_minor: sum(week, 'expense'), week_in_minor: sum(week, 'income'), bills_minor: sum(rows, 'expense'), in_minor: sum(rows, 'income') };
+  });
+}
+
+function outflowsOf(tables: Tables, accountId: string, from: string, to: string) {
+  const outs = tables.transactions.filter(
+    (t) => t.from_account_id === accountId && t.kind !== 'income' && String(t.occurred_on) >= from && String(t.occurred_on) < to,
+  );
+  const lines = new Map<string, { line: string; category_id: unknown; to_account_id: unknown; account_type: unknown; name: unknown; out_minor: number; txn_count: number }>();
+  for (const t of outs) {
+    const transfer = t.kind === 'transfer';
+    const account = tables.account_balances.find((a) => a.account_id === t.to_account_id);
+    const key = transfer ? `a-${String(t.to_account_id)}` : `c-${String(t.category_id)}`;
+    const line = lines.get(key) ?? {
+      line: transfer ? 'account' : 'category',
+      category_id: transfer ? null : t.category_id,
+      to_account_id: transfer ? t.to_account_id : null,
+      account_type: transfer ? (account?.type ?? null) : null,
+      name: transfer ? (account?.name ?? 'Another account') : (tables.categories.find((c) => c.id === t.category_id)?.name ?? 'No category'),
+      out_minor: 0,
+      txn_count: 0,
+    };
+    line.out_minor += Number(t.amount_minor);
+    line.txn_count += 1;
+    lines.set(key, line);
+  }
+  const all = [...lines.values()].sort((a, b) => b.out_minor - a.out_minor);
+  const total = all.reduce((s, l) => s + l.out_minor, 0);
+  return all.map((l) => ({ ...l, total_out_minor: total }));
+}
+
+function accountSummaryOf(tables: Tables, accountId: string) {
+  const a = tables.account_balances.find((x) => x.account_id === accountId);
+  if (!a) return [];
+  const monthEnd = new Date(Date.UTC(stubNow.getUTCFullYear(), stubNow.getUTCMonth(), 0)).toISOString().slice(0, 10);
+  const yearAgo = new Date(Date.UTC(stubNow.getUTCFullYear(), stubNow.getUTCMonth() - 11, 0)).toISOString().slice(0, 10);
+  const balance = Number(a.balance_minor);
+  return [{
+    months: 3, income_minor: 0, expense_minor: 0, transfer_in_minor: 0, transfer_out_minor: 0, in_minor: 0, out_minor: 0,
+    avg_in_minor: 0, avg_out_minor: 0, avg_income_minor: 0, avg_expense_minor: 0, avg_transfer_in_minor: 0, avg_transfer_out_minor: 0,
+    balance_minor: balance, month_end_on: monthEnd, since_month_end_minor: 0, year_ago_on: yearAgo, since_year_ago_minor: 0,
+    lowest_minor: balance, lowest_on: today, payments_left: null,
+  }];
+}
+
+function billHistoryOf(tables: Tables, itemId: string, months: number) {
+  const item = tables.recurring_items.find((r) => r.id === itemId);
+  if (!item) return [];
+  const end = new Date(Date.UTC(stubNow.getUTCFullYear(), stubNow.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+  const start = new Date(Date.UTC(stubNow.getUTCFullYear(), stubNow.getUTCMonth() - months + 1, 1)).toISOString().slice(0, 10);
+  const anchorMonth = `${String(item.anchor_on).slice(0, 7)}-01`;
+  return monthsFrom(start, end).map((month) => {
+    const paid = tables.transactions.filter((t) => t.recurring_item_id === itemId && String(t.occurred_on).startsWith(month.slice(0, 7)));
+    const amount = paid.reduce((s, t) => s + Number(t.amount_minor), 0);
+    const due = month >= anchorMonth ? 1 : 0;
+    return {
+      month, due_count: due, paid_minor: amount, payment_count: paid.length, last_minor: paid.length ? Number(paid[paid.length - 1]!.amount_minor) : null,
+      from_minor: null, change_minor: null, status: paid.length ? 'paid' : due ? 'upcoming' : 'none', months_due: 0, months_paid: 0, typical_month_minor: null,
+    };
+  });
+}
+
 export async function stubSupabase(page: Page, options: Options = {}) {
   const tables = options.tables ?? emptyTables();
 
@@ -535,6 +615,10 @@ export async function stubSupabase(page: Page, options: Options = {}) {
       if (name === 'possible_recurring') return json([]);
       if (name === 'cash_runway') return json(cashRunwayOf(tables));
       if (name === 'debt_summary') return json(debtSummaryOf(tables));
+      if (name === 'upcoming_items') return json(upcomingOf(tables, Number(args.p_days ?? 30)));
+      if (name === 'account_outflows') return json(outflowsOf(tables, args.p_account_id!, args.p_from!, args.p_to!));
+      if (name === 'account_summary') return json(accountSummaryOf(tables, args.p_account_id!));
+      if (name === 'recurring_item_history') return json(billHistoryOf(tables, args.p_item_id!, Number(args.p_months ?? 24)));
       return json(null);
     }
 

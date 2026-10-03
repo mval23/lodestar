@@ -135,6 +135,21 @@ test.describe('leaving', () => {
   });
 });
 
+test.describe('detail dashboards', () => {
+  test('a bill’s page has no violations', async ({ page }) => {
+    const BILL = '6c0a3f1e-2b4d-4c5e-8f9a-0b1c2d3e4f5a';
+    const tables = withData();
+    tables.recurring_items = [{ ...tables.recurring_items[0], id: BILL }];
+    await signIn(page);
+    await stubSupabase(page, { tables });
+    await page.goto(`/bills/${BILL}`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Rent' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Changes and gaps' })).toBeVisible();
+    const results = await scan(page);
+    expect(results.violations).toEqual([]);
+  });
+});
+
 test.describe('editing in place', () => {
   test('an account’s table, with a cell open, has no violations', async ({ page }) => {
     await signIn(page);

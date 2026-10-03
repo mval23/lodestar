@@ -292,3 +292,67 @@ export function useAccountLedger(id: string | undefined, kind: LedgerKind, page 
     },
   });
 }
+
+export type OutflowLine = {
+  line: 'category' | 'goals' | 'account';
+  category_id: string | null;
+  to_account_id: string | null;
+  account_type: AccountType | null;
+  name: string;
+  out_minor: number;
+  txn_count: number;
+  total_out_minor: number;
+};
+
+// Where one account's money went between two dates (the end is exclusive):
+// expenses by category, transfers by where they went. The lines add up to
+// the account's money out for the period (account_outflows).
+export function useAccountOutflows(id: string | undefined, from: string, to: string) {
+  return useQuery({
+    queryKey: [...accountsKey, 'outflows', id, from, to],
+    enabled: Boolean(id) && from < to,
+    queryFn: async (): Promise<OutflowLine[]> => {
+      const { data, error } = await db().rpc('account_outflows', { p_account_id: id!, p_from: from, p_to: to });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        ...row,
+        line: row.line as OutflowLine['line'],
+        category_id: (row.category_id as string | null) ?? null,
+        to_account_id: (row.to_account_id as string | null) ?? null,
+        account_type: (row.account_type as AccountType | null) ?? null,
+      }));
+    },
+  });
+}
+
+export type AccountSummary = Omit<
+  Database['public']['Functions']['account_summary']['Returns'][number],
+  'lowest_on' | 'payments_left' | 'month_end_on' | 'year_ago_on'
+> & {
+  month_end_on: string;
+  year_ago_on: string;
+  lowest_on: string;
+  payments_left: number | null;
+};
+
+// One account's figures for a period, with the changes since the last month
+// end and a year before, and the lowest balance in 90 days (account_summary).
+export function useAccountSummary(id: string | undefined, from: string, to: string) {
+  return useQuery({
+    queryKey: [...accountsKey, 'summary', id, from, to],
+    enabled: Boolean(id) && from < to,
+    queryFn: async (): Promise<AccountSummary | null> => {
+      const { data, error } = await db().rpc('account_summary', { p_account_id: id!, p_from: from, p_to: to }).limit(1);
+      if (error) throw error;
+      const row = data?.[0];
+      if (!row) return null;
+      return {
+        ...row,
+        month_end_on: row.month_end_on.slice(0, 10),
+        year_ago_on: row.year_ago_on.slice(0, 10),
+        lowest_on: row.lowest_on.slice(0, 10),
+        payments_left: (row.payments_left as number | null) ?? null,
+      };
+    },
+  });
+}

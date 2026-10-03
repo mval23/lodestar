@@ -2294,6 +2294,13 @@ a:hover {
 
 /* ---------- Phase 1 additions ---------- */
 
+/* Hidden where the tab bar is, when a phone has no room for it. */
+@media (max-width: 767px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
+
 /* Shown only where the tab bar is: the sidebar already offers these. */
 @media (min-width: 768px) {
   .mobile-only {
@@ -2575,6 +2582,17 @@ a:hover {
 /* In a bar chart, the month under the pointer is a light column behind its bars. */
 .chart-hover-band {
   fill: var(--sunk);
+}
+.line-halo {
+  fill: none;
+  stroke: var(--surface);
+  stroke-width: 6;
+  stroke-linejoin: round;
+}
+.chart-dot {
+  fill: var(--in);
+  stroke: var(--surface);
+  stroke-width: 1.5;
 }
 .chart-hover-dot {
   fill: var(--surface);
@@ -3931,4 +3949,163 @@ a:hover {
 /* An "Estimate" tag beside a caption keeps its distance. */
 .caption .estimate-tag {
   margin-left: var(--space-2);
+}
+
+/* ---------- Coming up: the next 30 days in four week columns ---------- */
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: 0 var(--space-5) var(--space-5);
+}
+.week-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 0 var(--space-4);
+  border-left: 1px solid var(--line);
+}
+.week-col:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.week-col:last-child {
+  padding-right: 0;
+}
+.week-head {
+  margin: 0;
+}
+.week-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.week-items li {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 15px;
+}
+.week-date {
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.week-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.week-name small,
+.week-amount small {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.week-amount {
+  text-align: right;
+  white-space: nowrap;
+}
+.week-total {
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+@media (max-width: 1179px) {
+  .week-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: var(--space-5);
+  }
+  .week-col:nth-child(3) {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+@media (max-width: 767px) {
+  .week-strip {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0;
+  }
+  .week-col {
+    padding: 0;
+    border-left: 0;
+  }
+  .week-col + .week-col {
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--line);
+  }
+}
+
+/* ---------- Account dashboard ---------- */
+.detail-period {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+/* A transfer stays yours: its bar is drawn open, not filled. */
+.bar-track.bar-transfer > i {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--out);
+}
+.outflows th[scope="row"] {
+  font-weight: 400;
+}
+.outflows th[scope="row"] small {
+  white-space: nowrap;
+}
+.outflows .month-cat-bar {
+  width: 24%;
+}
+
+/* A month called out above its bar, such as a price change. */
+.chart-mark {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+.chart-mark-label {
+  fill: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Bill dashboard: changes and gaps ---------- */
+.change-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.change-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--line);
+}
+.change-list li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.change-list svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--ink-2);
+}
+.change-list li > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.change-list small {
+  color: var(--ink-2);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
