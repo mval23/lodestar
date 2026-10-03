@@ -39,6 +39,25 @@ vi.mock('./queries', async (importOriginal) => {
     useCategories: () => ({ data: [category()] }),
     useCategoryGroups: () => ({ data: [] }),
     useCategoryUsage: () => ({ data: [{ category_id: ID, kind: 'expense', last_used_at: null, use_count: 12 }] }),
+    useCategoryStats: () => ({
+      data: {
+        this_month_minor: 48260,
+        plan_minor: 52000,
+        typical_minor: 50000,
+        low_minor: 41000,
+        high_minor: 60000,
+        months: 11,
+        last3_minor: 150000,
+        prev3_minor: 120000,
+        total_minor: 600000,
+        kind_total_minor: 2400000,
+        rank: 2,
+        ranked: 9,
+        planned_months: 6,
+        over_plan_months: 4,
+      },
+      isError: false,
+    }),
   };
 });
 
@@ -154,11 +173,25 @@ describe('CategoryDetailPage', () => {
     expect(useCategory).toHaveBeenCalledWith(undefined);
   });
 
-  it('leads with this month against the plan, and links to the budget line', () => {
+  it('leads with this month in its usual range, the plan, the trend and the share', () => {
     renderPage();
     expect(screen.getByRole('heading', { level: 1, name: 'Groceries' })).toBeInTheDocument();
-    expect(screen.getAllByText('$482.60').length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: /\$37\.40 left/ })).toHaveAttribute('href', `/budgets/2026-09/${ID}`);
+    const band = screen.getByRole('region', { name: 'This category' });
+    expect(within(band).getAllByText('$482.60').length).toBeGreaterThan(0);
+    expect(band).toHaveTextContent(/\$410\.00.*low/);
+    expect(band).toHaveTextContent(/typical.*\$500\.00/);
+    expect(band).toHaveTextContent('so far below the typical month');
+    expect(band).toHaveTextContent('Over plan in 4 of the last 6 months with one');
+    expect(band).toHaveTextContent('+25.0% on the 3 months before');
+    expect(band).toHaveTextContent('25%');
+    expect(band).toHaveTextContent('#2 of 9 categories');
+  });
+
+  it('says how it runs against its plan, and that it is rising', () => {
+    renderPage();
+    const said = screen.getByText(/What stands out/).closest('p')!;
+    expect(said).toHaveTextContent(/Groceries averaged \$500\.00.*against a.*\$520\.00.*over plan in 4 of the 6 months/);
+    expect(said).toHaveTextContent(/up 25% over the last 3 months/);
   });
 
   it('has one table and no tabs, because a category holds one kind', () => {
@@ -202,7 +235,10 @@ describe('CategoryDetailPage', () => {
 
   it('groups what it is spent on, without pretending to match loosely', () => {
     renderPage();
-    expect(screen.getByText('Supermarket weekly shop')).toBeInTheDocument();
+    const row = screen.getByText(/Supermarket weekly shop/).closest('tr')!;
+    // 52 times at 59.71 on average, 51.7% of the 12 months.
+    expect(row).toHaveTextContent(/52 ×.*\$59\.71/);
+    expect(row).toHaveTextContent('51.7%');
     expect(screen.getByText(/grouped on the exact description/i)).toBeInTheDocument();
   });
 });

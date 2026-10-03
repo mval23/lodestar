@@ -19,6 +19,7 @@ const PAGES = [
   ['/reports', 'Reports'],
   ['/reports/cash-flow', 'Cash flow report'],
   ['/reports/net-worth', 'Net worth report'],
+  [`/months/${new Date().toISOString().slice(0, 7)}`, 'Month'],
   ['/import-export', 'Import & export'],
   ['/settings', 'Settings'],
 ] as const;

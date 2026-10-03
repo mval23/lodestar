@@ -66,3 +66,71 @@ export function useMonthAccounts(month: string) {
     },
   });
 }
+
+export type SpendingDay = {
+  day: string;
+  day_of_month: number;
+  spent_minor: number;
+  running_minor: number;
+  typical_running_minor: number;
+  typical_months: number;
+  after_today: boolean;
+};
+
+// Spending day by day and its running total, against a typical month's
+// running total (daily_spending). With a category, only that category.
+export function useDailySpending(month: string, categoryId?: string) {
+  return useQuery({
+    queryKey: [...transactionsKey, 'daily-spending', month, categoryId ?? null],
+    queryFn: async (): Promise<SpendingDay[]> => {
+      const { data, error } = await db().rpc('daily_spending', {
+        p_month: month,
+        ...(categoryId ? { p_category_id: categoryId } : {}),
+      });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({ ...row, day: row.day.slice(0, 10) }));
+    },
+  });
+}
+
+export type MonthCategory = {
+  // null for spending with no category.
+  category_id: string | null;
+  spent_minor: number;
+  typical_minor: number;
+  typical_months: number;
+};
+
+// Each category's spending this month so far, against a typical month cut at
+// the same day (month_categories). Largest first.
+export function useMonthCategories(month: string) {
+  return useQuery({
+    queryKey: [...transactionsKey, 'month-categories', month],
+    queryFn: async (): Promise<MonthCategory[]> => {
+      const { data, error } = await db().rpc('month_categories', { p_month: month });
+      if (error) throw error;
+      return (data ?? []).map((row) => ({ ...row, category_id: (row.category_id as string | null) ?? null }));
+    },
+  });
+}
+
+export type BillPayment = { recurring_item_id: string; paid_minor: number; last_paid_on: string };
+
+// What each bill or subscription was paid in one month (recurring_item_months).
+export function useMonthBillPayments(month: string) {
+  return useQuery({
+    queryKey: [...transactionsKey, 'month-bill-payments', month],
+    queryFn: async (): Promise<BillPayment[]> => {
+      const { data, error } = await db()
+        .from('recurring_item_months')
+        .select('recurring_item_id, paid_minor, last_paid_on')
+        .eq('month', month);
+      if (error) throw error;
+      return data.map((row) => ({
+        recurring_item_id: row.recurring_item_id ?? '',
+        paid_minor: row.paid_minor ?? 0,
+        last_paid_on: (row.last_paid_on ?? '').slice(0, 10),
+      }));
+    },
+  });
+}

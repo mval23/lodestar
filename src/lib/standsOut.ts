@@ -204,3 +204,117 @@ export function netWorthFindings(
 
   return findings;
 }
+
+// ---------------------------------------------------------------------------
+// The Month page: whether spending is running above or below a typical month
+// cut at the same day, and which category explains most of it.
+
+export type MonthCategoryLine = { name: string; spent_minor: number; typical_minor: number };
+
+// A category explains the difference "mostly" when it carries at least this
+// share of it, in the same direction.
+export const MOSTLY_SHARE = 0.4;
+
+export function monthFindings(
+  soFar: MonthSoFar & { money_in_minor: number },
+  categories: MonthCategoryLine[],
+  // "a typical Sep 1–24", or "a typical September" for a whole month.
+  against: string,
+  inProgress: boolean,
+): Finding[] {
+  const findings: Finding[] = [];
+
+  if (soFar.typical_months > 0 && soFar.typical_out_minor > 0) {
+    const diff = soFar.money_out_minor - soFar.typical_out_minor;
+    if (Math.abs(diff) > soFar.typical_out_minor * OUT_SHARE) {
+      const lead = categories
+        .map((c) => ({ ...c, gap: c.spent_minor - c.typical_minor }))
+        .filter((c) => Math.sign(c.gap) === Math.sign(diff))
+        .sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))[0];
+      const mostly = lead && Math.abs(lead.gap) >= Math.abs(diff) * MOSTLY_SHARE;
+      findings.push({
+        key: 'out',
+        weight: 2,
+        parts: [
+          'Spending is ',
+          { minor: Math.abs(diff) },
+          ` ${diff < 0 ? 'below' : 'above'} ${against}`,
+          ...(mostly
+            ? diff < 0 && lead.spent_minor === 0
+              ? [`, mostly because nothing went on ${lead.name}.`]
+              : [`, mostly ${lead.name} (`, { minor: Math.abs(lead.gap) }, ` ${diff < 0 ? 'less' : 'more'}).`]
+            : ['.']),
+        ],
+      });
+    }
+  }
+
+  const net = soFar.money_in_minor - soFar.money_out_minor;
+  if (net < 0 && soFar.money_out_minor > 0) {
+    findings.push({
+      key: 'net',
+      weight: 1,
+      parts: [`Money out ${inProgress ? 'is' : 'was'} `, { minor: -net }, ` more than money in${inProgress ? ' so far' : ''}.`],
+    });
+  }
+
+  return findings.sort((a, b) => b.weight - a.weight);
+}
+
+// ---------------------------------------------------------------------------
+// The Category page: how the category usually runs against its plan, and
+// whether it is rising or falling.
+
+export type CategoryFigures = {
+  typical_minor: number | null;
+  months: number;
+  last3_minor: number;
+  prev3_minor: number;
+  planned_months: number;
+  over_plan_months: number;
+};
+
+// A change in the last 3 months beyond this share of the 3 before is a trend.
+export const TREND_SHARE = 0.15;
+
+const percent = (share: number) =>
+  new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 0 }).format(share);
+
+export function categoryFindings(name: string, kind: 'expense' | 'income', figures: CategoryFigures, plan: number | null): Finding[] {
+  const findings: Finding[] = [];
+  const verb = kind === 'expense' ? 'spending' : 'income';
+
+  if (figures.typical_minor !== null && figures.months >= 3) {
+    const overPlan =
+      kind === 'expense' && figures.planned_months > 0 && figures.over_plan_months * 2 >= figures.planned_months
+        ? `, and was over plan in ${figures.over_plan_months} of the ${figures.planned_months} months with one`
+        : '';
+    findings.push({
+      key: 'typical',
+      weight: overPlan ? 2 : 1,
+      parts:
+        plan !== null && kind === 'expense'
+          ? [`${name} averaged `, { minor: figures.typical_minor }, ' a month against a ', { minor: plan }, ` plan${overPlan}.`]
+          : [`${name} averaged `, { minor: figures.typical_minor }, ` a month${overPlan}.`],
+    });
+  }
+
+  if (figures.prev3_minor > 0) {
+    const change = (figures.last3_minor - figures.prev3_minor) / figures.prev3_minor;
+    if (Math.abs(change) > TREND_SHARE) {
+      findings.push({
+        key: 'trend',
+        weight: 2,
+        parts: [
+          `Its ${verb} is ${change < 0 ? 'down' : 'up'} ${percent(Math.abs(change))} over the last 3 months: `,
+          { minor: figures.last3_minor },
+          ' against ',
+          { minor: figures.prev3_minor },
+          ' in the 3 before.',
+        ],
+      });
+    }
+  }
+
+  return findings;
+}

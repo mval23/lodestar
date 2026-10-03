@@ -567,6 +567,48 @@ export type Database = {
           typical_months: number;
         }[];
       };
+      // Returns-table columns come out non-null from the generator, even
+      // where Postgres can return null; the hooks say which can.
+      daily_spending: {
+        Args: { p_month: string; p_category_id?: string; p_today?: string };
+        Returns: {
+          day: string;
+          day_of_month: number;
+          spent_minor: number;
+          running_minor: number;
+          typical_running_minor: number;
+          typical_months: number;
+          after_today: boolean;
+        }[];
+      };
+      month_categories: {
+        Args: { p_month: string; p_today?: string };
+        Returns: {
+          category_id: string;
+          spent_minor: number;
+          typical_minor: number;
+          typical_months: number;
+        }[];
+      };
+      category_stats: {
+        Args: { p_category_id: string; p_month: string };
+        Returns: {
+          this_month_minor: number;
+          plan_minor: number;
+          typical_minor: number;
+          low_minor: number;
+          high_minor: number;
+          months: number;
+          last3_minor: number;
+          prev3_minor: number;
+          total_minor: number;
+          kind_total_minor: number;
+          rank: number;
+          ranked: number;
+          planned_months: number;
+          over_plan_months: number;
+        }[];
+      };
     };
     Enums: {
       account_type: 'checking' | 'savings' | 'credit_card' | 'cash' | 'investment' | 'loan' | 'other_asset';

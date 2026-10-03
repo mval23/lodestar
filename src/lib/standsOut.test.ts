@@ -1,4 +1,12 @@
-import { cashFlowFindings, netWorthFindings, overviewFindings, type MonthSoFar, type PaceLine } from './standsOut';
+import {
+  cashFlowFindings,
+  categoryFindings,
+  monthFindings,
+  netWorthFindings,
+  overviewFindings,
+  type MonthSoFar,
+  type PaceLine,
+} from './standsOut';
 
 function line(name: string, planned: number, spent: number, pace: number, daysLeft = 6): PaceLine {
   return {
@@ -125,5 +133,54 @@ describe('netWorthFindings', () => {
     expect(
       text(netWorthFindings({ ...change, change_minor: -5000, cash_flow_minor: -5000 }, null, 1, { start_minor: 100, end_minor: 100 }, { start_minor: -100, end_minor: -5100 }, null)),
     ).toBe('Net worth fell [5000] in 1 month. All of it came from net cash flow. What you owe rose by [5000].');
+  });
+});
+
+describe('monthFindings', () => {
+  const text = (findings: ReturnType<typeof monthFindings>) =>
+    findings.map((f) => f.parts.map((p) => (typeof p === 'string' ? p : `[${p.minor}]`)).join('')).join(' ');
+  const soFar = { day_of_month: 24, money_out_minor: 318507, typical_out_minor: 363990, typical_months: 6, money_in_minor: 305000 };
+  const cats = [
+    { name: 'Rent', spent_minor: 165000, typical_minor: 165000 },
+    { name: 'Travel', spent_minor: 0, typical_minor: 30000 },
+    { name: 'Groceries', spent_minor: 38043, typical_minor: 44010 },
+  ];
+
+  it('says spending is below typical, and names the category that is most of it', () => {
+    expect(text(monthFindings(soFar, cats, 'a typical Sep 1–24', true))).toBe(
+      'Spending is [45483] below a typical Sep 1–24, mostly because nothing went on Travel.' +
+        ' Money out is [13507] more than money in so far.',
+    );
+  });
+
+  it('says nothing about spending within 10% of typical, and names no category that is a small part', () => {
+    expect(text(monthFindings({ ...soFar, money_out_minor: 350000, money_in_minor: 400000 }, cats, 'x', true))).toBe('');
+    const spread = [
+      { name: 'A', spent_minor: 0, typical_minor: 10000 },
+      { name: 'B', spent_minor: 0, typical_minor: 10000 },
+    ];
+    expect(text(monthFindings({ ...soFar, money_in_minor: 400000 }, spread, 'a typical September', false))).toBe(
+      'Spending is [45483] below a typical September.',
+    );
+  });
+});
+
+describe('categoryFindings', () => {
+  const text = (findings: ReturnType<typeof categoryFindings>) =>
+    findings.map((f) => f.parts.map((p) => (typeof p === 'string' ? p : `[${p.minor}]`)).join('')).join(' ');
+  const figures = { typical_minor: 35152, months: 11, last3_minor: 97957, prev3_minor: 119461, planned_months: 11, over_plan_months: 9 };
+
+  it('compares the average with the plan, counts the months over it, and gives the trend', () => {
+    expect(text(categoryFindings('Dining out', 'expense', figures, 30000))).toBe(
+      'Dining out averaged [35152] a month against a [30000] plan, and was over plan in 9 of the 11 months with one.' +
+        ' Its spending is down 18% over the last 3 months: [97957] against [119461] in the 3 before.',
+    );
+  });
+
+  it('stays quiet about a steady trend, a short history, or plans it was mostly under', () => {
+    expect(text(categoryFindings('Rent', 'expense', { ...figures, months: 2, prev3_minor: 97957 }, null))).toBe('');
+    expect(text(categoryFindings('Salary', 'income', { ...figures, over_plan_months: 1, prev3_minor: 97957 }, null))).toBe(
+      'Salary averaged [35152] a month.',
+    );
   });
 });

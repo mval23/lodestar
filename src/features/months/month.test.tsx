@@ -17,6 +17,26 @@ vi.mock('./queries', async (importOriginal) => {
   return {
     ...actual,
     useMonthSummary: (month: string) => useMonthSummary(month),
+    useDailySpending: () => ({
+      data: Array.from({ length: 30 }, (_, i) => ({
+        day: `2026-09-${String(i + 1).padStart(2, '0')}`,
+        day_of_month: i + 1,
+        spent_minor: i === 0 ? 145000 : 0,
+        running_minor: 145000,
+        typical_running_minor: 150000,
+        typical_months: 6,
+        after_today: i + 1 > 20,
+      })),
+    }),
+    useMonthCategories: () => ({
+      data: [
+        { category_id: 'cat-housing', spent_minor: 145000, typical_minor: 150000, typical_months: 6 },
+        { category_id: null, spent_minor: 2000, typical_minor: 50000, typical_months: 6 },
+      ],
+    }),
+    useMonthBillPayments: () => ({
+      data: [{ recurring_item_id: 'bill-rent', paid_minor: 145000, last_paid_on: '2026-09-01' }],
+    }),
     useMonthAccounts: () => ({
       data: [
         {
@@ -79,7 +99,41 @@ vi.mock('../categories/queries', async (importOriginal) => {
 
 vi.mock('../bills/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../bills/queries')>();
-  return { ...actual, useBills: () => ({ data: [] }) };
+  const bill = (id: string, name: string, amount: number, due: string) => ({
+    id, name, kind: 'expense', amount_minor: amount, next_due_on: due, archived_at: null,
+  });
+  return {
+    ...actual,
+    useBills: () => ({
+      data: [
+        bill('bill-rent', 'Rent', 145000, '2026-10-01'),
+        bill('bill-phone', 'Phone plan', 3000, '2026-09-28'),
+        bill('bill-gym', 'Gym', 4500, '2026-10-02'),
+      ],
+    }),
+  };
+});
+
+vi.mock('../overview/queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../overview/queries')>();
+  return {
+    ...actual,
+    useMonthToDate: () => ({
+      data: {
+        month: THIS_MONTH,
+        today: '2026-09-20',
+        day_of_month: 20,
+        days_in_month: 30,
+        money_in_minor: 491000,
+        money_out_minor: 362540,
+        to_goals_minor: 40000,
+        typical_in_minor: 470000,
+        typical_out_minor: 420000,
+        typical_to_goals_minor: 40000,
+        typical_months: 6,
+      },
+    }),
+  };
 });
 
 vi.mock('../../lib/profile', () => ({
@@ -138,12 +192,46 @@ describe('MonthPage', () => {
     expect(screen.getByText('This month doesn’t exist')).toBeInTheDocument();
   });
 
-  it('leads with the net, leaving transfers out of it', () => {
+  it('leads with the net so far against a typical month cut at the same day', () => {
     renderPage();
     expect(screen.getByRole('heading', { level: 1, name: 'September 2026' })).toBeInTheDocument();
-    expect(screen.getAllByText('$1,284.60').length).toBeGreaterThan(0);
-    expect(screen.getByText(/transfers left out/)).toBeInTheDocument();
-    expect(screen.getAllByText('$400.00').length).toBeGreaterThan(0);
+    expect(screen.getByText(/20 so far · 10 days left/)).toBeInTheDocument();
+    const band = screen.getByRole('region', { name: 'This month' });
+    // 4,910.00 in less 3,625.40 out; transfers are neither.
+    expect(within(band).getAllByText('+$1,284.60').length).toBeGreaterThan(0);
+    // Typical net 500.00, so 784.60 better.
+    expect(band).toHaveTextContent(/\+\$784\.60.*vs a typical Sep/);
+    expect(within(band).getByText('Rent')).toBeInTheDocument();
+  });
+
+  it('says spending is below a typical month, and which category explains it', () => {
+    renderPage();
+    expect(screen.getByText(/What stands out/).closest('p')).toHaveTextContent(
+      /Spending is \$574\.60.*below a typical Sep.*mostly Uncategorized/,
+    );
+  });
+
+  it('lists every category against typical, spending with no category included', () => {
+    renderPage();
+    const where = screen.getByRole('region', { name: 'Where it went' });
+    expect(within(where).getByRole('link', { name: 'Housing' })).toBeInTheDocument();
+    expect(within(where).getByText('Uncategorized').closest('tr')).toHaveTextContent('−$480.00');
+  });
+
+  it('ticks the bills paid this month and leaves the ones still due open', () => {
+    renderPage();
+    const bills = screen.getByRole('region', { name: 'Bills this month' });
+    expect(within(bills).getByText('Rent').closest('li')).toHaveTextContent('Paid Sep 1');
+    expect(within(bills).getByText('Phone plan').closest('li')).toHaveTextContent('Due Sep 28');
+    expect(within(bills).queryByText('Gym')).not.toBeInTheDocument();
+    expect(bills).toHaveTextContent('1 of 2 paid · 1 still due');
+  });
+
+  it('shows what was kept when less went out than came in', () => {
+    renderPage();
+    const went = screen.getByRole('group', { name: 'Where the money in went' });
+    // 4,910.00 in; 3,625.40 spent and 400.00 into goals; 884.60 kept.
+    expect(went).toHaveTextContent('Kept $884.60');
   });
 
   it('carries each kind of total on its tab', () => {

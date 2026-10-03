@@ -2114,6 +2114,10 @@ a:hover {
   .report-pair {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* A dashboard: the chart wider, the lists beside it. */
+  .report-pair.wide-left {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
 }
 .report-figure {
   display: grid;
@@ -3278,4 +3282,219 @@ a:hover {
   color: var(--blue);
   font-weight: 600;
   font-size: 14px;
+}
+
+/* ---------- Month and Category dashboards ---------- */
+/* A month still in progress is a lighter grey; the part of a month above
+   its plan is hatched ink, as on a budget's capsule. */
+.bar-partial {
+  fill: var(--line-strong);
+  opacity: 0.55;
+}
+.hatch-ground {
+  fill: var(--ink-3);
+}
+.hatch-line {
+  fill: var(--ink);
+}
+.swatch-hatch {
+  background: repeating-linear-gradient(45deg, var(--ink) 0 2px, var(--ink-3) 2px 4px);
+}
+.swatch-partial {
+  background: var(--line-strong);
+  opacity: 0.55;
+}
+
+/* Split bars: spent and saved above what came in, a shortfall hatched. */
+.split-bars {
+  display: grid;
+  gap: var(--space-2);
+}
+.split-bar {
+  display: flex;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--sunk);
+}
+.split-part {
+  display: flex;
+  align-items: center;
+  min-width: 2px;
+  overflow: hidden;
+}
+/* The words sit on a small surface chip, so they read the same on grey,
+   ink and hatching, in light and dark. */
+.split-text {
+  margin-left: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.split-out {
+  background: var(--out);
+}
+.split-in {
+  background: var(--in);
+}
+.split-base {
+  background: var(--sunk);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.split-short {
+  background: repeating-linear-gradient(45deg, var(--ink-2) 0 2px, var(--surface) 2px 7px);
+  box-shadow: inset 0 0 0 1px var(--ink-2);
+}
+.split-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.split-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.split-swatch-out {
+  background: var(--out);
+}
+.split-swatch-in {
+  background: var(--in);
+}
+.split-swatch-base {
+  background: var(--sunk);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.split-swatch-short {
+  background: repeating-linear-gradient(45deg, var(--ink-2) 0 2px, var(--surface) 2px 4px);
+}
+
+/* A figure in its usual range: low to high, a tick at typical, the figure
+   itself as the blue "now" square. */
+.range-bar {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+.range-track {
+  position: relative;
+  height: 12px;
+}
+.range-track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5px;
+  height: 2px;
+  background: var(--sunk);
+  border-radius: var(--radius-pill);
+}
+.range-span {
+  position: absolute;
+  top: 4px;
+  height: 4px;
+  background: var(--line-strong);
+  border-radius: var(--radius-pill);
+}
+.range-typical {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  background: var(--ink);
+}
+.range-now {
+  position: absolute;
+  top: 1px;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: var(--fix);
+}
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* The Month page: the largest expense named as a figure, the categories
+   with a share bar, and the bills as a checklist. */
+.month-largest {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.month-cat-bar {
+  width: 32%;
+}
+.month-cat-bar .bar-track {
+  display: block;
+}
+.bill-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.bill-checklist li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 15px;
+}
+.bill-checklist li svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-3);
+}
+.bill-checklist li.paid svg {
+  color: var(--ink);
+}
+.bill-checklist li > a {
+  color: var(--ink);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bill-checklist li > .secondary {
+  font-size: 13px;
+}
+.bill-checklist li > :last-child {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* The Category page: this month (with its range) wider than the rest. */
+.group.fig-band.category-band {
+  grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
+}
+.group.fig-band.category-band.three {
+  grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 1179px) {
+  .group.fig-band.category-band,
+  .group.fig-band.category-band.three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .group.fig-band.category-band > :first-child {
+    grid-column: span 2;
+  }
+}
+.category-top th small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
 }

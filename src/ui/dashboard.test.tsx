@@ -52,3 +52,36 @@ describe('StandsOut', () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+describe('RangeBar', () => {
+  it('places the figure in its range, and grows the range to reach a figure outside it', async () => {
+    const { RangeBar } = await import('./RangeBar');
+    const { container, rerender } = render(<RangeBar value={29977} low={26630} high={41339} typical={35152} currency="USD" />);
+    expect(container).toHaveTextContent(/\$266\.30.*low.*typical.*\$351\.52.*\$413\.39.*high/);
+    const now = container.querySelector('.range-now') as HTMLElement;
+    expect(Number(now.style.left.replace('%', ''))).toBeCloseTo(((29977 - 26630) / (41339 - 26630)) * 100, 5);
+    rerender(<RangeBar value={50000} low={26630} high={41339} typical={35152} currency="USD" />);
+    expect((container.querySelector('.range-now') as HTMLElement).style.left).toBe('100%');
+  });
+});
+
+describe('SplitBars', () => {
+  it('draws the rows to one scale and reads each as a sentence', async () => {
+    const { SplitBars } = await import('./SplitBar');
+    const { container } = render(
+      <SplitBars
+        label="Where the money in went"
+        currency="USD"
+        rows={[
+          { label: 'Where it went', parts: [{ label: 'Spent', minor: 300000, tone: 'out' }, { label: 'Into goals', minor: 100000, tone: 'in' }] },
+          { label: 'What came in', parts: [{ label: 'Money in', minor: 350000, tone: 'base' }, { label: 'From balances', minor: 50000, tone: 'short' }] },
+        ]}
+      />,
+    );
+    const parts = Array.from(container.querySelectorAll('.split-part')) as HTMLElement[];
+    expect(parts.map((p) => p.style.width)).toEqual(['75%', '25%', '87.5%', '12.5%']);
+    expect(screen.getByRole('group', { name: 'Where the money in went' })).toHaveTextContent(/What came in:.*From balances.*\$500\.00/);
+    // Too narrow to hold its words, a part names itself under the bar.
+    expect(container.querySelector('.split-legend')).toHaveTextContent('From balances');
+  });
+});
