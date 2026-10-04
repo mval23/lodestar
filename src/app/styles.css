@@ -588,36 +588,45 @@ a:hover {
     width: 22px;
     height: 22px;
   }
+  /* The tab bar floats: a glass capsule above the page, inset from the
+     edges, with the current tab in a pill of its own. */
   .tab-bar {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    left: var(--space-3);
+    right: var(--space-3);
+    bottom: calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
     z-index: 5;
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    padding: var(--space-2) 0 calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
-    background: var(--glass);
+    align-items: center;
+    padding: 5px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    background: color-mix(in srgb, var(--surface) 80%, transparent);
     -webkit-backdrop-filter: var(--glass-filter);
     backdrop-filter: var(--glass-filter);
-    border-top: 1px solid var(--line);
+    box-shadow: var(--shadow-float);
   }
   .tab-link {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 2px;
-    min-height: 44px;
-    font-size: 12px;
-    line-height: 14px;
+    min-height: 54px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    line-height: 13px;
     font-weight: 500;
-    color: var(--ink-3);
+    color: var(--ink);
   }
   .tab-link:hover {
     text-decoration: none;
   }
   .tab-link[aria-current='page'] {
     color: var(--blue);
+    background: var(--sunk);
+    font-weight: 600;
   }
   .tab-link svg {
     width: 24px;
@@ -632,6 +641,10 @@ a:hover {
     background: var(--ground);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+  /* The floating bar stays a solid card, set off by its shadow. */
+  .tab-bar {
+    background: var(--surface);
   }
 }
 
@@ -1093,16 +1106,22 @@ a:hover {
 .select-popup::backdrop {
   background: transparent;
 }
+/* The picker's search is the app's search capsule. It opens inside a form
+   row, so the row's input rules are undone here, where they would otherwise
+   right-align it and strip its fill. */
 .select-search {
-  font: inherit;
-  font-size: 14px;
+  flex: none;
   margin: var(--space-1);
-  padding: 7px 10px;
-  min-height: 36px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line-strong);
-  background: var(--ground);
-  color: var(--ink);
+  height: 38px;
+}
+label.search-capsule input {
+  width: 100%;
+  min-height: 0;
+  text-align: left;
+  font-size: 16px;
+}
+.select-head {
+  display: none;
 }
 .select-list {
   list-style: none;
@@ -1158,16 +1177,63 @@ a:hover {
 }
 
 @media (max-width: 560px) {
+  /* On a phone the list is a sheet: a title and Done, the search capsule,
+     then the options as one grouped list with hairlines between them. */
   .select-popup {
     inset: auto 0 0 0;
     width: 100%;
     max-width: 100%;
-    max-height: 70dvh;
+    max-height: 75dvh;
+    padding: 0 var(--space-4) calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    gap: var(--space-3);
+    background: var(--ground);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
   }
   .select-popup::backdrop {
     background: var(--scrim);
+  }
+  .select-head {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    min-height: 52px;
+    margin: 0 calc(var(--space-4) * -1);
+    padding: 0 var(--space-4);
+    border-bottom: 1px solid var(--line);
+  }
+  .select-title {
+    grid-column: 2;
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .select-head .btn-plain {
+    grid-column: 3;
+    justify-self: end;
+    font-weight: 600;
+  }
+  .select-search {
+    margin: 0;
+    background: var(--sunk);
+  }
+  .select-list {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+  }
+  .select-list li {
+    min-height: 48px;
+    padding: var(--space-3) var(--space-4);
+    border-radius: 0;
+    font-size: 16px;
+  }
+  .select-list li + li {
+    box-shadow: inset 0 1px 0 var(--line);
+  }
+  /* A tap needs no lasting highlight: the check marks the choice. */
+  .select-list li.active {
+    background: transparent;
+  }
+  .select-list li:active {
+    background: var(--sunk);
   }
 }
 
@@ -2212,7 +2278,9 @@ a:hover {
     text-align: left;
     justify-content: space-between;
   }
-  .quick-add-fields > input:first-of-type {
+  /* No line above the date, the first field: the card's own edge is its
+     top. (The plus icon comes first in the markup, hidden here.) */
+  .quick-add-fields > .quick-add-date {
     border-top: 0;
   }
   .quick-add-fields > .quick-add-amount {
@@ -3960,7 +4028,11 @@ a:hover {
 @media (max-width: 767px) {
   .week-strip {
     grid-template-columns: minmax(0, 1fr);
-    padding: 0;
+    padding: 0 var(--space-5) var(--space-5);
+  }
+  /* In the Overview's fold the card has no heading above the first week. */
+  .wide-folded .week-strip {
+    padding-top: var(--space-4);
   }
   .week-col {
     padding: 0;
@@ -4224,4 +4296,21 @@ a:hover {
 }
 .report-filter-summary strong {
   font-weight: 600;
+}
+
+/* ---------- Accounts by group ---------- */
+.account-group {
+  display: grid;
+  gap: var(--space-2);
+}
+.account-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0;
+  padding: 0 var(--space-4);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
 }

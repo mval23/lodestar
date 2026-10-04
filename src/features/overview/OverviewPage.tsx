@@ -83,9 +83,9 @@ export function OverviewPage() {
               </div>
             </details>
             <details className="fold">
-              <summary className="fold-summary">Coming up</summary>
+              <summary className="fold-summary">Coming up · next 30 days</summary>
               <div className="fold-body">
-                <ComingUp today={today} currency={currency} />
+                <ComingUp today={today} currency={currency} folded />
               </div>
             </details>
             <MoreOnPhone />

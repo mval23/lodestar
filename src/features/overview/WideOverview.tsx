@@ -33,23 +33,29 @@ export function WideOverview({ accounts, today, month, currency }: Props) {
 
 // ---------------------------------------------------------------------------
 // What comes round in the next 30 days, in four week columns, income and
-// planned transfers included. The phone shows the same strip, folded.
+// planned transfers included. The phone shows the same strip in a fold,
+// which carries the title, so the card there goes without its own.
 // ---------------------------------------------------------------------------
 
-export function ComingUp({ today, currency }: { today: string; currency: Currency }) {
+export function ComingUp({ today, currency, folded = false }: { today: string; currency: Currency; folded?: boolean }) {
   const upcoming = useUpcomingItems(30);
   const bills = useBills();
   const none = upcoming.data?.length === 0;
   const setUp = (bills.data ?? []).some((b) => !b.archived_at);
 
   return (
-    <section className="group wide-group" aria-labelledby="wide-coming">
-      <div className="wide-head">
-        <h2 className="headline" id="wide-coming">
-          <TitleLink to="/bills">Coming up · next 30 days</TitleLink>
-        </h2>
-        <span className="footnote desktop-only">Bills, subscriptions and expected income you’ve set up</span>
-      </div>
+    <section
+      className={`group wide-group${folded ? ' wide-folded' : ''}`}
+      {...(folded ? { 'aria-label': 'Coming up, next 30 days' } : { 'aria-labelledby': 'wide-coming' })}
+    >
+      {!folded && (
+        <div className="wide-head">
+          <h2 className="headline" id="wide-coming">
+            <TitleLink to="/bills">Coming up · next 30 days</TitleLink>
+          </h2>
+          <span className="footnote">Bills, subscriptions and expected income you’ve set up</span>
+        </div>
+      )}
       {upcoming.isError ? (
         <div className="wide-empty">
           <Notice tone="err">{dataErrorMessage(upcoming.error)}</Notice>
