@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Search } from 'lucide-react';
 
 export type SelectOption = { value: string; label: string; hint?: string };
 
@@ -149,19 +149,29 @@ export function Select({
           if (event.target === dialogRef.current) close();
         }}
       >
+        {/* A phone shows the list as a sheet, which names itself and can be
+            closed without choosing; a wide screen's popover needs neither. */}
+        <div className="select-head">
+          <span className="select-title">{label}</span>
+          <button type="button" className="btn btn-plain" onClick={close}>
+            Done
+          </button>
+        </div>
         {options.length > searchThreshold && (
-          <input
-            type="search"
-            className="select-search"
-            placeholder={`Search ${label.toLowerCase()}`}
-            aria-label={`Search ${label.toLowerCase()}`}
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setActive(0);
-            }}
-            onKeyDown={onKeyDown}
-          />
+          <label className="search-capsule select-search">
+            <Search strokeWidth={1.75} aria-hidden />
+            <input
+              type="search"
+              placeholder={`Search ${label.toLowerCase()}`}
+              aria-label={`Search ${label.toLowerCase()}`}
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setActive(0);
+              }}
+              onKeyDown={onKeyDown}
+            />
+          </label>
         )}
         <ul
           ref={listRef}

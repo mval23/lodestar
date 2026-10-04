@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { pick } from '../../test/select';
@@ -102,6 +102,33 @@ describe('AccountsPage', () => {
     expect(screen.getAllByText('$2,544.50').length).toBeGreaterThan(0);
     expect(screen.getByText('Credit card')).toBeInTheDocument();
     expect(screen.getByText('Checking')).toBeInTheDocument();
+  });
+
+  it('lists the accounts by group, each with its subtotal, and skips empty groups', () => {
+    useAccounts.mockReturnValue({
+      data: [
+        balance({ account_id: 'a', name: 'Everyday checking', balance_minor: 285450 }),
+        balance({ account_id: 'w', name: 'Wallet', type: 'cash', balance_minor: 4550 }),
+        balance({ account_id: 's', name: 'Rainy day', type: 'savings', balance_minor: 100000 }),
+        balance({ account_id: 'c', name: 'Blue card', type: 'credit_card', is_liability: true, balance_minor: -31000 }),
+      ],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+    });
+    render(<MemoryRouter><AccountsPage /></MemoryRouter>);
+
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(headings.filter((h) => /^(Cash|Savings|Investments|Owed to you|Cards and loans)/.test(h ?? ''))).toEqual([
+      expect.stringMatching(/^Cash.*\$2,900\.00/),
+      expect.stringMatching(/^Savings.*\$1,000\.00/),
+      expect.stringMatching(/^Cards and loans.*\$310\.00/),
+    ]);
+    const cash = screen.getByRole('region', { name: /^Cash/ });
+    expect(within(cash).getAllByRole('link').map((l) => l.textContent)).toEqual([
+      expect.stringContaining('Everyday checking'),
+      expect.stringContaining('Wallet'),
+    ]);
   });
 
   // The two screens that show net worth drew it separately, and one of them

@@ -413,7 +413,7 @@ describe('OverviewPage on a phone', () => {
     expect(screen.getByRole('region', { name: 'This month' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Budgets' })).toBeInTheDocument();
     const folds = Array.from(document.querySelectorAll('details.fold'));
-    expect(folds.map((fold) => fold.querySelector('summary')?.textContent)).toEqual(['Where you stand', 'Coming up']);
+    expect(folds.map((fold) => fold.querySelector('summary')?.textContent)).toEqual(['Where you stand', 'Coming up · next 30 days']);
     for (const fold of folds) expect(fold).not.toHaveAttribute('open');
     expect(screen.getAllByRole('link', { name: /Reports/ }).length).toBeGreaterThan(0);
   });

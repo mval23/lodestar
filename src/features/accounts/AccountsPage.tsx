@@ -59,7 +59,7 @@ export function AccountsPage() {
       {open.length > 0 && (
         <>
           <NetWorthGroup accounts={rows} />
-          <AccountList rows={open} />
+          <AccountGroups rows={open} />
         </>
       )}
 
@@ -71,6 +71,40 @@ export function AccountsPage() {
       )}
 
       {sheetOpen && <AccountSheet account={editing} onClose={() => setSheetOpen(false)} />}
+    </div>
+  );
+}
+
+// The open accounts by what they are, each group under its name with its
+// subtotal: the balances are already summed in Postgres, and adding a few of
+// them for a heading is the most done here. A group with nothing in it is
+// left out.
+const GROUPS: { title: string; types: AccountBalance['type'][] }[] = [
+  { title: 'Cash', types: ['checking', 'cash'] },
+  { title: 'Savings', types: ['savings'] },
+  { title: 'Investments', types: ['investment'] },
+  { title: 'Owed to you', types: ['other_asset'] },
+  { title: 'Cards and loans', types: ['credit_card', 'loan'] },
+];
+
+function AccountGroups({ rows }: { rows: AccountBalance[] }) {
+  const currency = useCurrency();
+  return (
+    <div className="stack">
+      {GROUPS.map((group) => {
+        const members = rows.filter((row) => group.types.includes(row.type));
+        if (members.length === 0) return null;
+        const id = `accounts-${group.title.toLowerCase().replace(/W+/g, '-')}`;
+        return (
+          <section key={group.title} className="account-group" aria-labelledby={id}>
+            <h2 className="account-group-head" id={id}>
+              <span>{group.title}</span>
+              <Amount minor={members.reduce((sum, row) => sum + row.balance_minor, 0)} currency={currency} />
+            </h2>
+            <AccountList rows={members} />
+          </section>
+        );
+      })}
     </div>
   );
 }

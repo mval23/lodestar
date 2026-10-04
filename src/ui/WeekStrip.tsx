@@ -81,21 +81,24 @@ export function WeekStrip({
                 ))}
               </ul>
             )}
-            <p className="footnote flush week-total">
-              {bills > 0 ? (
-                <>
-                  <Amount minor={bills} currency={currency} /> of bills
-                </>
-              ) : (
-                'No bills'
-              )}
-              {income > 0 && (
-                <>
-                  {' · '}
-                  <Amount minor={income} currency={currency} signed /> in
-                </>
-              )}
-            </p>
+            {/* An empty week already says "Nothing due"; it needs no total. */}
+            {rows.length > 0 && (
+              <p className="footnote flush week-total">
+                {bills > 0 ? (
+                  <>
+                    <Amount minor={bills} currency={currency} /> of bills
+                  </>
+                ) : (
+                  'No bills'
+                )}
+                {income > 0 && (
+                  <>
+                    {' · '}
+                    <Amount minor={income} currency={currency} signed /> in
+                  </>
+                )}
+              </p>
+            )}
           </section>
         );
       })}
