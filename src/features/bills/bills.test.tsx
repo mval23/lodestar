@@ -125,6 +125,42 @@ describe('BillsPage', () => {
     expect(screen.getAllByRole('button', { name: 'Mark as paid' })).toHaveLength(1);
   });
 
+  it('counts only bills as due, names income arriving beside them, and receives income', async () => {
+    useBills.mockReturnValue({
+      data: [
+        bill({ id: 'a', name: 'Rent' }),
+        bill({ id: 'p', name: 'Consulting', label: 'income', kind: 'income', amount_minor: 600000, from_account_id: null, to_account_id: 'chk' }),
+      ],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+    });
+    render(<MemoryRouter><BillsPage /></MemoryRouter>);
+    const band = screen.getByText('Due in the next 7 days').closest('section')!;
+    // $1,200.00 of rent; the $6,000.00 of income is not a bill.
+    expect(band).toHaveTextContent(/\$1,200\.00.*1 bill.*\+\$6,000\.00.*arriving/);
+    expect(band).not.toHaveTextContent('$7,200.00');
+    await userEvent.click(screen.getByRole('button', { name: 'Mark as received' }));
+    expect(markPaid).toHaveBeenCalledWith(expect.objectContaining({ id: 'p' }));
+    expect(await screen.findByText(/Recorded\. Next expected/)).toBeInTheDocument();
+  });
+
+  it('says nothing is due when only income is coming this week', () => {
+    useBills.mockReturnValue({
+      data: [
+        bill({ id: 'p', name: 'Consulting', label: 'income', kind: 'income', amount_minor: 600000, from_account_id: null, to_account_id: 'chk' }),
+        bill({ id: 'b', name: 'Insurance', next_due_on: shift(40) }),
+      ],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+    });
+    render(<MemoryRouter><BillsPage /></MemoryRouter>);
+    expect(screen.queryByText('Due in the next 7 days')).not.toBeInTheDocument();
+    const band = screen.getByText('Next due').closest('section')!;
+    expect(band).toHaveTextContent(/Insurance.*Nothing is due in the next 7 days.*\+\$6,000\.00.*arriving/);
+  });
+
   it('marks a fixed bill paid in one step, and says when it is next due', async () => {
     useBills.mockReturnValue({ data: [bill()], isPending: false, isError: false, isSuccess: true });
     render(<MemoryRouter><BillsPage /></MemoryRouter>);

@@ -10,6 +10,8 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* No double-tap zoom on a button or row; pinch-to-zoom still works. */
+  touch-action: manipulation;
 }
 
 body {
@@ -594,7 +596,9 @@ a:hover {
     position: fixed;
     left: var(--space-3);
     right: var(--space-3);
-    bottom: calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
+    /* Low, as the system apps sit it: into the home-indicator area, clear of
+       the indicator itself, and 8px up where there is none. */
+    bottom: max(var(--space-2), calc(env(safe-area-inset-bottom, 0px) - 14px));
     z-index: 5;
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -1397,34 +1401,44 @@ label.search-capsule input {
 .bill-confirm {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   gap: var(--space-2);
 }
-.bill-confirm label,
-.bill-paid-on {
-  display: grid;
-  gap: 2px;
+/* A filled capsule holding its name and its value: "Amount 6000.00". */
+.confirm-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 38px;
+  padding: 0 var(--space-2) 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--sunk);
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.confirm-field input {
+  font: inherit;
+  font-size: 15px;
+  width: 96px;
+  padding: 0 var(--space-2) 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: right;
+  outline: none;
+}
+.confirm-field:focus-within {
+  outline: 3px solid color-mix(in srgb, var(--blue) 50%, transparent);
 }
 .bill-paid-on .select-trigger {
-  justify-content: space-between;
-  min-height: 36px;
-  width: 150px;
-  padding: 6px 10px;
-  font-size: 14px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--ink);
-}
-.bill-confirm input {
-  font: inherit;
-  font-size: 14px;
-  min-height: 36px;
-  padding: 6px 10px;
-  width: 130px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
+  width: auto;
+  min-height: 34px;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  font-size: 15px;
   color: var(--ink);
 }
 
@@ -2551,6 +2565,12 @@ label.search-capsule input {
   .rows-list > li.bill-row .bill-aside .actions,
   .rows-list > li.bill-row .bill-confirm {
     justify-content: flex-end;
+  }
+  /* A bill that asks for its amount and date takes a second line for them,
+     right-aligned under the bill, so the form never wraps inside its column. */
+  .rows-list > li.bill-row:has(.bill-confirm) {
+    grid-template-columns: minmax(0, 1fr);
+    padding-bottom: var(--space-3);
   }
 }
 
@@ -4313,4 +4333,68 @@ label.search-capsule input {
   font-weight: 600;
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- No zoom on focus ---------- */
+/* iOS Safari zooms the page into any field set under 16px when it is tapped,
+   and leaves it zoomed. On a phone every field is at least 16px; the amount
+   in a transaction is larger and keeps its size. */
+@media (max-width: 767px) {
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not(.amount-input),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* On a phone the amount and date capsules each take the row, name on the
+   left and value on the right, with the action under them. */
+@media (max-width: 767px) {
+  .bill-confirm {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .confirm-field {
+    justify-content: space-between;
+  }
+  .confirm-field input {
+    flex: 1;
+  }
+}
+
+/* ---------- Overview with many budgets ---------- */
+/* The budget lines are one list either way; two across, they fill a grid
+   whose cells keep the rows' own hairlines, with one down the middle. */
+.need-list {
+  display: contents;
+}
+.need-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.need-columns > .need-row:nth-child(even) {
+  border-left: 1px solid var(--line);
+}
+.wide-three.wide-many {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: start;
+}
+.wide-side {
+  display: grid;
+  gap: var(--space-6);
+  align-content: start;
+}
+@media (max-width: 1279px) {
+  .wide-three.wide-many {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wide-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+@media (max-width: 1099px) {
+  .wide-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
