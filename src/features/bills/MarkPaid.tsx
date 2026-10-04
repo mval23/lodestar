@@ -21,6 +21,10 @@ export function MarkPaid({ bill, today }: { bill: RecurringItem; today: string }
   const [done, setDone] = useState<string | null>(null);
 
   const parsed = parseMoney(amount, currency);
+  // Income is received, not paid.
+  const incoming = bill.kind === 'income';
+  const action = incoming ? 'Mark as received' : 'Mark as paid';
+  const dateLabel = incoming ? 'Received on' : 'Paid on';
 
   const run = async (override?: { amountMinor?: number; paidOn?: string }) => {
     setError(null);
@@ -31,7 +35,7 @@ export function MarkPaid({ bill, today }: { bill: RecurringItem; today: string }
         ...(override?.amountMinor !== undefined ? { amountMinor: override.amountMinor } : {}),
       });
       setAsking(false);
-      setDone(`Recorded. Next due ${formatDate(result.next_due_on)}.`);
+      setDone(`Recorded. Next ${incoming ? 'expected' : 'due'} ${formatDate(result.next_due_on)}.`);
     } catch (cause) {
       const code = (cause as { code?: string } | null)?.code;
       setError(
@@ -55,9 +59,11 @@ export function MarkPaid({ bill, today }: { bill: RecurringItem; today: string }
   if (asking || bill.amount_is_variable) {
     return (
       <div className="bill-aside stack-tight">
+        {/* Filled capsules with their names inside, on one line with the
+            action: no outlined boxes, no labels floating above. */}
         <div className="bill-confirm">
-          <label className="footnote">
-            Amount
+          <label className="confirm-field">
+            <span>Amount</span>
             <input
               inputMode="decimal"
               className="num"
@@ -65,9 +71,9 @@ export function MarkPaid({ bill, today }: { bill: RecurringItem; today: string }
               onChange={(event) => setAmount(event.target.value)}
             />
           </label>
-          <div className="footnote bill-paid-on">
-            <span aria-hidden>Paid on</span>
-            <DatePicker label="Paid on" value={paidOn} onChange={setPaidOn} />
+          <div className="confirm-field bill-paid-on">
+            <span aria-hidden>{dateLabel}</span>
+            <DatePicker label={dateLabel} value={paidOn} onChange={setPaidOn} />
           </div>
           <Button
             variant="secondary"
@@ -75,7 +81,7 @@ export function MarkPaid({ bill, today }: { bill: RecurringItem; today: string }
             busy={markPaid.isPending}
             onClick={() => parsed.ok && run({ amountMinor: parsed.minor, paidOn })}
           >
-            Mark as paid
+            {action}
           </Button>
           {asking && (
             <Button variant="plain" onClick={() => setAsking(false)}>
@@ -93,7 +99,7 @@ export function MarkPaid({ bill, today }: { bill: RecurringItem; today: string }
     <div className="bill-aside">
       <div className="actions">
         <Button variant="secondary" busy={markPaid.isPending} onClick={() => run()}>
-          Mark as paid
+          {action}
         </Button>
         <Button variant="plain" onClick={() => setAsking(true)}>
           Different amount or date

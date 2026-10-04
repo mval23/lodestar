@@ -8,24 +8,43 @@ import type { AccountBalance } from '../accounts/queries';
 import { useBills, useUpcomingItems } from '../bills/queries';
 import { TitleLink } from './TitleLink';
 import { GoalsGroup, BudgetsGroup, OverviewStandsOut, ThisMonthBand, WhereYouStand } from './Dashboard';
+import { useBudgetPace } from './queries';
 
 // The Overview on a wide screen: what stands out, then this month in one
 // band, then three columns: every budget line by need, where you stand,
 // and goals. What is coming up closes the page. A phone gets the same parts
 // stacked, with the last two folded away (OverviewPage decides which).
+//
+// Every budget line shows. With more than MANY of them, the budgets take two
+// columns of the three and list their lines two across, and where you stand
+// and goals stack in the third, so no card stretches to a long list's height.
 
 type Props = { accounts: AccountBalance[]; today: string; month: string; currency: Currency };
 
+const MANY = 9;
+
 export function WideOverview({ accounts, today, month, currency }: Props) {
+  // The same query BudgetsGroup reads, so this asks the database nothing new.
+  const many = (useBudgetPace(month).data ?? []).length > MANY;
   return (
     <>
       <OverviewStandsOut month={month} currency={currency} />
       <ThisMonthBand accounts={accounts} month={month} currency={currency} />
-      <div className="wide-three">
-        <BudgetsGroup month={month} currency={currency} />
-        <WhereYouStand accounts={accounts} month={month} currency={currency} />
-        <GoalsGroup currency={currency} />
-      </div>
+      {many ? (
+        <div className="wide-three wide-many">
+          <BudgetsGroup month={month} currency={currency} columns />
+          <div className="wide-side">
+            <WhereYouStand accounts={accounts} month={month} currency={currency} />
+            <GoalsGroup currency={currency} />
+          </div>
+        </div>
+      ) : (
+        <div className="wide-three">
+          <BudgetsGroup month={month} currency={currency} />
+          <WhereYouStand accounts={accounts} month={month} currency={currency} />
+          <GoalsGroup currency={currency} />
+        </div>
+      )}
       <ComingUp today={today} currency={currency} />
     </>
   );

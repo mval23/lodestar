@@ -260,6 +260,25 @@ describe('What stands out', () => {
 });
 
 describe('Budgets', () => {
+  it('lists more than nine budgets two across, beside where you stand and goals stacked', () => {
+    loaded();
+    const names = ['Rent', 'Groceries', 'Eating out', 'Transport', 'Health', 'Gifts', 'Pets', 'Shopping', 'Wellness', 'Hobbies'];
+    useBudgetPace.mockReturnValue({ data: names.map((n) => pace(n, 20000, 1000, 5000)), isPending: false });
+    show();
+    const budgets = screen.getByRole('region', { name: 'Budgets' });
+    expect(budgets.querySelector('.need-columns')?.children).toHaveLength(10);
+    const side = document.querySelector('.wide-side')!;
+    expect(within(side as HTMLElement).getByRole('region', { name: 'Where you stand' })).toBeInTheDocument();
+  });
+
+  it('keeps three columns for nine budgets or fewer', () => {
+    loaded();
+    useBudgetPace.mockReturnValue({ data: [pace('Rent', 20000, 1000, 5000)], isPending: false });
+    show();
+    expect(document.querySelector('.wide-side')).toBeNull();
+    expect(document.querySelector('.need-columns')).toBeNull();
+  });
+
   it('lists every budget line, over plan first, then ahead of pace, each opening its budget line', () => {
     loaded();
     useBudgetPace.mockReturnValue({

@@ -35,12 +35,24 @@ export function BillsPage() {
   const due = rows.filter((bill) => dueStateOf(bill.next_due_on, today) !== 'later');
   const later = rows.filter((bill) => dueStateOf(bill.next_due_on, today) === 'later');
   const archived = (bills.data ?? []).filter((bill) => bill.archived_at);
-  const overdue = due.filter((bill) => dueStateOf(bill.next_due_on, today) === 'overdue').length;
-  const varies = due.filter((bill) => bill.amount_is_variable).length;
+  // What is due is what you pay: bills and subscriptions. Income on its way
+  // is named beside it, never added to it; a planned transfer is neither.
+  const billsDue = due.filter((bill) => bill.kind === 'expense');
+  const incomeDue = due.filter((bill) => bill.kind === 'income');
+  const overdue = billsDue.filter((bill) => dueStateOf(bill.next_due_on, today) === 'overdue').length;
+  const varies = billsDue.filter((bill) => bill.amount_is_variable).length;
   // A handful of already-stored amounts, added for display: the same kind of
   // total the budget summary shows.
-  const dueTotal = due.reduce((sum, bill) => sum + bill.amount_minor, 0);
-  const next = later[0];
+  const dueTotal = billsDue.reduce((sum, bill) => sum + bill.amount_minor, 0);
+  const arriving = incomeDue.reduce((sum, bill) => sum + bill.amount_minor, 0);
+  const next = later.find((bill) => bill.kind === 'expense');
+  const arrivingNote =
+    incomeDue.length > 0 ? (
+      <>
+        {' · '}
+        <Amount minor={arriving} currency={currency} signed /> arriving
+      </>
+    ) : null;
 
   return (
     <div className="page">
@@ -69,7 +81,7 @@ export function BillsPage() {
       )}
 
       {rows.length > 0 &&
-        (due.length > 0 ? (
+        (billsDue.length > 0 ? (
           <section className="group figure-group">
             <h2 className="caption">Due in the next 7 days</h2>
             <p className="fig flush">
@@ -78,9 +90,10 @@ export function BillsPage() {
               </span>
             </p>
             <p className="footnote flush">
-              {due.length} {due.length === 1 ? 'bill' : 'bills'}
+              {billsDue.length} {billsDue.length === 1 ? 'bill' : 'bills'}
               {overdue > 0 && ` · ${overdue} overdue`}
               {varies > 0 && ` · ${varies === 1 ? 'one amount varies' : `${varies} amounts vary`}, so this is an estimate`}
+              {arrivingNote}
             </p>
           </section>
         ) : (
@@ -95,6 +108,7 @@ export function BillsPage() {
               <p className="footnote flush">
                 <Link to={billPath(next.id)}>{next.name}</Link> · {formatDate(next.next_due_on)} ·{' '}
                 {describeDue(next.next_due_on, today)}. Nothing is due in the next 7 days.
+                {arrivingNote}
               </p>
             </section>
           )
@@ -170,7 +184,7 @@ function BillFigures({ bill, today, currency }: { bill: RecurringItem; today: st
   const state = dueStateOf(bill.next_due_on, today);
   return (
     <span className="bill-figures">
-      <Amount minor={bill.amount_minor} currency={currency} />
+      <Amount minor={bill.amount_minor} currency={currency} signed={bill.kind === 'income'} />
       <small className={state === 'overdue' ? 'due-overdue' : state === 'today' ? 'due-today' : undefined}>
         {describeDue(bill.next_due_on, today)}
       </small>

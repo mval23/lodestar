@@ -242,7 +242,7 @@ export function ThisMonthBand({ accounts, month, currency }: { accounts: Account
 // Budgets: every line planned this month, over plan first, then ahead of
 // pace, then the rest by share of the plan used.
 // ---------------------------------------------------------------------------
-export function BudgetsGroup({ month, currency }: { month: string; currency: Currency }) {
+export function BudgetsGroup({ month, currency, columns = false }: { month: string; currency: Currency; columns?: boolean }) {
   const pace = useBudgetPace(month);
   const rows = [...(pace.data ?? [])].sort(byNeed);
 
@@ -267,28 +267,31 @@ export function BudgetsGroup({ month, currency }: { month: string; currency: Cur
         </p>
       ) : (
         <>
-          {rows.map((row) => (
-            <Link key={row.category_id} className="need-row" to={budgetLinePath(month, row.category_id)}>
-              <span className="need-top">
-                <span className="need-name">{row.category_name}</span>
-                <span className="num">
-                  <Amount minor={row.spent_minor} currency={currency} />{' '}
-                  <span className="secondary">
-                    of <Amount minor={row.planned_minor} currency={currency} />
+          {/* A long list reads two across, still in order of need, row by row. */}
+          <div className={columns ? 'need-columns' : 'need-list'}>
+            {rows.map((row) => (
+              <Link key={row.category_id} className="need-row" to={budgetLinePath(month, row.category_id)}>
+                <span className="need-top">
+                  <span className="need-name">{row.category_name}</span>
+                  <span className="num">
+                    <Amount minor={row.spent_minor} currency={currency} />{' '}
+                    <span className="secondary">
+                      of <Amount minor={row.planned_minor} currency={currency} />
+                    </span>
                   </span>
                 </span>
-              </span>
-              <PaceCapsule spent={row.spent_minor} planned={row.planned_minor} pace={row.pace_minor} />
-              <span className="need-foot">
-                <PaceStatus row={row} currency={currency} />
-                {row.status !== 'over' && (
-                  <span className="footnote num">
-                    <Amount minor={row.planned_minor - row.spent_minor} currency={currency} /> left
-                  </span>
-                )}
-              </span>
-            </Link>
-          ))}
+                <PaceCapsule spent={row.spent_minor} planned={row.planned_minor} pace={row.pace_minor} />
+                <span className="need-foot">
+                  <PaceStatus row={row} currency={currency} />
+                  {row.status !== 'over' && (
+                    <span className="footnote num">
+                      <Amount minor={row.planned_minor - row.spent_minor} currency={currency} /> left
+                    </span>
+                  )}
+                </span>
+              </Link>
+            ))}
+          </div>
           <p className="caption need-note">
             Blue tick: where spending would be today, with bills on their due dates and the rest spread evenly.
           </p>
