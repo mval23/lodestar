@@ -2479,6 +2479,23 @@ label.search-capsule input {
   align-items: start;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 }
+/* A group's name, and the way to rename it. */
+.category-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  margin-bottom: var(--space-2);
+}
+.category-group-head .form-group-title {
+  margin: 0;
+}
+.category-group-head .link-button {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--blue);
+}
 
 /* Budgets: a group's name and what it has spent of its plan. */
 .budget-group-head {

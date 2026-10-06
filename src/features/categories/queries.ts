@@ -137,6 +137,18 @@ export function useCreateCategoryGroup() {
   });
 }
 
+export function useRenameCategoryGroup() {
+  const invalidate = useInvalidateCategories();
+  return useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }): Promise<CategoryGroup> => {
+      const { data, error } = await db().from('category_groups').update({ name }).eq('id', id).select('*').single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: invalidate,
+  });
+}
+
 // merge_categories moves transactions and budgets across, sums any budgets
 // that collide, and deletes the source, all in one database transaction.
 export function useMergeCategories() {
