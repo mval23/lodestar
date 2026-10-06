@@ -18,8 +18,10 @@ import {
   useCreateCategoryGroup,
   useDeleteCategory,
   useMergeCategories,
+  useRenameCategoryGroup,
   useUpdateCategory,
   type Category,
+  type CategoryGroup,
   type CategoryKind,
 } from './queries';
 
@@ -33,6 +35,7 @@ export function CategoriesPage() {
   const usage = useCategoryUsage();
   const [editing, setEditing] = useState<Category | undefined>();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [renaming, setRenaming] = useState<CategoryGroup | undefined>();
 
   const useCount = useMemo(
     () => new Map((usage.data ?? []).map((u) => [u.category_id, u.use_count])),
@@ -85,7 +88,19 @@ export function CategoriesPage() {
       <div className="group-columns">
         {byGroup.map(([groupId, items]) => (
           <section key={groupId || 'ungrouped'}>
-            <h2 className="form-group-title">{groupName.get(groupId) ?? 'Ungrouped'}</h2>
+            <div className="category-group-head">
+              <h2 className="form-group-title">{groupName.get(groupId) ?? 'Ungrouped'}</h2>
+              {groupName.has(groupId) && (
+                <button
+                  type="button"
+                  className="link-button"
+                  aria-label={`Rename ${groupName.get(groupId)}`}
+                  onClick={() => setRenaming(groups.data?.find((g) => g.id === groupId))}
+                >
+                  Rename
+                </button>
+              )}
+            </div>
             <ul className="rows-list">
               {items.map((category) => (
                 <li key={category.id}>
@@ -131,7 +146,55 @@ export function CategoriesPage() {
           onClose={() => setSheetOpen(false)}
         />
       )}
+
+      {renaming && <GroupSheet group={renaming} onClose={() => setRenaming(undefined)} />}
     </div>
+  );
+}
+
+// Renaming a group renames it everywhere: budgets and reports read the name
+// from the group, so nothing else needs to change.
+function GroupSheet({ group, onClose }: { group: CategoryGroup; onClose: () => void }) {
+  const rename = useRenameCategoryGroup();
+  const [name, setName] = useState(group.name);
+  const [error, setError] = useState<string | null>(null);
+
+  const trimmed = name.trim();
+  const reason = !trimmed ? 'Give the group a name.' : undefined;
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (reason) return;
+    if (trimmed === group.name) return onClose();
+    setError(null);
+    try {
+      await rename.mutateAsync({ id: group.id, name: trimmed });
+      onClose();
+    } catch (cause) {
+      const code = (cause as { code?: string } | null)?.code;
+      setError(code === '23505' ? `You already have a group called “${trimmed}”.` : dataErrorMessage(cause));
+    }
+  };
+
+  return (
+    <Sheet open onClose={onClose} title="Rename group">
+      <form onSubmit={submit} className="stack" noValidate>
+        <FormGroup>
+          <FormRow label="Name" htmlFor="group-name">
+            <input id="group-name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
+          </FormRow>
+        </FormGroup>
+
+        {error && <Notice tone="err">{error}</Notice>}
+        <FieldErrors messages={[reason]} />
+
+        <div className="actions">
+          <Button type="submit" dimmed={Boolean(reason)} busy={rename.isPending}>
+            Save group
+          </Button>
+        </div>
+      </form>
+    </Sheet>
   );
 }
 
