@@ -2,7 +2,15 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { BillsPage } from './BillsPage';
-import { describeDue, describeSchedule, dueStateOf, kindForLabel, type RecurringItem } from './queries';
+import {
+  describeDue,
+  describeSchedule,
+  dueStateOf,
+  kindForLabel,
+  perMonth,
+  recordAction,
+  type RecurringItem,
+} from './queries';
 
 const useBills = vi.fn();
 const markPaid = vi.fn();
@@ -22,6 +30,16 @@ vi.mock('./queries', async (importOriginal) => {
 vi.mock('../accounts/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../accounts/queries')>();
   return { ...actual, useAccounts: () => ({ data: [] }) };
+});
+
+vi.mock('../goals/queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../goals/queries')>();
+  return { ...actual, useGoals: () => ({ data: [{ goal_id: 'g1', account_id: 'fund', name: 'Travel', archived_at: null }] }) };
+});
+
+vi.mock('../categories/queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../categories/queries')>();
+  return { ...actual, useCategories: () => ({ data: [] }), useCategoryUsage: () => ({ data: [] }) };
 });
 
 vi.mock('../../lib/profile', () => ({ useCurrency: () => 'USD', useProfile: () => ({ data: { timezone: 'UTC' } }) }));
@@ -88,6 +106,24 @@ describe('describeSchedule', () => {
     expect(describeSchedule('month', 3)).toBe('Every 3 months');
     expect(describeSchedule('week', 2)).toBe('Every 2 weeks');
     expect(describeSchedule('year', 1)).toBe('Yearly');
+  });
+});
+
+describe('perMonth', () => {
+  it('is exact for monthly schedules and says when it had to round', () => {
+    expect(perMonth({ amount_minor: 20000, cadence_unit: 'month', cadence_interval: 1 })).toEqual({ minor: 20000, exact: true });
+    expect(perMonth({ amount_minor: 120000, cadence_unit: 'year', cadence_interval: 1 })).toEqual({ minor: 10000, exact: true });
+    expect(perMonth({ amount_minor: 5000, cadence_unit: 'month', cadence_interval: 2 })).toEqual({ minor: 2500, exact: true });
+    // $50 a week is $216.666… a month.
+    expect(perMonth({ amount_minor: 5000, cadence_unit: 'week', cadence_interval: 1 })).toEqual({ minor: 21667, exact: false });
+  });
+});
+
+describe('recordAction', () => {
+  it('pays a bill, receives income and marks a transfer done', () => {
+    expect(recordAction('expense')).toBe('Mark as paid');
+    expect(recordAction('income')).toBe('Mark as received');
+    expect(recordAction('transfer')).toBe('Mark as done');
   });
 });
 
@@ -208,6 +244,34 @@ describe('BillsPage', () => {
     expect(await screen.findByText(/archived/)).toBeInTheDocument();
     // The success message never appears, so nothing claims to be paid.
     expect(screen.queryByText(/Recorded\./)).not.toBeInTheDocument();
+  });
+
+  it('marks a scheduled transfer done, and names it beside the bills rather than in their total', async () => {
+    useBills.mockReturnValue({
+      data: [
+        bill({ id: 'a', name: 'Rent' }),
+        bill({ id: 't', name: 'Travel', label: 'transfer', kind: 'transfer', amount_minor: 20000, to_account_id: 'fund' }),
+      ],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+    });
+    render(<MemoryRouter><BillsPage /></MemoryRouter>);
+    const band = screen.getByText('Due in the next 7 days').closest('section')!;
+    expect(band).toHaveTextContent(/\$1,200\.00.*1 bill.*\$200\.00 to move into goals/);
+    expect(band).not.toHaveTextContent('$1,400.00');
+    await userEvent.click(screen.getByRole('button', { name: 'Mark as done' }));
+    expect(markPaid).toHaveBeenCalledWith(expect.objectContaining({ id: 't' }));
+    expect(await screen.findByText(/Recorded\. Next due/)).toBeInTheDocument();
+  });
+
+  it('opens the sheet as a transfer from "Schedule a transfer"', async () => {
+    render(<MemoryRouter><BillsPage /></MemoryRouter>);
+    await userEvent.click(screen.getByRole('button', { name: 'Schedule a transfer' }));
+    expect(screen.getByRole('button', { name: 'Schedule transfer' })).toBeInTheDocument();
+    expect(screen.getAllByText('From').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('To').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('Category')).toHaveLength(0);
   });
 
   it('can pay on another date or for another amount', async () => {

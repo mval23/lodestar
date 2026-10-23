@@ -21,6 +21,8 @@ import { PasswordForm } from './PasswordForm';
 import { ProfileForm } from './ProfileForm';
 import { useTour } from '../tour/Tour';
 import { useProfile } from '../../lib/profile';
+import { readTheme, saveTheme, type ThemeChoice } from '../../lib/theme';
+import { FormGroup, FormRow } from '../../ui/Form';
 
 // Settings in two columns on a wide screen: who you are and how amounts and
 // dates read on the left, and your data, signing in and leaving on the right.
@@ -53,6 +55,7 @@ export function SettingsPage() {
           {profile.isPending && <p className="secondary">Loading your profile…</p>}
           {profile.isError && <Notice tone="err">{dataErrorMessage(profile.error)}</Notice>}
           {profile.data && <ProfileForm profile={profile.data} email={email} />}
+          <AppearanceGroup />
         </div>
 
         <div className="settings-col">
@@ -165,6 +168,46 @@ export function SettingsPage() {
         </Sheet>
       )}
     </div>
+  );
+}
+
+const THEMES: { value: ThemeChoice; label: string }[] = [
+  { value: 'auto', label: 'Automatic' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
+// Light or dark for this device. It changes at once, so it sits outside the
+// profile form and its Save button.
+function AppearanceGroup() {
+  const [theme, setTheme] = useState<ThemeChoice>(readTheme);
+  return (
+    <section>
+      <FormGroup title="Appearance">
+        <FormRow label="Theme">
+          <div className="segmented" role="radiogroup" aria-label="Theme" aria-describedby="theme-hint">
+            {THEMES.map((option) => (
+              <label key={option.value}>
+                <input
+                  type="radio"
+                  name="theme"
+                  value={option.value}
+                  checked={theme === option.value}
+                  onChange={() => {
+                    setTheme(option.value);
+                    saveTheme(option.value);
+                  }}
+                />
+                {option.label}
+              </label>
+            ))}
+          </div>
+        </FormRow>
+      </FormGroup>
+      <p className="form-hint" id="theme-hint">
+        Automatic follows your device. It changes right away, on this device only.
+      </p>
+    </section>
   );
 }
 

@@ -6,6 +6,10 @@ import './app/styles.css';
 import { envResult } from './lib/env';
 import { AuthProvider } from './app/AuthProvider';
 import { ConfigErrorPage } from './app/ConfigErrorPage';
+import { applyTheme, readTheme } from './lib/theme';
+
+// Before the first paint, so a chosen theme never flashes the other one.
+applyTheme(readTheme());
 
 const queryClient = new QueryClient({
   defaultOptions: {

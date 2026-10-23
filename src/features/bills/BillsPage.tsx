@@ -9,7 +9,9 @@ import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { Notice } from '../../ui/Notice';
 import { dataErrorMessage } from '../auth/errors';
-import { BillSheet } from './BillSheet';
+import { useAccounts } from '../accounts/queries';
+import { useGoals } from '../goals/queries';
+import { BillSheet, transferPrefill } from './BillSheet';
 import { MarkPaid } from './MarkPaid';
 import { describeDue, describeSchedule, dueStateOf, useBills, type RecurringItem } from './queries';
 
@@ -28,7 +30,11 @@ export function BillsPage() {
   const currency = useCurrency();
   const profile = useProfile();
   const bills = useBills();
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const accounts = useAccounts();
+  const goals = useGoals();
+  const [sheet, setSheet] = useState<'bill' | 'transfer' | null>(null);
+  const accountNames = new Map((accounts.data ?? []).map((a) => [a.account_id, a.name]));
+  const goalAccounts = new Set((goals.data ?? []).filter((g) => !g.archived_at).map((g) => g.account_id));
 
   const today = todayInZone(profile.data?.timezone);
   const rows = (bills.data ?? []).filter((bill) => !bill.archived_at);
@@ -46,24 +52,43 @@ export function BillsPage() {
   const dueTotal = billsDue.reduce((sum, bill) => sum + bill.amount_minor, 0);
   const arriving = incomeDue.reduce((sum, bill) => sum + bill.amount_minor, 0);
   const next = later.find((bill) => bill.kind === 'expense');
-  const arrivingNote =
-    incomeDue.length > 0 ? (
-      <>
-        {' · '}
-        <Amount minor={arriving} currency={currency} signed /> arriving
-      </>
-    ) : null;
+  // Transfers due are money moving between your own accounts: named beside
+  // the bills, never added to them.
+  const transfersDue = due.filter((bill) => bill.kind === 'transfer');
+  const moving = transfersDue.reduce((sum, bill) => sum + bill.amount_minor, 0);
+  const intoGoals = transfersDue.every((bill) => bill.to_account_id && goalAccounts.has(bill.to_account_id));
+  const arrivingNote = (
+    <>
+      {incomeDue.length > 0 && (
+        <>
+          {' · '}
+          <Amount minor={arriving} currency={currency} signed /> arriving
+        </>
+      )}
+      {transfersDue.length > 0 && (
+        <>
+          {' · '}
+          <Amount minor={moving} currency={currency} /> to move {intoGoals ? 'into goals' : 'between accounts'}
+        </>
+      )}
+    </>
+  );
 
   return (
     <div className="page">
       <header className="page-head">
         <div>
           <h1 className="large-title">Bills</h1>
-          <p className="footnote flush">Bills and subscriptions, with what’s due next.</p>
+          <p className="footnote flush">Bills, subscriptions and scheduled transfers, with what’s due next.</p>
         </div>
-        <Button data-tour="add-bill" onClick={() => setSheetOpen(true)}>
-          Add bill
-        </Button>
+        <div className="actions">
+          <Button variant="secondary" onClick={() => setSheet('transfer')}>
+            Schedule a transfer
+          </Button>
+          <Button data-tour="add-bill" onClick={() => setSheet('bill')}>
+            Add bill
+          </Button>
+        </div>
       </header>
 
       {bills.isError && <Notice tone="err">{dataErrorMessage(bills.error)}</Notice>}
@@ -73,10 +98,10 @@ export function BillsPage() {
         <EmptyState
           icon={CalendarClock}
           title="No bills yet"
-          action={<Button onClick={() => setSheetOpen(true)}>Add a bill</Button>}
+          action={<Button onClick={() => setSheet('bill')}>Add a bill</Button>}
         >
-          Add the things that come round: rent, a subscription, anything with a due date. Marking one paid records the
-          transaction and moves the date on.
+          Add the things that come round: rent, a subscription, a monthly transfer into a goal, anything with a due
+          date. Marking one paid or done records the transaction and moves the date on.
         </EmptyState>
       )}
 
@@ -119,7 +144,7 @@ export function BillsPage() {
           <h2 className="form-group-title">Next 7 days</h2>
           <ul className="rows-list">
             {due.map((bill) => (
-              <DueRow key={bill.id} bill={bill} today={today} currency={currency} />
+              <DueRow key={bill.id} bill={bill} today={today} currency={currency} accountNames={accountNames} />
             ))}
           </ul>
         </section>
@@ -132,7 +157,7 @@ export function BillsPage() {
             {later.map((bill) => (
               <li key={bill.id}>
                 <Link to={billPath(bill.id)} className="row-button">
-                  <BillLabel bill={bill} />
+                  <BillLabel bill={bill} accountNames={accountNames} />
                   <BillFigures bill={bill} today={today} currency={currency} />
                 </Link>
               </li>
@@ -160,19 +185,29 @@ export function BillsPage() {
         </details>
       )}
 
-      {sheetOpen && <BillSheet onClose={() => setSheetOpen(false)} />}
+      {sheet && (
+        <BillSheet {...(sheet === 'transfer' ? { prefill: transferPrefill() } : {})} onClose={() => setSheet(null)} />
+      )}
     </div>
   );
 }
 
 type Currency = Parameters<typeof Amount>[0]['currency'];
 
-function BillLabel({ bill }: { bill: RecurringItem }) {
+type AccountNames = Map<string, string>;
+
+function BillLabel({ bill, accountNames }: { bill: RecurringItem; accountNames: AccountNames }) {
+  // A transfer says where the money goes, since that is what it is for.
+  const route =
+    bill.kind === 'transfer'
+      ? ` · ${accountNames.get(bill.from_account_id ?? '') ?? 'An account'} → ${accountNames.get(bill.to_account_id ?? '') ?? 'an account'}`
+      : '';
   return (
     <span className="row-label">
       {bill.name}
       <small>
-        {LABEL_TEXT[bill.label]} · {describeSchedule(bill.cadence_unit, bill.cadence_interval)} ·{' '}
+        {bill.kind === 'transfer' ? 'Transfer' : LABEL_TEXT[bill.label]}
+        {route} · {describeSchedule(bill.cadence_unit, bill.cadence_interval)} ·{' '}
         {formatDate(bill.next_due_on)}
         {bill.amount_is_variable && ' · Amount varies'}
       </small>
@@ -194,11 +229,21 @@ function BillFigures({ bill, today, currency }: { bill: RecurringItem; today: st
 
 // A bill due this week: the row opens the bill, and marking it paid happens
 // beside it. On a wide screen the action sits on the same line.
-function DueRow({ bill, today, currency }: { bill: RecurringItem; today: string; currency: Currency }) {
+function DueRow({
+  bill,
+  today,
+  currency,
+  accountNames,
+}: {
+  bill: RecurringItem;
+  today: string;
+  currency: Currency;
+  accountNames: AccountNames;
+}) {
   return (
     <li className="bill-row">
       <Link to={billPath(bill.id)} className="row-button bill-main">
-        <BillLabel bill={bill} />
+        <BillLabel bill={bill} accountNames={accountNames} />
         <BillFigures bill={bill} today={today} currency={currency} />
       </Link>
       <MarkPaid bill={bill} today={today} />

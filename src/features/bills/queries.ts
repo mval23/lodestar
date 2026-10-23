@@ -3,6 +3,7 @@ import { db } from '../../lib/supabase';
 import { accountsKey } from '../accounts/queries';
 import { budgetsKey } from '../budgets/queries';
 import { categoryUsageKey } from '../categories/queries';
+import { goalsKey } from '../goals/queries';
 import { overviewKey } from '../overview/queries';
 import { reportsKey } from '../reports/queries';
 import { transactionsKey } from '../transactions/queries';
@@ -24,7 +25,7 @@ export const LABELS: { value: RecurringLabel; label: string; kinds: TxnKind[]; h
   { value: 'bill', label: 'Bill', kinds: ['expense', 'transfer'], hint: 'Rent, utilities, anything due on a date' },
   { value: 'subscription', label: 'Subscription', kinds: ['expense'], hint: 'A recurring charge you could cancel' },
   { value: 'income', label: 'Income', kinds: ['income'], hint: 'Pay, a pension, anything arriving' },
-  { value: 'transfer', label: 'Transfer', kinds: ['transfer'], hint: 'A standing move between your accounts' },
+  { value: 'transfer', label: 'Transfer', kinds: ['transfer'], hint: 'A standing move between your accounts, such as into a goal' },
 ];
 
 export function kindForLabel(label: RecurringLabel, current: TxnKind): TxnKind {
@@ -70,6 +71,8 @@ function useInvalidateBills() {
     void queryClient.invalidateQueries({ queryKey: budgetsKey });
     void queryClient.invalidateQueries({ queryKey: overviewKey });
     void queryClient.invalidateQueries({ queryKey: reportsKey });
+    // A transfer into a goal's account is a contribution to that goal.
+    void queryClient.invalidateQueries({ queryKey: goalsKey });
   };
 }
 
@@ -136,6 +139,12 @@ export function useMarkBillPaid() {
     },
     onSuccess: invalidate,
   });
+}
+
+// What recording one is called: a bill is paid, income is received, and a
+// transfer, which is neither, is simply done.
+export function recordAction(kind: TxnKind): string {
+  return kind === 'income' ? 'Mark as received' : kind === 'transfer' ? 'Mark as done' : 'Mark as paid';
 }
 
 export type DueState = 'overdue' | 'today' | 'soon' | 'later';
@@ -225,6 +234,18 @@ export function useBillPayments(id: string | undefined) {
 export function perYear(unit: CadenceUnit, interval: number): number {
   const base = unit === 'week' ? 52 : unit === 'month' ? 12 : 1;
   return base / Math.max(1, interval);
+}
+
+// A schedule's amount spread over a month, for "this much a month" across
+// schedules of different cadences. Exact for anything monthly; anything else
+// is rounded to the minor unit, so callers say "about" when exact is false.
+export function perMonth(item: Pick<RecurringItem, 'amount_minor' | 'cadence_unit' | 'cadence_interval'>): {
+  minor: number;
+  exact: boolean;
+} {
+  if (item.cadence_unit === 'month' && item.cadence_interval === 1) return { minor: item.amount_minor, exact: true };
+  const minor = (item.amount_minor * perYear(item.cadence_unit, item.cadence_interval)) / 12;
+  return { minor: Math.round(minor), exact: Number.isInteger(minor) };
 }
 
 export type UpcomingItem = {

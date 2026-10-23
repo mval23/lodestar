@@ -77,3 +77,31 @@ describe('SettingsPage', () => {
     expect(signOut).toHaveBeenLastCalledWith({ scope: 'global' });
   });
 });
+
+describe('Appearance', () => {
+  afterEach(() => {
+    window.localStorage.clear();
+    delete document.documentElement.dataset.theme;
+  });
+
+  it('starts on Automatic and switches the theme at once, remembering it on this device', async () => {
+    show();
+    const theme = screen.getByRole('radiogroup', { name: 'Theme' });
+    expect(within(theme).getByLabelText('Automatic')).toBeChecked();
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+
+    await userEvent.click(within(theme).getByLabelText('Dark'));
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(window.localStorage.getItem('lodestar.theme')).toBe('dark');
+
+    await userEvent.click(within(theme).getByLabelText('Automatic'));
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+    expect(window.localStorage.getItem('lodestar.theme')).toBeNull();
+  });
+
+  it('opens on the choice already made', () => {
+    window.localStorage.setItem('lodestar.theme', 'light');
+    show();
+    expect(within(screen.getByRole('radiogroup', { name: 'Theme' })).getByLabelText('Light')).toBeChecked();
+  });
+});

@@ -2548,6 +2548,69 @@ label.search-capsule input {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* Goals page: what is scheduled into the goals on the left, the goals on the
+   right. Below 1100px they stack, the schedule first. While the column is
+   there, the cards go two across only once each keeps its line lengths. */
+.goals-layout {
+  display: grid;
+  gap: var(--space-6);
+  align-items: start;
+}
+.goals-main,
+.goals-schedule {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  min-width: 0;
+}
+@media (min-width: 1100px) {
+  .goals-layout {
+    grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  }
+  .goals-layout .goal-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (min-width: 1400px) {
+  .goals-layout .goal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* The column is narrow, so "Done" always sits under its row, never beside it
+   as on the Bills page. */
+.goals-schedule .rows-list > li.bill-row {
+  grid-template-columns: minmax(0, 1fr);
+  padding-bottom: var(--space-3);
+}
+.goals-schedule .rows-list > li.bill-row .bill-aside {
+  padding-inline: var(--space-4);
+}
+.goals-schedule .bill-figures small {
+  white-space: nowrap;
+}
+.goals-schedule .rows-list > li.bill-row .bill-aside .actions,
+.goals-schedule .rows-list > li.bill-row .bill-confirm {
+  justify-content: flex-start;
+}
+/* A goal's next scheduled transfer, after a small clock. */
+.goal-next {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.goal-next > svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--ink-3);
+}
+.goal-next .btn-inline {
+  min-height: 0;
+  padding: 0;
+  font-size: inherit;
+  font-weight: 600;
+}
+
 /* A reached goal: a real state, so the success colour, with an icon and words. */
 .goal-reached {
   display: flex;

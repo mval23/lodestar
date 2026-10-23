@@ -10,6 +10,7 @@ import { Select } from '../../ui/Select';
 import { Sheet } from '../../ui/Sheet';
 import { dataErrorMessage } from '../auth/errors';
 import { useAccounts } from '../accounts/queries';
+import { useGoals } from '../goals/queries';
 import { sortForPicker, useCategories, useCategoryUsage } from '../categories/queries';
 import { directionProblem } from '../transactions/queries';
 import {
@@ -27,12 +28,24 @@ import {
 // What a new bill starts from, such as a possible recurring payment found
 // in the ledger: the person still reviews it and saves it.
 export type BillPrefill = Partial<
-  Pick<RecurringItem, 'name' | 'label' | 'amount_minor' | 'from_account_id' | 'category_id' | 'next_due_on'>
+  Pick<
+    RecurringItem,
+    'name' | 'label' | 'kind' | 'amount_minor' | 'from_account_id' | 'to_account_id' | 'category_id' | 'next_due_on'
+  >
 >;
+
+// A transfer into a goal is the usual reason to schedule one, so the prefill
+// for "Schedule a transfer", with the goal's account when there is one.
+export function transferPrefill(goal?: { name: string; account_id: string }): BillPrefill {
+  return goal
+    ? { label: 'transfer', kind: 'transfer', name: goal.name, to_account_id: goal.account_id }
+    : { label: 'transfer', kind: 'transfer' };
+}
 
 export function BillSheet({ bill, prefill, onClose }: { bill?: RecurringItem; prefill?: BillPrefill; onClose: () => void }) {
   const currency = useCurrency();
   const accounts = useAccounts();
+  const goals = useGoals();
   const categories = useCategories();
   const usage = useCategoryUsage();
   const create = useCreateBill();
@@ -46,7 +59,7 @@ export function BillSheet({ bill, prefill, onClose }: { bill?: RecurringItem; pr
   const [amount, setAmount] = useState(start?.amount_minor !== undefined ? toAmountInput(start.amount_minor, currency) : '');
   const [variable, setVariable] = useState(bill?.amount_is_variable ?? false);
   const [fromAccount, setFromAccount] = useState(start?.from_account_id ?? '');
-  const [toAccount, setToAccount] = useState(bill?.to_account_id ?? '');
+  const [toAccount, setToAccount] = useState(start?.to_account_id ?? '');
   const [categoryId, setCategoryId] = useState(start?.category_id ?? '');
   const [unit, setUnit] = useState<CadenceUnit>(bill?.cadence_unit ?? 'month');
   const [interval, setInterval] = useState(String(bill?.cadence_interval ?? 1));
@@ -55,9 +68,13 @@ export function BillSheet({ bill, prefill, onClose }: { bill?: RecurringItem; pr
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  const kind = kindForLabel(label, bill?.kind ?? 'expense');
+  const kind = kindForLabel(label, start?.kind ?? 'expense');
   const isTransfer = kind === 'transfer';
+  const noun = isTransfer ? 'transfer' : 'bill';
   const open = (accounts.data ?? []).filter((a) => !a.archived_at);
+  // Goal accounts are named as such in "To", since that is where most
+  // scheduled transfers go.
+  const goalAccounts = new Set((goals.data ?? []).filter((g) => !g.archived_at).map((g) => g.account_id));
   const pickable = useMemo(
     () =>
       sortForPicker(
@@ -117,11 +134,11 @@ export function BillSheet({ bill, prefill, onClose }: { bill?: RecurringItem; pr
   const archived = Boolean(bill?.archived_at);
 
   return (
-    <Sheet open onClose={onClose} title={bill ? 'Edit bill' : 'Add bill'}>
+    <Sheet open onClose={onClose} title={bill ? `Edit ${noun}` : isTransfer ? 'Schedule a transfer' : 'Add bill'}>
       <form onSubmit={submit} className="stack" noValidate>
         <FormGroup>
           <FormRow label="Name" htmlFor="bill-name">
-            <input id="bill-name" value={name} maxLength={60} placeholder="Rent" onChange={(e) => setName(e.target.value)} />
+            <input id="bill-name" value={name} maxLength={60} placeholder={isTransfer ? 'Trip fund' : 'Rent'} onChange={(e) => setName(e.target.value)} />
           </FormRow>
           <FormRow label="Kind" htmlFor="bill-label">
             <Select
@@ -173,7 +190,11 @@ export function BillSheet({ bill, prefill, onClose }: { bill?: RecurringItem; pr
                 placeholder="Choose an account"
                 value={toAccount}
                 onChange={setToAccount}
-                options={open.map((a) => ({ value: a.account_id, label: a.name }))}
+                options={open.map((a) => ({
+                  value: a.account_id,
+                  label: a.name,
+                  hint: goalAccounts.has(a.account_id) ? 'Goal' : undefined,
+                }))}
                 emptyText="Add an account first, in Accounts."
               />
             </FormRow>
@@ -216,6 +237,12 @@ export function BillSheet({ bill, prefill, onClose }: { bill?: RecurringItem; pr
             <DatePicker id="bill-ends" label="Ends" placeholder="Never" clearable value={endsOn} onChange={setEndsOn} />
           </FormRow>
         </FormGroup>
+        {isTransfer && (
+          <p className="form-hint">
+            A transfer into a goal’s account counts towards that goal. Marking it done records the transfer and moves
+            the date on.
+          </p>
+        )}
         <p className="form-hint">
           Dates are measured from the first due date, so a monthly bill on the 31st lands on the 28th in February and
           back on the 31st in March, rather than drifting earlier each month.
@@ -226,7 +253,7 @@ export function BillSheet({ bill, prefill, onClose }: { bill?: RecurringItem; pr
 
         <div className="actions">
           <Button type="submit" dimmed={Boolean(reason)} busy={create.isPending || update.isPending}>
-            {bill ? 'Save bill' : 'Add bill'}
+            {bill ? `Save ${noun}` : isTransfer ? 'Schedule transfer' : 'Add bill'}
           </Button>
         </div>
       </form>
@@ -247,10 +274,11 @@ export function BillSheet({ bill, prefill, onClose }: { bill?: RecurringItem; pr
               }
             }}
           >
-            {archived ? 'Restore bill' : 'Archive bill'}
+            {archived ? `Restore ${noun}` : `Archive ${noun}`}
           </Button>
           <p className="footnote flush">
-            Deleting a bill keeps every payment you already recorded; they simply stop pointing at it.
+            Deleting a {noun} keeps every {isTransfer ? 'transfer' : 'payment'} you already recorded; they simply stop
+            pointing at it.
           </p>
           {confirmingDelete ? (
             <div className="actions">
@@ -275,7 +303,7 @@ export function BillSheet({ bill, prefill, onClose }: { bill?: RecurringItem; pr
             </div>
           ) : (
             <Button variant="plain" onClick={() => setConfirmingDelete(true)}>
-              Delete bill
+              Delete {noun}
             </Button>
           )}
         </div>
