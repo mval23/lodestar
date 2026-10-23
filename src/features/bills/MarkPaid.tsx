@@ -6,12 +6,15 @@ import { Button } from '../../ui/Button';
 import { DatePicker } from '../../ui/DatePicker';
 import { Notice } from '../../ui/Notice';
 import { dataErrorMessage } from '../auth/errors';
-import { useMarkBillPaid, type RecurringItem } from './queries';
+import { recordAction, useMarkBillPaid, type RecurringItem } from './queries';
 
 // Marking a bill paid writes the transaction and moves the due date in one
 // database transaction. If the insert fails, the date does not move, so a
 // bill can never look paid without the money to match.
-export function MarkPaid({ bill, today }: { bill: RecurringItem; today: string }) {
+//
+// `compact` is the Goals column, where every row is a transfer into a goal
+// and the one-word "Done" is enough.
+export function MarkPaid({ bill, today, compact }: { bill: RecurringItem; today: string; compact?: boolean }) {
   const currency = useCurrency();
   const markPaid = useMarkBillPaid();
   const [asking, setAsking] = useState(false);
@@ -21,10 +24,12 @@ export function MarkPaid({ bill, today }: { bill: RecurringItem; today: string }
   const [done, setDone] = useState<string | null>(null);
 
   const parsed = parseMoney(amount, currency);
-  // Income is received, not paid.
+  // Income is received, not paid; a transfer is just done.
   const incoming = bill.kind === 'income';
-  const action = incoming ? 'Mark as received' : 'Mark as paid';
-  const dateLabel = incoming ? 'Received on' : 'Paid on';
+  const transfer = bill.kind === 'transfer';
+  const action = compact ? 'Done' : recordAction(bill.kind);
+  const dateLabel = incoming ? 'Received on' : transfer ? 'Done on' : 'Paid on';
+  const noun = transfer ? 'transfer' : 'bill';
 
   const run = async (override?: { amountMinor?: number; paidOn?: string }) => {
     setError(null);
@@ -40,7 +45,7 @@ export function MarkPaid({ bill, today }: { bill: RecurringItem; today: string }
       const code = (cause as { code?: string } | null)?.code;
       setError(
         code === '55000'
-          ? 'This bill is archived, so it can’t be marked paid. Restore it first.'
+          ? `This ${noun} is archived, so it can’t be marked ${transfer ? 'done' : 'paid'}. Restore it first.`
           : dataErrorMessage(cause),
       );
     }
@@ -98,7 +103,13 @@ export function MarkPaid({ bill, today }: { bill: RecurringItem; today: string }
   return (
     <div className="bill-aside">
       <div className="actions">
-        <Button variant="secondary" busy={markPaid.isPending} onClick={() => run()}>
+        <Button
+          variant="secondary"
+          busy={markPaid.isPending}
+          // Several "Done" buttons sit in one list, so each names its row.
+          aria-label={compact ? `Done: ${bill.name}` : undefined}
+          onClick={() => run()}
+        >
           {action}
         </Button>
         <Button variant="plain" onClick={() => setAsking(true)}>
