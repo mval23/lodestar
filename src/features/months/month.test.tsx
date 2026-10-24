@@ -215,7 +215,20 @@ describe('MonthPage', () => {
     renderPage();
     const where = screen.getByRole('region', { name: 'Where it went' });
     expect(within(where).getByRole('link', { name: 'Housing' })).toBeInTheDocument();
-    expect(within(where).getByText('Uncategorized').closest('tr')).toHaveTextContent('−$480.00');
+    const table = within(where).getByRole('table');
+    expect(within(table).getByText('Uncategorized').closest('tr')).toHaveTextContent('−$480.00');
+  });
+
+  it('gives each category its share of the spending, in the table and the donut', () => {
+    renderPage();
+    const where = screen.getByRole('region', { name: 'Where it went' });
+    const table = within(where).getByRole('table');
+    // $1,450.00 of $1,470.00.
+    expect(within(table).getByRole('link', { name: 'Housing' }).closest('tr')).toHaveTextContent('98.6%');
+    expect(within(table).getByText('Uncategorized').closest('tr')).toHaveTextContent('1.4%');
+    const donut = within(where).getByRole('group', { name: 'Spending by category' });
+    expect(within(donut).getByText('Housing').closest('li')).toHaveTextContent('98.6%');
+    expect(donut).toHaveTextContent(/\$1,470\.00.*spent/);
   });
 
   it('ticks the bills paid this month and leaves the ones still due open', () => {
@@ -231,7 +244,7 @@ describe('MonthPage', () => {
     renderPage();
     const went = screen.getByRole('group', { name: 'Where the money in went' });
     // 4,910.00 in; 3,625.40 spent and 400.00 into goals; 884.60 kept.
-    expect(went).toHaveTextContent('Kept $884.60');
+    expect(within(went).getByText('Kept').closest('li')).toHaveTextContent(/\$884\.60.*18% of money in/);
   });
 
   it('carries each kind of total on its tab', () => {

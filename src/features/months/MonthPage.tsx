@@ -20,7 +20,9 @@ import { Comparison } from '../../ui/Comparison';
 import { DetailHeader, DetailNotFound, SectionHead } from '../../ui/Detail';
 import { Notice } from '../../ui/Notice';
 import { RunningTotalChart } from '../../ui/RunningTotalChart';
-import { SplitBars, type SplitRow } from '../../ui/SplitBar';
+import { MoneySplit, type SplitPart } from '../../ui/SplitBar';
+import { CategoryDonut, donutSlices, type DonutTone } from '../../ui/CategoryDonut';
+import { share } from '../../lib/percent';
 import { StandsOut } from '../../ui/StandsOut';
 import { dataErrorMessage } from '../auth/errors';
 import { useAccounts } from '../accounts/queries';
@@ -89,6 +91,17 @@ function MonthDetail({ month }: { month: string }) {
   const comparable = mtd !== null && mtd.typical_months > 0;
   const against = mtd ? (inProgress ? `vs a typical ${span(month, mtd.day_of_month)}` : `vs a typical ${formatMonth(month).split(' ')[0]}`) : '';
   const nameOf = (c: MonthCategory) => (c.category_id ? (catName.get(c.category_id) ?? 'Category') : 'Uncategorized');
+  // The donut's slices, and each category's colour in it, so the table can
+  // mark its rows to match.
+  const slices = donutSlices(
+    (byCategory.data ?? []).map((c) => ({
+      key: c.category_id ?? 'none',
+      label: nameOf(c),
+      minor: c.spent_minor,
+      uncategorized: !c.category_id,
+    })),
+  );
+  const toneOf = new Map(slices.map((slice) => [slice.key, slice.tone]));
   const error = summary.error ?? soFar.error ?? daily.error ?? byCategory.error;
 
   const subtitle = isFuture
@@ -229,7 +242,17 @@ function MonthDetail({ month }: { month: string }) {
             </div>
             {byCategory.data && byCategory.data.length === 0 && <p className="secondary flush">Nothing spent this month.</p>}
             {byCategory.data && byCategory.data.length > 0 && (
-              <CategoryTable rows={byCategory.data} nameOf={nameOf} comparable={comparable} monthStart={range.from} monthLast={range.to} />
+              <>
+                <CategoryDonut slices={slices} currency={currency} label="Spending by category" />
+                <CategoryTable
+                  rows={byCategory.data}
+                  nameOf={nameOf}
+                  comparable={comparable}
+                  monthStart={range.from}
+                  monthLast={range.to}
+                  toneOf={toneOf}
+                />
+              </>
             )}
           </section>
           <BillsThisMonth month={month} today={today} />
@@ -272,42 +295,45 @@ function MonthDetail({ month }: { month: string }) {
   );
 }
 
-// What went out against what came in: spent and into goals above, money in
-// below, and the difference either kept or drawn from balances.
+// Where the money that came in went: spent, into goals, and kept. When more
+// went out than came in, the bar is what went out instead, and the part past
+// the money in is hatched: it came from what the accounts already held.
 function MoneyInWent({ moneyIn, spent, goals }: { moneyIn: number; spent: number; goals: number }) {
   const currency = useCurrency();
   if (moneyIn === 0 && spent === 0 && goals === 0) return null;
   const out = spent + goals;
-  const rows: SplitRow[] = [
-    {
-      label: 'Where it went',
-      parts: [
-        { label: 'Spent', minor: spent, tone: 'out' },
-        { label: 'Into goals', minor: goals, tone: 'in' },
-        ...(moneyIn > out ? [{ label: 'Kept', minor: moneyIn - out, tone: 'base' as const }] : []),
-      ],
-    },
-    {
-      label: 'What came in',
-      parts: [
-        { label: 'Money in', minor: moneyIn, tone: 'base' },
-        ...(out > moneyIn ? [{ label: 'From balances', minor: out - moneyIn, tone: 'short' as const }] : []),
-      ],
-    },
+  const short = out > moneyIn;
+  const parts: SplitPart[] = [
+    { label: 'Spent', minor: spent, tone: 'out' },
+    { label: 'Into goals', minor: goals, tone: 'in' },
+    ...(short ? [] : [{ label: 'Kept', minor: moneyIn - out, tone: 'base' as const }]),
   ];
   return (
-    <section className="group stack-tight" aria-labelledby="month-in-went">
+    <section className="group stack" aria-labelledby="month-in-went">
       <div>
         <h2 className="headline" id="month-in-went">
           Where the money in went
         </h2>
         <p className="footnote flush">
-          {out > moneyIn
-            ? 'More went out than came in; the rest came from what your accounts already held.'
-            : 'Spending and goals, against what came in.'}
+          {short ? (
+            <>
+              More went out than the <Amount minor={moneyIn} currency={currency} /> that came in. The hatched part came
+              from what your accounts already held.
+            </>
+          ) : (
+            <>
+              Of the <Amount minor={moneyIn} currency={currency} /> that came in.
+            </>
+          )}
         </p>
       </div>
-      <SplitBars rows={rows} currency={currency} label="Where the money in went" />
+      <MoneySplit
+        label="Where the money in went"
+        parts={parts}
+        shareOf={short ? 'of what went out' : 'of money in'}
+        {...(short ? { limit: moneyIn, extra: [{ label: 'From balances', minor: out - moneyIn, tone: 'short' }] } : {})}
+        currency={currency}
+      />
     </section>
   );
 }
@@ -318,16 +344,21 @@ function CategoryTable({
   comparable,
   monthStart,
   monthLast,
+  toneOf,
 }: {
   rows: MonthCategory[];
   nameOf: (row: MonthCategory) => string;
   comparable: boolean;
   monthStart: string;
   monthLast: string;
+  toneOf: Map<string, DonutTone>;
 }) {
   const currency = useCurrency();
   const shown = rows.filter((r) => r.spent_minor > 0 || r.typical_minor > 0);
   const largest = Math.max(1, ...shown.map((r) => r.spent_minor));
+  // Each category's share of the month's spending, from the amounts the
+  // database returned, added up for display.
+  const total = shown.reduce((sum, r) => sum + r.spent_minor, 0);
   return (
     <ScrollTable label="Categories table">
       <table className="ledger compact month-categories">
@@ -340,6 +371,9 @@ function CategoryTable({
             <th scope="col" className="num">
               Spent
             </th>
+            <th scope="col" className="num">
+              Share
+            </th>
             {comparable && (
               <th scope="col" className="num">
                 vs typical
@@ -351,6 +385,12 @@ function CategoryTable({
           {shown.map((row) => (
             <tr key={row.category_id ?? 'none'}>
               <th scope="row">
+                {/* The category's colour in the donut: its own, or the shared
+                    one of "Everything else"; none when nothing was spent. */}
+                <span
+                  className={`swatch month-cat-swatch spectrum-swatch-${toneOf.get(row.category_id ?? 'none') ?? (row.spent_minor > 0 ? 's8' : 'blank')}`}
+                  aria-hidden="true"
+                />
                 {row.category_id ? (
                   <Link to={categoryPath(row.category_id)}>{nameOf(row)}</Link>
                 ) : (
@@ -365,6 +405,7 @@ function CategoryTable({
               <td className="num">
                 <Amount minor={row.spent_minor} currency={currency} />
               </td>
+              <td className="num secondary">{row.spent_minor > 0 ? share(row.spent_minor, total) : '—'}</td>
               {comparable && (
                 <td className="num secondary">
                   <Amount minor={row.spent_minor - row.typical_minor} currency={currency} signed />

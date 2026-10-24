@@ -89,6 +89,7 @@ About 95% of every screen is Stone, white and ink; under 5% is blue. **Blue mean
 **Charts:**
 - Charts are grey by default: money in is `--in` and money out is `--out`, told apart by lightness. Blue marks only "now."
 - Category breakdowns are the only multi-color charts. They use 8 series in a fixed order, never cycled, always with a legend and direct labels. Light: `#1F4BFF #D0663A #008574 #B064AE #6D8B24 #3F95C8 #A98016 #B0525F`. Dark: `#5C7BFF #D9744A #12997F #BD72BA #7E9E35 #3A94CC #B08620 #C96170`. These pass a colorblind-safety validator; the closest neighboring pair is ~7 ΔE, so labels are mandatory.
+- Shares of one total (the Month page's category donut) use the **spectrum** instead: the app's own colours, dark through the blues to light greys, largest share first, never cycled. Light: `#1C1A17 #12309F #1F4BFF #6F8BFF #B4C2FF #8C867C #BAB5AB #DEDAD2`. Dark: `#EEECE7 #C9D3FF #6F8BFF #3653D6 #24357F #A8A298 #6E6961 #3F3B35`. The last step gathers everything smaller; spending with no category is hatched. Always with a legend giving each share. This is the one place blue appears in a chart other than "now", by the owner's choice (Oct 24, 2026).
 - Never show gains and losses as red versus green. Always use signs (true minus U+2212), labels, icons, and hatching for overages.
 
 ## 6. Typography
@@ -136,7 +137,7 @@ About 95% of every screen is Stone, white and ink; under 5% is blue. **Blue mean
 1. Every color, size, radius and spring comes from tokens. No one-off hex values in product code.
 2. Status colors appear only for real states, always with an icon and words.
 3. Glass is only for navigation, never for content.
-4. Charts are grey by default; category colors are allowed only in breakdowns.
+4. Charts are grey by default; category colors are allowed only in breakdowns, and the spectrum only for shares of one total.
 5. Follow Apple's conventions, but never copy Apple's brand, icons or artwork.
 
 ## 8. Voice

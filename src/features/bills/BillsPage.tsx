@@ -11,7 +11,7 @@ import { Notice } from '../../ui/Notice';
 import { dataErrorMessage } from '../auth/errors';
 import { useAccounts } from '../accounts/queries';
 import { useGoals } from '../goals/queries';
-import { BillSheet, transferPrefill } from './BillSheet';
+import { BillSheet, transferPrefill, type BillPrefill } from './BillSheet';
 import { MarkPaid } from './MarkPaid';
 import { describeDue, describeSchedule, dueStateOf, useBills, type RecurringItem } from './queries';
 
@@ -22,17 +22,21 @@ const LABEL_TEXT: Record<string, string> = {
   transfer: 'Transfer',
 };
 
-// What's coming round, in two parts: the next seven days, overdue included,
-// where each bill can be marked paid right here; and everything later, which
-// is read, not acted on, so its rows carry no buttons. Paying something a
-// month early still works from the bill's own page.
+const INCOME_PREFILL: BillPrefill = { label: 'income', kind: 'income' };
+
+// What's coming round, in a column for each kind, and each column in two
+// parts: the next seven days, overdue included, where each item can be
+// marked paid, received or done right here; and everything later, which is
+// read, not acted on, so its rows carry no buttons. Paying something a
+// month early still works from the item's own page.
 export function BillsPage() {
   const currency = useCurrency();
   const profile = useProfile();
   const bills = useBills();
   const accounts = useAccounts();
   const goals = useGoals();
-  const [sheet, setSheet] = useState<'bill' | 'transfer' | null>(null);
+  // The sheet opens from a prefill: {} for a plain bill.
+  const [sheet, setSheet] = useState<BillPrefill | null>(null);
   const accountNames = new Map((accounts.data ?? []).map((a) => [a.account_id, a.name]));
   const goalAccounts = new Set((goals.data ?? []).filter((g) => !g.archived_at).map((g) => g.account_id));
 
@@ -82,10 +86,10 @@ export function BillsPage() {
           <p className="footnote flush">Bills, subscriptions and scheduled transfers, with what’s due next.</p>
         </div>
         <div className="actions">
-          <Button variant="secondary" onClick={() => setSheet('transfer')}>
+          <Button variant="secondary" onClick={() => setSheet(transferPrefill())}>
             Schedule a transfer
           </Button>
-          <Button data-tour="add-bill" onClick={() => setSheet('bill')}>
+          <Button data-tour="add-bill" onClick={() => setSheet({})}>
             Add bill
           </Button>
         </div>
@@ -98,7 +102,7 @@ export function BillsPage() {
         <EmptyState
           icon={CalendarClock}
           title="No bills yet"
-          action={<Button onClick={() => setSheet('bill')}>Add a bill</Button>}
+          action={<Button onClick={() => setSheet({})}>Add a bill</Button>}
         >
           Add the things that come round: rent, a subscription, a monthly transfer into a goal, anything with a due
           date. Marking one paid or done records the transaction and moves the date on.
@@ -139,31 +143,46 @@ export function BillsPage() {
           )
         ))}
 
-      {due.length > 0 && (
-        <section>
-          <h2 className="form-group-title">Next 7 days</h2>
-          <ul className="rows-list">
-            {due.map((bill) => (
-              <DueRow key={bill.id} bill={bill} today={today} currency={currency} accountNames={accountNames} />
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {later.length > 0 && (
-        <section>
-          <h2 className="form-group-title">Later</h2>
-          <ul className="rows-list">
-            {later.map((bill) => (
-              <li key={bill.id}>
-                <Link to={billPath(bill.id)} className="row-button">
-                  <BillLabel bill={bill} accountNames={accountNames} />
-                  <BillFigures bill={bill} today={today} currency={currency} />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
+      {/* One column for each kind of money: transfers between your own
+          accounts, bills going out, and income coming in. Bills come first
+          in reading order, and first when a narrow screen stacks them; a
+          wide one puts transfers on the left and income on the right. */}
+      {rows.length > 0 && (
+        <div className="bills-columns">
+          <BillColumn
+            area="bills"
+            title="Bills"
+            items={rows.filter((bill) => bill.kind === 'expense')}
+            today={today}
+            currency={currency}
+            accountNames={accountNames}
+            empty="No bills or subscriptions yet."
+            addLabel="Add a bill"
+            onAdd={() => setSheet({})}
+          />
+          <BillColumn
+            area="transfers"
+            title="Transfers"
+            items={rows.filter((bill) => bill.kind === 'transfer')}
+            today={today}
+            currency={currency}
+            accountNames={accountNames}
+            empty="No scheduled transfers. A monthly one into a goal is marked done in one click."
+            addLabel="Schedule a transfer"
+            onAdd={() => setSheet(transferPrefill())}
+          />
+          <BillColumn
+            area="income"
+            title="Income"
+            items={rows.filter((bill) => bill.kind === 'income')}
+            today={today}
+            currency={currency}
+            accountNames={accountNames}
+            empty="No income expected. Add pay or anything else that arrives on a schedule."
+            addLabel="Add income"
+            onAdd={() => setSheet(INCOME_PREFILL)}
+          />
+        </div>
       )}
 
       {archived.length > 0 && (
@@ -185,14 +204,83 @@ export function BillsPage() {
         </details>
       )}
 
-      {sheet && (
-        <BillSheet {...(sheet === 'transfer' ? { prefill: transferPrefill() } : {})} onClose={() => setSheet(null)} />
-      )}
+      {sheet && <BillSheet prefill={sheet} onClose={() => setSheet(null)} />}
     </div>
   );
 }
 
 type Currency = Parameters<typeof Amount>[0]['currency'];
+
+function BillColumn({
+  area,
+  title,
+  items,
+  today,
+  currency,
+  accountNames,
+  empty,
+  addLabel,
+  onAdd,
+}: {
+  area: 'bills' | 'transfers' | 'income';
+  title: string;
+  items: RecurringItem[];
+  today: string;
+  currency: Currency;
+  accountNames: AccountNames;
+  empty: string;
+  addLabel: string;
+  onAdd: () => void;
+}) {
+  const due = items.filter((bill) => dueStateOf(bill.next_due_on, today) !== 'later');
+  const later = items.filter((bill) => dueStateOf(bill.next_due_on, today) === 'later');
+  const headingId = `bills-col-${area}`;
+  return (
+    <section className={`bills-col bills-col-${area}`} aria-labelledby={headingId}>
+      <h2 className="headline" id={headingId}>
+        {title}
+      </h2>
+
+      {items.length === 0 && (
+        <div className="group stack-tight">
+          <p className="footnote flush">{empty}</p>
+          <div>
+            <Button variant="secondary" onClick={onAdd}>
+              {addLabel}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {due.length > 0 && (
+        <div>
+          <h3 className="form-group-title">Next 7 days</h3>
+          <ul className="rows-list">
+            {due.map((bill) => (
+              <DueRow key={bill.id} bill={bill} today={today} currency={currency} accountNames={accountNames} />
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {later.length > 0 && (
+        <div>
+          <h3 className="form-group-title">Later</h3>
+          <ul className="rows-list">
+            {later.map((bill) => (
+              <li key={bill.id}>
+                <Link to={billPath(bill.id)} className="row-button">
+                  <BillLabel bill={bill} accountNames={accountNames} />
+                  <BillFigures bill={bill} today={today} currency={currency} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
 
 type AccountNames = Map<string, string>;
 
