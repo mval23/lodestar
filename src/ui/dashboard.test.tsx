@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { Comparison } from './Comparison';
 import { PaceCapsule } from './PaceCapsule';
 import { StandsOut } from './StandsOut';
@@ -65,26 +65,65 @@ describe('RangeBar', () => {
   });
 });
 
-describe('SplitBars', () => {
-  it('draws the rows to one scale and reads each as a sentence', async () => {
-    const { SplitBars } = await import('./SplitBar');
+describe('donutSlices', () => {
+  it('steps through the spectrum largest first, gathers the rest, and hatches no category', async () => {
+    const { donutSlices } = await import('./CategoryDonut');
+    const items = [10, 90, 80, 70, 60, 50, 40, 35, 30, 20, 0].map((n, i) => ({ key: `k${i}`, label: `Cat ${n}`, minor: n * 100 }));
+    const slices = donutSlices([...items, { key: 'none', label: 'Uncategorized', minor: 5000, uncategorized: true }]);
+    expect(slices.map((s) => s.tone)).toEqual(['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 'none']);
+    expect(slices.slice(0, 2).map((s) => s.label)).toEqual(['Cat 90', 'Cat 80']);
+    // 30 + 20 + 10, three categories; the empty one is left out.
+    expect(slices[7]).toMatchObject({ label: 'Everything else', minor: 6000, count: 3 });
+  });
+
+  it('names an eighth category itself rather than gathering one alone', async () => {
+    const { donutSlices } = await import('./CategoryDonut');
+    const slices = donutSlices([8, 7, 6, 5, 4, 3, 2, 1].map((n) => ({ key: `k${n}`, label: `Cat ${n}`, minor: n })));
+    expect(slices).toHaveLength(8);
+    expect(slices[7]).toMatchObject({ label: 'Cat 1', tone: 's8' });
+  });
+});
+
+describe('MoneySplit', () => {
+  it('splits one bar by amount and names every part with its share', async () => {
+    const { MoneySplit } = await import('./SplitBar');
     const { container } = render(
-      <SplitBars
+      <MoneySplit
         label="Where the money in went"
         currency="USD"
-        rows={[
-          { label: 'Where it went', parts: [{ label: 'Spent', minor: 300000, tone: 'out' }, { label: 'Into goals', minor: 100000, tone: 'in' }] },
-          { label: 'What came in', parts: [{ label: 'Money in', minor: 350000, tone: 'base' }, { label: 'From balances', minor: 50000, tone: 'short' }] },
+        shareOf="of money in"
+        parts={[
+          { label: 'Spent', minor: 300000, tone: 'out' },
+          { label: 'Into goals', minor: 100000, tone: 'in' },
+          { label: 'Kept', minor: 0, tone: 'base' },
         ]}
       />,
     );
-    const parts = Array.from(container.querySelectorAll('.split-part')) as HTMLElement[];
-    expect(parts.map((p) => p.style.width)).toEqual(['75%', '25%', '87.5%', '12.5%']);
-    expect(screen.getByRole('group', { name: 'Where the money in went' })).toHaveTextContent(/What came in:.*From balances.*\$500\.00/);
-    // Every part is named under its bar; the ones wide enough to name
-    // themselves inside it are marked, so wide screens can hide them there.
-    const legends = container.querySelectorAll('.split-legend');
-    expect(legends[1]).toHaveTextContent('From balances');
-    expect(legends[1]!.querySelector('.split-inbar')).toHaveTextContent('Money in');
+    const parts = Array.from(container.querySelectorAll('.money-split-part')) as HTMLElement[];
+    // Nothing kept, so no empty sliver for it.
+    expect(parts.map((p) => p.style.flexGrow)).toEqual(['300000', '100000']);
+    const keys = within(screen.getByRole('group', { name: 'Where the money in went' })).getAllByRole('listitem');
+    expect(keys[0]).toHaveTextContent(/Spent.*\$3,000\.00.*75% of money in/);
+    expect(keys[1]).toHaveTextContent(/Into goals.*\$1,000\.00.*25% of money in/);
+    expect(container.querySelector('.money-split-beyond')).toBeNull();
+  });
+
+  it('hatches what went past the money in, and names it', async () => {
+    const { MoneySplit } = await import('./SplitBar');
+    const { container } = render(
+      <MoneySplit
+        label="Where the money in went"
+        currency="USD"
+        shareOf="of what went out"
+        parts={[
+          { label: 'Spent', minor: 300000, tone: 'out' },
+          { label: 'Into goals', minor: 100000, tone: 'in' },
+        ]}
+        limit={350000}
+        extra={[{ label: 'From balances', minor: 50000, tone: 'short' }]}
+      />,
+    );
+    expect((container.querySelector('.money-split-beyond') as HTMLElement).style.left).toBe('87.5%');
+    expect(screen.getByText('From balances').closest('li')).toHaveTextContent(/\$500\.00.*12\.5% of what went out/);
   });
 });

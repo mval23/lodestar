@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { BillsPage } from './BillsPage';
@@ -263,6 +263,33 @@ describe('BillsPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Mark as done' }));
     expect(markPaid).toHaveBeenCalledWith(expect.objectContaining({ id: 't' }));
     expect(await screen.findByText(/Recorded\. Next due/)).toBeInTheDocument();
+  });
+
+  it('puts bills, transfers and income in a column each, and offers to add to an empty one', async () => {
+    useBills.mockReturnValue({
+      data: [
+        bill({ id: 'a', name: 'Rent' }),
+        bill({ id: 's', name: 'Music', label: 'subscription', next_due_on: shift(20) }),
+        bill({ id: 't', name: 'Travel', label: 'transfer', kind: 'transfer', amount_minor: 20000, to_account_id: 'fund' }),
+      ],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+    });
+    render(<MemoryRouter><BillsPage /></MemoryRouter>);
+    const bills = screen.getByRole('region', { name: 'Bills' });
+    const transfers = screen.getByRole('region', { name: 'Transfers' });
+    const income = screen.getByRole('region', { name: 'Income' });
+    expect(within(bills).getByText('Rent')).toBeInTheDocument();
+    expect(within(bills).getByText('Music')).toBeInTheDocument();
+    expect(within(bills).queryByText('Travel')).not.toBeInTheDocument();
+    expect(within(transfers).getByText('Travel')).toBeInTheDocument();
+    expect(within(transfers).getByRole('button', { name: 'Mark as done' })).toBeInTheDocument();
+    expect(within(income).getByText(/No income expected/)).toBeInTheDocument();
+    await userEvent.click(within(income).getByRole('button', { name: 'Add income' }));
+    // The sheet opens as income: money arrives, so it asks where, not from where.
+    expect(screen.getAllByText('Paid into').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('Paid from')).toHaveLength(0);
   });
 
   it('opens the sheet as a transfer from "Schedule a transfer"', async () => {

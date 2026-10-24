@@ -28,6 +28,10 @@
   --out: #8C867C;
   --c1: #1F4BFF; --c2: #D0663A; --c3: #008574; --c4: #B064AE;
   --c5: #6D8B24; --c6: #3F95C8; --c7: #A98016; --c8: #B0525F;
+  /* spectrum: shares of one total (the category donut), in the app's own
+     colours, dark through the blues to light greys, largest share first */
+  --spectrum-1: #1C1A17; --spectrum-2: #12309F; --spectrum-3: #1F4BFF; --spectrum-4: #6F8BFF;
+  --spectrum-5: #B4C2FF; --spectrum-6: #8C867C; --spectrum-7: #BAB5AB; --spectrum-8: #DEDAD2;
 
   /* materials: glass is only for navigation */
   --glass: rgba(245, 244, 241, .72);
@@ -67,6 +71,7 @@
     --ok: #30D158; --ok-soft: #132A1A; --warn: #FF9F0A; --warn-soft: #2B1F0C; --err: #FF6961; --err-soft: #33161A;
     --in: #EEECE7; --out: #7D776D;
     --c1: #5C7BFF; --c2: #D9744A; --c3: #12997F; --c4: #BD72BA; --c5: #7E9E35; --c6: #3A94CC; --c7: #B08620; --c8: #C96170;
+    --spectrum-1: #EEECE7; --spectrum-2: #C9D3FF; --spectrum-3: #6F8BFF; --spectrum-4: #3653D6; --spectrum-5: #24357F; --spectrum-6: #A8A298; --spectrum-7: #6E6961; --spectrum-8: #3F3B35;
     --glass: rgba(18, 17, 15, .72);
     --shadow-float: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
     --shadow-raised: 0 1px 2px rgba(0, 0, 0, .5);
@@ -81,6 +86,7 @@
   --ok: #30D158; --ok-soft: #132A1A; --warn: #FF9F0A; --warn-soft: #2B1F0C; --err: #FF6961; --err-soft: #33161A;
   --in: #EEECE7; --out: #7D776D;
   --c1: #5C7BFF; --c2: #D9744A; --c3: #12997F; --c4: #BD72BA; --c5: #7E9E35; --c6: #3A94CC; --c7: #B08620; --c8: #C96170;
+  --spectrum-1: #EEECE7; --spectrum-2: #C9D3FF; --spectrum-3: #6F8BFF; --spectrum-4: #3653D6; --spectrum-5: #24357F; --spectrum-6: #A8A298; --spectrum-7: #6E6961; --spectrum-8: #3F3B35;
   --glass: rgba(18, 17, 15, .72);
   --shadow-float: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
   --shadow-raised: 0 1px 2px rgba(0, 0, 0, .5);

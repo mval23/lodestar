@@ -1,11 +1,12 @@
 import type { Currency } from '../lib/money';
+import { share } from '../lib/percent';
 import { Amount } from './Amount';
 
-// Bars split into parts, drawn to one scale so they can be compared: on the
-// Month page, what went out (spent, into goals) above what came in, with the
-// gap hatched. Money out is grey, money saved is ink, and a shortfall is
-// hatched rather than coloured. A part names itself inside the bar when it is
-// wide enough, and under the bar when it is not.
+// One slim bar split into parts, with each part's figure under it: on the
+// Month page, where the money that came in went. Money out is grey, money
+// saved is ink, what is left is the light track, and anything beyond what
+// came in is hatched rather than coloured. Small gaps between the parts keep
+// them apart without outlines.
 
 export type SplitPart = {
   label: string;
@@ -13,57 +14,57 @@ export type SplitPart = {
   tone: 'out' | 'in' | 'base' | 'short';
 };
 
-export type SplitRow = { label: string; parts: SplitPart[] };
-
-// Narrower than this, a part's words would not fit inside it.
-const LABEL_SHARE = 22;
-
-export function SplitBars({ rows, currency, label }: { rows: SplitRow[]; currency: Currency; label: string }) {
-  const scale = Math.max(1, ...rows.map((row) => row.parts.reduce((sum, part) => sum + part.minor, 0)));
+export function MoneySplit({
+  label,
+  parts,
+  shareOf,
+  limit,
+  extra = [],
+  currency,
+}: {
+  label: string;
+  // Drawn in the bar, left to right.
+  parts: SplitPart[];
+  // What the shares are of, after the percentage: "of money in".
+  shareOf: string;
+  // Where the money in ends, when the bar runs past it: the rest is hatched.
+  limit?: number;
+  // Named under the bar but not drawn as a part of its own: the hatching.
+  extra?: SplitPart[];
+  currency: Currency;
+}) {
+  const shown = parts.filter((part) => part.minor > 0);
+  const total = shown.reduce((sum, part) => sum + part.minor, 0);
+  const beyond = limit !== undefined && total > 0 && limit < total ? (limit / total) * 100 : null;
+  const keys = [...shown, ...extra.filter((part) => part.minor > 0)];
   return (
-    <div className="split-bars" role="group" aria-label={label}>
-      {rows.map((row) => {
-        const parts = row.parts
-          .filter((part) => part.minor > 0)
-          .map((part) => ({ ...part, share: (part.minor / scale) * 100 }));
-        return (
-          <div key={row.label} className="split-row">
-            {/* What the bar shows, read as a sentence. */}
-            <p className="visually-hidden">
-              {row.label}:{' '}
-              {parts.map((part, i) => (
-                <span key={part.label}>
-                  {i > 0 && ', '}
-                  {part.label} <Amount minor={part.minor} currency={currency} />
-                </span>
-              ))}
-            </p>
-            <div className="split-bar" aria-hidden="true">
-              {parts.map((part) => (
-                <span key={part.label} className={`split-part split-${part.tone}`} style={{ width: `${part.share}%` }}>
-                  {part.share >= LABEL_SHARE && (
-                    <span className="split-text">
-                      {part.label} <Amount minor={part.minor} currency={currency} />
-                    </span>
-                  )}
-                </span>
-              ))}
-            </div>
-            {/* Every part, named under the bar: the narrow ones always, the wide
-                ones only on a phone, where nothing fits inside the bar. */}
-            {parts.length > 0 && (
-              <p className="split-legend" aria-hidden="true">
-                {parts.map((part) => (
-                  <span key={part.label} className={part.share >= LABEL_SHARE ? 'split-inbar' : undefined}>
-                    <span className={`swatch split-swatch-${part.tone}`} />
-                    {part.label} <Amount minor={part.minor} currency={currency} />
-                  </span>
-                ))}
-              </p>
-            )}
-          </div>
-        );
-      })}
+    <div className="money-split" role="group" aria-label={label}>
+      <div className="money-split-track" aria-hidden="true">
+        {shown.map((part) => (
+          <span
+            key={part.label}
+            className={`money-split-part split-${part.tone}`}
+            style={{ flexGrow: part.minor }}
+          />
+        ))}
+        {beyond !== null && <span className="money-split-beyond" style={{ left: `${beyond}%` }} />}
+      </div>
+      <ul className="money-split-keys">
+        {keys.map((part) => (
+          <li key={part.label}>
+            <span className="money-split-key">
+              <span className={`swatch split-swatch-${part.tone}`} aria-hidden="true" />
+              {part.label}
+            </span>
+            <span className="money-split-amount">
+              <Amount minor={part.minor} currency={currency} />
+            </span>
+            <span className="money-split-share">
+              {share(part.minor, total)} {shareOf}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

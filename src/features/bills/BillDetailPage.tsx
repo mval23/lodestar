@@ -263,7 +263,7 @@ function BillDetail({ bill }: { bill: RecurringItem }) {
         <ul className="rows-list mark-paid-row">
           <li className="bill-row">
             <span className="row-label">
-              Record this {incoming ? 'arrival' : 'payment'}
+              Record this {incoming ? 'arrival' : bill.kind === 'transfer' ? 'transfer' : 'payment'}
               <small>Adds the transaction and moves the date on, in one step</small>
             </span>
             <MarkPaid bill={bill} today={today} />
