@@ -273,7 +273,7 @@ describe('AccountDetailPage', () => {
     renderPage();
     const table = screen.getByRole('table', { name: /Expenses on this account/ });
     expect(within(table).getByText('Rent')).toBeInTheDocument();
-    expect(within(table).getByRole('button', { name: 'Category of “Rent”, Housing' })).toBeInTheDocument();
+    expect(within(table).getByRole('combobox', { name: 'Category of “Rent”' })).toHaveValue('Housing');
     expect(within(table).getByText('−$1,450.00')).toBeInTheDocument();
   });
 
@@ -372,7 +372,7 @@ describe('AccountDetailPage', () => {
     renderPage();
     await userEvent.click(screen.getByRole('tab', { name: /Transfers/ }));
     const form = screen.getByRole('form', { name: 'Add a transfer' });
-    expect(within(form).queryByRole('button', { name: /^Category,/ })).not.toBeInTheDocument();
+    expect(within(form).queryByRole('combobox', { name: 'Category' })).not.toBeInTheDocument();
     await userEvent.type(within(form).getByLabelText('Amount'), '400');
     await pick('Other account', 'To Emergency savings');
     await userEvent.click(within(form).getByRole('button', { name: 'Add' }));

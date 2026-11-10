@@ -185,14 +185,14 @@ describe('editing Activity like a spreadsheet', () => {
 
   it('changes a category from its picker', async () => {
     show();
-    await userEvent.click(screen.getByRole('button', { name: /Category of “Market”/ }));
+    await userEvent.click(screen.getByRole('combobox', { name: /Category of “Market”/ }));
     await userEvent.click(screen.getByRole('option', { name: 'Eating out' }));
     expect(updateTransaction).toHaveBeenCalledWith({ id: 'a', changes: { category_id: 'dining' } });
   });
 
   it('swaps a transfer’s accounts rather than send money from an account to itself', async () => {
     show();
-    await userEvent.click(screen.getByRole('button', { name: /From account of “Emergency fund”/ }));
+    await userEvent.click(screen.getByRole('combobox', { name: /From account of “Emergency fund”/ }));
     await userEvent.click(screen.getByRole('option', { name: 'Emergency fund' }));
     expect(updateTransaction).toHaveBeenCalledWith({ id: 'b', changes: { from_account_id: 'sav', to_account_id: 'chk' } });
   });

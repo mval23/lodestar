@@ -88,7 +88,7 @@ describe('GoalSheet', () => {
   it('still chooses the account when adding a goal', async () => {
     render(<GoalSheet onClose={vi.fn()} />);
     await userEvent.type(screen.getByLabelText('Name'), 'Rainy day');
-    await userEvent.click(screen.getByRole('button', { name: /^Account,/ }));
+    await userEvent.click(screen.getByRole('combobox', { name: 'Account' }));
     await userEvent.click(screen.getByRole('option', { name: 'Rainy day' }));
     await userEvent.click(screen.getByRole('button', { name: 'Add goal' }));
 

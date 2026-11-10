@@ -154,7 +154,7 @@ test.describe('the ledger', () => {
 
     await sheet.getByLabel('Amount').fill('45.50');
     await sheet.getByLabel('Description').fill('Market');
-    await sheet.getByRole('button', { name: /^Account,/ }).click();
+    await sheet.getByRole('combobox', { name: 'Account', exact: true }).click();
     await page.getByRole('option', { name: 'Everyday checking' }).click();
     await sheet.getByRole('button', { name: 'Add transaction' }).click();
 
@@ -171,9 +171,9 @@ test.describe('the ledger', () => {
     const sheet = page.getByRole('dialog', { name: 'Add transaction' });
     await sheet.getByRole('radio', { name: 'Transfer' }).click();
 
-    await expect(sheet.getByRole('button', { name: /^From,/ })).toBeVisible();
-    await expect(sheet.getByRole('button', { name: /^To,/ })).toBeVisible();
-    await expect(sheet.getByRole('button', { name: /^Category,/ })).toHaveCount(0);
+    await expect(sheet.getByRole('combobox', { name: 'From', exact: true })).toBeVisible();
+    await expect(sheet.getByRole('combobox', { name: 'To', exact: true })).toBeVisible();
+    await expect(sheet.getByRole('combobox', { name: 'Category', exact: true })).toHaveCount(0);
     await expect(sheet.getByText(/carries no category/)).toBeVisible();
   });
 
@@ -208,7 +208,7 @@ test.describe('the ledger', () => {
 
     await page.getByRole('button', { name: /^Filters/ }).click();
     const sheet = page.getByRole('dialog', { name: 'Filters' });
-    await sheet.getByRole('button', { name: /^Account,/ }).click();
+    await sheet.getByRole('combobox', { name: 'Account', exact: true }).click();
     await page.getByRole('option', { name: 'Everyday checking' }).click();
     await sheet.getByRole('button', { name: /^Show / }).click();
 
@@ -325,10 +325,10 @@ test.describe('import and export', () => {
 
     // The header names are matched without help, in Spanish as in English.
     await expect(page.getByText('3 rows read. Nothing is saved yet.')).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Date, Fecha/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Amount, Valor/ })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Date', exact: true })).toHaveValue('Fecha');
+    await expect(page.getByRole('combobox', { name: 'Amount', exact: true })).toHaveValue('Valor');
 
-    await page.getByRole('button', { name: /^Account, Choose an account/ }).click();
+    await page.getByRole('combobox', { name: 'Account', exact: true }).click();
     await page.getByRole('option', { name: 'Everyday checking' }).click();
 
     // The impossible date is named, not silently dropped.
