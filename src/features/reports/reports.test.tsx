@@ -46,6 +46,9 @@ vi.mock('../../lib/profile', () => ({
 
 const THIS_MONTH = `${new Date().toISOString().slice(0, 7)}-01`;
 const FROM = addMonths(THIS_MONTH, -12);
+// The default comparison, the 12 months before the period, named as the
+// page names it. The fixture moves with today, so the words have to as well.
+const COMPARED = rangeLabel({ from: addMonths(FROM, -12), to: FROM });
 const loaded = <T,>(data: T) => ({ data, isPending: false, isError: false, isSuccess: true, error: null });
 
 function totals(over: Partial<ReportTotals> = {}): ReportTotals {
@@ -197,7 +200,7 @@ describe('Reports hub', () => {
     const band = screen.getByRole('region', { name: 'This period' });
     expect(band).toHaveTextContent('$66,070.00');
     expect(band).toHaveTextContent('+$2,770.00');
-    expect(band).toHaveTextContent('vs Oct');
+    expect(band).toHaveTextContent(`vs ${COMPARED}`);
     expect(band.querySelector('.bracket')).toHaveTextContent('$56,056.91');
     // Saved: 1,500,000 − 205,000 = 1,295,000, 19.6% of money in.
     expect(band).toHaveTextContent('$12,950.00');
@@ -280,7 +283,7 @@ describe('Cash flow report', () => {
     const standsOut = screen.getByRole('region', { name: 'What stands out' });
     // Amount repeats each figure for screen readers, so match the words.
     expect(standsOut).toHaveTextContent('Net cash flow held steady at +$20,131.55');
-    expect(standsOut).toHaveTextContent('below Oct 2024 – Sep 2025: money in rose $2,770.00');
+    expect(standsOut).toHaveTextContent(`below ${COMPARED}: money in rose $2,770.00`);
     expect(standsOut).toHaveTextContent('Every month ended positive');
   });
 
