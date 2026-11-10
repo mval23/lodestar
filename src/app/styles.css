@@ -1087,6 +1087,69 @@ a:hover {
 .select-placeholder {
   color: var(--ink-3);
 }
+/* The picker's field is its search: an input sized to its words by a hidden
+   copy of them in the same grid cell, so it sits where a button would. */
+.select-combo:has(.select-input:disabled) {
+  cursor: default;
+  color: var(--ink-3);
+}
+.select-combo[data-open] {
+  color: var(--ink);
+  cursor: text;
+}
+.select-field {
+  display: inline-grid;
+  min-width: 0;
+  max-width: 100%;
+}
+.select-sizer,
+.select-trigger input.select-input {
+  grid-area: 1 / 1;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+}
+.select-sizer {
+  visibility: hidden;
+  white-space: pre;
+  overflow: hidden;
+  min-width: 2ch;
+  padding-right: 1px;
+}
+.select-trigger input.select-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: inherit;
+  text-overflow: ellipsis;
+  cursor: inherit;
+  outline: none;
+  /* The ring belongs to the field around it. */
+  box-shadow: none;
+}
+.select-trigger input.select-input::placeholder {
+  color: var(--ink-3);
+}
+/* The list: a popover in the top layer, placed under the field by script. */
+.combo-popup {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border: 0;
+  padding: var(--space-1);
+  max-height: min(320px, 70dvh);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
+  overflow: hidden;
+}
 
 /* display must stay on the [open] state: a bare `display: flex` would beat
    the browser's own `dialog:not([open]) { display: none }` and leave every
@@ -1110,22 +1173,13 @@ a:hover {
 .select-popup::backdrop {
   background: transparent;
 }
-/* The picker's search is the app's search capsule. It opens inside a form
-   row, so the row's input rules are undone here, where they would otherwise
-   right-align it and strip its fill. */
-.select-search {
-  flex: none;
-  margin: var(--space-1);
-  height: 38px;
-}
+/* A search capsule can sit inside a form row, so the row's input rules are
+   undone here, where they would otherwise right-align it and strip its fill. */
 label.search-capsule input {
   width: 100%;
   min-height: 0;
   text-align: left;
   font-size: 16px;
-}
-.select-head {
-  display: none;
 }
 .select-list {
   list-style: none;
@@ -1181,8 +1235,8 @@ label.search-capsule input {
 }
 
 @media (max-width: 560px) {
-  /* On a phone the list is a sheet: a title and Done, the search capsule,
-     then the options as one grouped list with hairlines between them. */
+  /* On a phone the date picker opens as a sheet; a picker's list drops
+     under its field as on a wide screen, with taller rows for a thumb. */
   .select-popup {
     inset: auto 0 0 0;
     width: 100%;
@@ -1196,48 +1250,9 @@ label.search-capsule input {
   .select-popup::backdrop {
     background: var(--scrim);
   }
-  .select-head {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    min-height: 52px;
-    margin: 0 calc(var(--space-4) * -1);
-    padding: 0 var(--space-4);
-    border-bottom: 1px solid var(--line);
-  }
-  .select-title {
-    grid-column: 2;
-    font-size: 17px;
-    font-weight: 600;
-  }
-  .select-head .btn-plain {
-    grid-column: 3;
-    justify-self: end;
-    font-weight: 600;
-  }
-  .select-search {
-    margin: 0;
-    background: var(--sunk);
-  }
-  .select-list {
-    background: var(--surface);
-    border-radius: var(--radius-md);
-  }
   .select-list li {
     min-height: 48px;
-    padding: var(--space-3) var(--space-4);
-    border-radius: 0;
     font-size: 16px;
-  }
-  .select-list li + li {
-    box-shadow: inset 0 1px 0 var(--line);
-  }
-  /* A tap needs no lasting highlight: the check marks the choice. */
-  .select-list li.active {
-    background: transparent;
-  }
-  .select-list li:active {
-    background: var(--sunk);
   }
 }
 
@@ -1792,7 +1807,8 @@ label.search-capsule input {
   color: var(--ink-3);
 }
 .quick-add input:focus,
-.quick-add .select-trigger:focus-visible {
+.quick-add .select-trigger:focus-visible,
+.quick-add .select-combo:focus-within {
   outline: none;
   background: var(--surface);
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--blue) 50%, transparent);
@@ -1909,7 +1925,8 @@ label.search-capsule input {
   opacity: 0;
 }
 .select-trigger.cell-category:hover svg,
-.select-trigger.cell-category:focus-visible svg {
+.select-trigger.cell-category:focus-visible svg,
+.select-combo.cell-category:focus-within svg {
   opacity: 1;
 }
 /* Activity edited in place: the same cells, and the category and accounts
@@ -4594,6 +4611,10 @@ label.search-capsule input {
   input:not([type=checkbox]):not([type=radio]):not([type=range]):not(.amount-input),
   select,
   textarea {
+    font-size: 16px;
+  }
+  /* A picker's hidden copy of its words keeps step with its input. */
+  .select-trigger .select-sizer {
     font-size: 16px;
   }
 }

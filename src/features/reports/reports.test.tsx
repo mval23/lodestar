@@ -304,7 +304,7 @@ describe('Cash flow report', () => {
   it('changes the period from its filter', async () => {
     show('/reports/cash-flow');
     await userEvent.click(screen.getByRole('button', { name: /^Report filters/ }));
-    await userEvent.click(screen.getByRole('button', { name: /^Period,/ }));
+    await userEvent.click(screen.getByRole('combobox', { name: 'Period' }));
     await userEvent.click(screen.getByRole('option', { name: 'Last 6 months' }));
     expect(useReportSummary).toHaveBeenLastCalledWith(addMonths(THIS_MONTH, -6), THIS_MONTH, addMonths(THIS_MONTH, -12), null);
   });

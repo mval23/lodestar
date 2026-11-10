@@ -108,7 +108,7 @@ describe('TransactionSheet', () => {
   it('offers income categories for income, not expense ones', async () => {
     renderSheet();
     await userEvent.click(screen.getByRole('radio', { name: 'Income' }));
-    await userEvent.click(screen.getByRole('button', { name: /^Category,/ }));
+    await userEvent.click(screen.getByRole('combobox', { name: 'Category' }));
     const list = await screen.findByRole('listbox', { name: 'Category' });
     expect(within(list).getByRole('option', { name: 'Salary' })).toBeInTheDocument();
     expect(within(list).queryByRole('option', { name: 'Groceries' })).not.toBeInTheDocument();
@@ -117,7 +117,7 @@ describe('TransactionSheet', () => {
   it('records a transfer between two accounts and never files it under a category', async () => {
     renderSheet();
     await userEvent.click(screen.getByRole('radio', { name: 'Transfer' }));
-    expect(screen.queryByRole('button', { name: /^Category,/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Category' })).not.toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText('Amount'), '500');
     await pick('From', 'Everyday checking');

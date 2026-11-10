@@ -204,7 +204,7 @@ describe('CategoryDetailPage', () => {
     renderPage();
     const form = screen.getByRole('form', { name: 'Add an expense' });
     // Neither the kind nor the category is a choice here.
-    expect(within(form).queryByRole('button', { name: /^Category,/ })).not.toBeInTheDocument();
+    expect(within(form).queryByRole('combobox', { name: 'Category' })).not.toBeInTheDocument();
     expect(within(form).getByText('Groceries')).toBeInTheDocument();
 
     await userEvent.type(within(form).getByLabelText('Amount'), '46.80');

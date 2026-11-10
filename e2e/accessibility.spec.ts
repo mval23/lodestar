@@ -109,7 +109,7 @@ test.describe('the sheets', () => {
     await stubSupabase(page, { tables: withData() });
     await page.goto('/activity');
     await page.getByRole('button', { name: /^Filters/ }).click();
-    await page.getByRole('button', { name: /^Account,/ }).click();
+    await page.getByRole('combobox', { name: 'Account', exact: true }).click();
     await expect(page.getByRole('listbox', { name: 'Account' })).toBeVisible();
     const results = await scan(page);
     expect(results.violations).toEqual([]);
@@ -172,7 +172,7 @@ test.describe('by keyboard alone', () => {
 
     await page.getByRole('button', { name: /^Filters/ }).focus();
     await page.keyboard.press('Enter');
-    await page.getByRole('button', { name: /^Account,/ }).focus();
+    await page.getByRole('combobox', { name: 'Account', exact: true }).focus();
     await page.keyboard.press('Enter');
     await expect(page.getByRole('listbox', { name: 'Account' })).toBeVisible();
 
@@ -189,14 +189,14 @@ test.describe('by keyboard alone', () => {
     await page.goto('/activity');
 
     await page.getByRole('button', { name: /^Filters/ }).click();
-    await page.getByRole('button', { name: /^Account, All/ }).click();
+    await page.getByRole('combobox', { name: 'Account', exact: true }).click();
     await expect(page.getByRole('listbox', { name: 'Account' })).toBeVisible();
     await page.keyboard.press('Escape');
 
     await expect(page.getByRole('listbox', { name: 'Account' })).toHaveCount(0);
     // Only the picker closed: the Filters sheet is still open behind it.
     await expect(page.getByRole('dialog', { name: 'Filters' })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Account, All/ })).toBeVisible();
+    await expect(page.getByRole('combobox', { name: 'Account', exact: true })).toHaveValue('All');
   });
 
   test('Escape closes a sheet without saving', async ({ page }) => {
