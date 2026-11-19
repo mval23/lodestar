@@ -13,8 +13,22 @@ import { recordAction, useMarkBillPaid, type RecurringItem } from './queries';
 // bill can never look paid without the money to match.
 //
 // `compact` is the Goals column, where every row is a transfer into a goal
-// and the one-word "Done" is enough.
-export function MarkPaid({ bill, today, compact }: { bill: RecurringItem; today: string; compact?: boolean }) {
+// and the one-word "Done" is enough. `onRecorded` and `onCancel` are for a
+// caller that says "recorded" itself and closes the form, as the Bills
+// agenda does, since the row moves on once its date does.
+export function MarkPaid({
+  bill,
+  today,
+  compact,
+  onRecorded,
+  onCancel,
+}: {
+  bill: RecurringItem;
+  today: string;
+  compact?: boolean;
+  onRecorded?: (nextDueOn: string) => void;
+  onCancel?: () => void;
+}) {
   const currency = useCurrency();
   const markPaid = useMarkBillPaid();
   const [asking, setAsking] = useState(false);
@@ -40,6 +54,10 @@ export function MarkPaid({ bill, today, compact }: { bill: RecurringItem; today:
         ...(override?.amountMinor !== undefined ? { amountMinor: override.amountMinor } : {}),
       });
       setAsking(false);
+      if (onRecorded) {
+        onRecorded(result.next_due_on);
+        return;
+      }
       setDone(`Recorded. Next ${incoming ? 'expected' : 'due'} ${formatDate(result.next_due_on)}.`);
     } catch (cause) {
       const code = (cause as { code?: string } | null)?.code;
@@ -88,8 +106,14 @@ export function MarkPaid({ bill, today, compact }: { bill: RecurringItem; today:
           >
             {action}
           </Button>
-          {asking && (
-            <Button variant="plain" onClick={() => setAsking(false)}>
+          {(asking || onCancel) && (
+            <Button
+              variant="plain"
+              onClick={() => {
+                setAsking(false);
+                onCancel?.();
+              }}
+            >
               Cancel
             </Button>
           )}

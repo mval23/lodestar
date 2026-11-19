@@ -35,6 +35,15 @@ export function formatDateShort(isoDate: string): string {
   }
 }
 
+// A day with its weekday: "Sat, Nov 14".
+export function formatWeekday(isoDate: string): string {
+  try {
+    return format(parseISO(isoDate), 'EEE, MMM d');
+  } catch {
+    return isoDate;
+  }
+}
+
 // Budgets are keyed by the first of the month, so every month helper returns
 // that day. Arithmetic is done in UTC on a plain date: no zone can shift it.
 export function addMonths(monthStart: string, delta: number): string {
