@@ -4830,16 +4830,272 @@ button.month-cal-day:hover {
   display: grid;
   gap: var(--space-2);
 }
+/* Every row, its group's heading and the column names share one grid, so
+   the trend, the change and the balance line up down the page. The first
+   column is the star. */
+.account-group-head,
+.account-columns,
+.account-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 120px 140px 150px;
+  align-items: center;
+}
 .account-group-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
   margin: 0;
-  padding: 0 var(--space-4);
+  padding-right: var(--space-4);
   font-size: 13px;
   font-weight: 600;
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
+}
+.account-group-head > span:first-child {
+  grid-column: 1 / 4;
+  padding-left: var(--space-4);
+}
+.account-group-head > :last-child:not(:first-child),
+.account-group-change {
+  text-align: right;
+}
+.account-columns {
+  margin: 0 0 calc(-1 * var(--space-2));
+  padding-right: var(--space-4);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-align: right;
+}
+.account-columns > span:first-child {
+  grid-column: 1 / 3;
+}
+.account-row {
+  padding-right: var(--space-4);
+}
+.account-rows > li + li {
+  border-top: 1px solid var(--line);
+}
+.account-row:has(.account-link:hover) {
+  background: var(--sunk);
+}
+.account-link {
+  grid-column: 2 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: 60px;
+  padding: var(--space-2) 0;
+  color: inherit;
+  text-decoration: none;
+}
+.account-link:hover {
+  text-decoration: none;
+}
+.account-trend {
+  display: flex;
+  justify-content: flex-end;
+}
+.account-trend .sparkline {
+  width: 96px;
+  margin-right: var(--space-2);
+}
+.account-row-change,
+.account-balance {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.account-row-change {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.account-goal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 2px;
+}
+.account-goal-bar {
+  width: 96px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--sunk);
+  overflow: hidden;
+}
+.account-goal-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+}
+/* The star: grey and hollow until chosen, then filled. It is a control, so
+   when it is on it takes the accent. */
+.star-toggle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  border-radius: var(--radius-pill);
+}
+.star-toggle:hover {
+  color: var(--ink);
+}
+.star-toggle[aria-pressed='true'] {
+  color: var(--blue);
+}
+.star-toggle:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -4px;
+}
+
+/* The summary: the figure, its year, and where it sits. */
+.accounts-summary {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: var(--space-5) var(--space-6);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+}
+.accounts-figure {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+}
+.accounts-moved {
+  margin-top: var(--space-2);
+  color: var(--ink);
+}
+.accounts-trend {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+}
+.accounts-trend .sparkline {
+  height: 132px;
+}
+.accounts-trend-axis {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.where-it-sits {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+.where-label {
+  color: var(--ink-2);
+}
+.where-bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+}
+.where-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.where-owed {
+  background: var(--out);
+}
+.where-amount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.where-legend {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.where-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 2px;
+}
+
+/* A narrower screen drops the line; a phone puts the change under the
+   balance and the summary in one column. */
+@media (max-width: 1023px) {
+  .account-group-head,
+  .account-columns,
+  .account-row {
+    grid-template-columns: 44px minmax(0, 1fr) 0 130px 140px;
+  }
+  .account-trend,
+  .account-columns > span:nth-child(2) {
+    visibility: hidden;
+  }
+}
+@media (max-width: 767px) {
+  .account-columns {
+    display: none;
+  }
+  .account-group-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .account-group-head > span:first-child {
+    grid-column: auto;
+  }
+  .account-group-change {
+    display: none;
+  }
+  .account-row {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+  .account-link {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'name balance' 'name change';
+    column-gap: var(--space-3);
+  }
+  .account-link .row-label {
+    grid-area: name;
+  }
+  .account-trend {
+    display: none;
+  }
+  .account-balance {
+    grid-area: balance;
+  }
+  .account-row-change {
+    grid-area: change;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .accounts-summary {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-4);
+  }
+  .accounts-trend .sparkline {
+    height: 72px;
+  }
+  .where-it-sits {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .where-label {
+    grid-column: 1 / -1;
+    margin-bottom: calc(-1 * var(--space-1));
+  }
+  .where-legend {
+    grid-column: 1 / -1;
+  }
 }
 
 /* ---------- No zoom on focus ---------- */

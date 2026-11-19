@@ -29,6 +29,7 @@ function balance(over: Partial<AccountBalance> = {}): AccountBalance {
     money_out_minor: 5420165,
     balance_minor: 421835,
     include_in_net_worth: true,
+    is_favorite: false,
     ...over,
   };
 }

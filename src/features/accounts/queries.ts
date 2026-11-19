@@ -25,6 +25,8 @@ export type AccountBalance = {
   balance_minor: number;
   // False when the person has left the account out of net worth.
   include_in_net_worth: boolean;
+  // True when the person has starred it: listed first here and in pickers.
+  is_favorite: boolean;
 };
 
 export function normalizeBalance(row: AccountBalanceRow): AccountBalance {
@@ -41,6 +43,7 @@ export function normalizeBalance(row: AccountBalanceRow): AccountBalance {
     money_out_minor: row.money_out_minor ?? 0,
     balance_minor: row.balance_minor ?? 0,
     include_in_net_worth: row.include_in_net_worth ?? true,
+    is_favorite: row.is_favorite ?? false,
   };
 }
 export type AccountInsert = Database['public']['Tables']['accounts']['Insert'];
@@ -65,6 +68,8 @@ export function accountTypeLabel(type: AccountType): string {
 export const accountsKey = ['accounts'] as const;
 
 // Balances come from the view, so the arithmetic happens in Postgres.
+// Favorites come first, so every picker that keeps this order lists them
+// first too.
 export function useAccounts() {
   return useQuery({
     queryKey: accountsKey,
@@ -72,6 +77,7 @@ export function useAccounts() {
       const { data, error } = await db()
         .from('account_balances')
         .select('*')
+        .order('is_favorite', { ascending: false })
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
       if (error) throw error;
@@ -118,6 +124,30 @@ export function useUpdateAccount() {
       return data;
     },
     onSuccess: invalidate,
+  });
+}
+
+// Starring is one tap, so the star fills at once and the list catches up
+// when the database answers; if it refuses, the star goes back.
+export function useSetFavorite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, favorite }: { id: string; favorite: boolean }) => {
+      const { error } = await db().from('accounts').update({ is_favorite: favorite }).eq('id', id);
+      if (error) throw error;
+    },
+    onMutate: async ({ id, favorite }) => {
+      await queryClient.cancelQueries({ queryKey: accountsKey, exact: true });
+      const before = queryClient.getQueryData<AccountBalance[]>(accountsKey);
+      queryClient.setQueryData<AccountBalance[]>(accountsKey, (rows) =>
+        rows?.map((row) => (row.account_id === id ? { ...row, is_favorite: favorite } : row)),
+      );
+      return { before };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.before) queryClient.setQueryData(accountsKey, context.before);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: accountsKey }),
   });
 }
 
