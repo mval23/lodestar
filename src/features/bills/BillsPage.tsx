@@ -3,7 +3,8 @@ import { Link } from 'react-router';
 import { CalendarClock } from 'lucide-react';
 import { useCurrency, useProfile } from '../../lib/profile';
 import { billPath } from '../../lib/routes';
-import { formatDate, todayInZone } from '../../lib/dates';
+import { formatDate, monthStartInZone, todayInZone } from '../../lib/dates';
+import { PHONE, useMediaQuery } from '../../lib/media';
 import { Amount } from '../../ui/Amount';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
@@ -11,6 +12,7 @@ import { Notice } from '../../ui/Notice';
 import { dataErrorMessage } from '../auth/errors';
 import { useAccounts } from '../accounts/queries';
 import { useGoals } from '../goals/queries';
+import { BillsAgenda } from './BillsAgenda';
 import { BillSheet, transferPrefill, type BillPrefill } from './BillSheet';
 import { MarkPaid } from './MarkPaid';
 import { describeDue, describeSchedule, dueStateOf, useBills, type RecurringItem } from './queries';
@@ -24,10 +26,11 @@ const LABEL_TEXT: Record<string, string> = {
 
 const INCOME_PREFILL: BillPrefill = { label: 'income', kind: 'income' };
 
-// What's coming round, in a column for each kind, and each column in two
-// parts: the next seven days, overdue included, where each item can be
-// marked paid, received or done right here; and everything later, which is
-// read, not acted on, so its rows carry no buttons. Paying something a
+// What's coming round. A wide screen reads it as one agenda by date with the
+// month beside it (BillsAgenda). A phone keeps a column for each kind, each
+// in two parts: the next seven days, overdue included, where each item can
+// be marked paid, received or done right here; and everything later, which
+// is read, not acted on, so its rows carry no buttons. Paying something a
 // month early still works from the item's own page.
 export function BillsPage() {
   const currency = useCurrency();
@@ -40,6 +43,7 @@ export function BillsPage() {
   const accountNames = new Map((accounts.data ?? []).map((a) => [a.account_id, a.name]));
   const goalAccounts = new Set((goals.data ?? []).filter((g) => !g.archived_at).map((g) => g.account_id));
 
+  const phone = useMediaQuery(PHONE);
   const today = todayInZone(profile.data?.timezone);
   const rows = (bills.data ?? []).filter((bill) => !bill.archived_at);
   const due = rows.filter((bill) => dueStateOf(bill.next_due_on, today) !== 'later');
@@ -78,6 +82,43 @@ export function BillsPage() {
     </>
   );
 
+  // The key figure: what bills ask of the next seven days, or failing that,
+  // the next one due. Above the columns on a phone, in the rail on a wide
+  // screen.
+  const summary =
+    billsDue.length > 0 ? (
+      <section className="group figure-group">
+        <h2 className="caption">Due in the next 7 days</h2>
+        <p className="fig flush">
+          <span className="bracket">
+            <Amount minor={dueTotal} currency={currency} />
+          </span>
+        </p>
+        <p className="footnote flush">
+          {billsDue.length} {billsDue.length === 1 ? 'bill' : 'bills'}
+          {overdue > 0 && ` · ${overdue} overdue`}
+          {varies > 0 && ` · ${varies === 1 ? 'one amount varies' : `${varies} amounts vary`}, so this is an estimate`}
+          {arrivingNote}
+        </p>
+      </section>
+    ) : (
+      next && (
+        <section className="group figure-group">
+          <h2 className="caption">Next due</h2>
+          <p className="fig flush">
+            <span className="bracket">
+              <Amount minor={next.amount_minor} currency={currency} />
+            </span>
+          </p>
+          <p className="footnote flush">
+            <Link to={billPath(next.id)}>{next.name}</Link> · {formatDate(next.next_due_on)} ·{' '}
+            {describeDue(next.next_due_on, today)}. Nothing is due in the next 7 days.
+            {arrivingNote}
+          </p>
+        </section>
+      )
+    );
+
   return (
     <div className="page">
       <header className="page-head">
@@ -109,45 +150,23 @@ export function BillsPage() {
         </EmptyState>
       )}
 
-      {rows.length > 0 &&
-        (billsDue.length > 0 ? (
-          <section className="group figure-group">
-            <h2 className="caption">Due in the next 7 days</h2>
-            <p className="fig flush">
-              <span className="bracket">
-                <Amount minor={dueTotal} currency={currency} />
-              </span>
-            </p>
-            <p className="footnote flush">
-              {billsDue.length} {billsDue.length === 1 ? 'bill' : 'bills'}
-              {overdue > 0 && ` · ${overdue} overdue`}
-              {varies > 0 && ` · ${varies === 1 ? 'one amount varies' : `${varies} amounts vary`}, so this is an estimate`}
-              {arrivingNote}
-            </p>
-          </section>
-        ) : (
-          next && (
-            <section className="group figure-group">
-              <h2 className="caption">Next due</h2>
-              <p className="fig flush">
-                <span className="bracket">
-                  <Amount minor={next.amount_minor} currency={currency} />
-                </span>
-              </p>
-              <p className="footnote flush">
-                <Link to={billPath(next.id)}>{next.name}</Link> · {formatDate(next.next_due_on)} ·{' '}
-                {describeDue(next.next_due_on, today)}. Nothing is due in the next 7 days.
-                {arrivingNote}
-              </p>
-            </section>
-          )
-        ))}
+      {rows.length > 0 && !phone && (
+        <BillsAgenda
+          rows={rows}
+          all={bills.data ?? []}
+          today={today}
+          month={monthStartInZone(profile.data?.timezone)}
+          weekStart={profile.data?.week_start ?? 1}
+          accountNames={accountNames}
+          summary={summary}
+        />
+      )}
 
-      {/* One column for each kind of money: transfers between your own
-          accounts, bills going out, and income coming in. Bills come first
-          in reading order, and first when a narrow screen stacks them; a
-          wide one puts transfers on the left and income on the right. */}
-      {rows.length > 0 && (
+      {rows.length > 0 && phone && summary}
+
+      {/* On a phone, one column for each kind of money: bills going out,
+          transfers between your own accounts, and income coming in. */}
+      {rows.length > 0 && phone && (
         <div className="bills-columns">
           <BillColumn
             area="bills"

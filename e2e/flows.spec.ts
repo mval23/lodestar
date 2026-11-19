@@ -304,7 +304,8 @@ test.describe('the money', () => {
     await page.goto('/bills');
 
     await page.getByRole('button', { name: 'Mark as paid' }).click();
-    await expect(page.getByText(/Recorded\. Next due/)).toBeVisible();
+    // "Recorded." beside a phone row; "Rent recorded." above the wide agenda.
+    await expect(page.getByText(/recorded\. Next due/i)).toBeVisible();
     expect(writes).toContain('rpc:mark_bill_paid');
   });
 });

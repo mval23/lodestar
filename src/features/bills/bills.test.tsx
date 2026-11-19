@@ -14,12 +14,24 @@ import {
 
 const useBills = vi.fn();
 const markPaid = vi.fn();
+const useUpcomingItems = vi.fn();
+const useMonthBillPayments = vi.fn();
+// Which layout the page picks: a phone's columns, or the wide agenda.
+const screenSize = { phone: true };
+
+vi.mock('../../lib/media', () => ({ PHONE: '(max-width: 767px)', useMediaQuery: () => screenSize.phone }));
+
+vi.mock('../months/queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../months/queries')>();
+  return { ...actual, useMonthBillPayments: () => useMonthBillPayments() };
+});
 
 vi.mock('./queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./queries')>();
   return {
     ...actual,
     useBills: () => useBills(),
+    useUpcomingItems: () => useUpcomingItems(),
     useMarkBillPaid: () => ({ mutateAsync: markPaid, isPending: false }),
     useCreateBill: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useUpdateBill: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -42,7 +54,10 @@ vi.mock('../categories/queries', async (importOriginal) => {
   return { ...actual, useCategories: () => ({ data: [] }), useCategoryUsage: () => ({ data: [] }) };
 });
 
-vi.mock('../../lib/profile', () => ({ useCurrency: () => 'USD', useProfile: () => ({ data: { timezone: 'UTC' } }) }));
+vi.mock('../../lib/profile', () => ({
+  useCurrency: () => 'USD',
+  useProfile: () => ({ data: { timezone: 'UTC', week_start: 1 } }),
+}));
 
 // The page reads "today" from the profile's zone; pin it so the due-state
 // tests are not a matter of when they run.
@@ -79,8 +94,11 @@ function bill(over: Partial<RecurringItem> = {}): RecurringItem {
 }
 
 beforeEach(() => {
+  screenSize.phone = true;
   markPaid.mockReset().mockResolvedValue({ transaction_id: 't1', next_due_on: shift(30) });
   useBills.mockReturnValue({ data: [], isPending: false, isError: false, isSuccess: true });
+  useUpcomingItems.mockReturnValue({ data: [] });
+  useMonthBillPayments.mockReturnValue({ data: [] });
 });
 
 describe('dueStateOf and describeDue', () => {
@@ -139,6 +157,7 @@ describe('kindForLabel', () => {
   });
 });
 
+// The phone's layout: a column for each kind.
 describe('BillsPage', () => {
   it('invites a first bill when there are none', () => {
     render(<MemoryRouter><BillsPage /></MemoryRouter>);
@@ -308,5 +327,96 @@ describe('BillsPage', () => {
     expect(screen.getByLabelText('Amount')).toHaveValue('1200.00');
     await userEvent.click(screen.getByRole('button', { name: 'Mark as paid' }));
     expect(markPaid).toHaveBeenCalledWith(expect.objectContaining({ amountMinor: 120000 }));
+  });
+});
+
+// A wide screen: one agenda by date, with the month beside it.
+describe('BillsPage on a wide screen', () => {
+  const MONTH = `${TODAY.slice(0, 7)}-01`;
+  const show = () => render(<MemoryRouter><BillsPage /></MemoryRouter>);
+  const agendaOf = (items: RecurringItem[]) =>
+    useBills.mockReturnValue({ data: items, isPending: false, isError: false, isSuccess: true });
+
+  beforeEach(() => {
+    screenSize.phone = false;
+  });
+
+  it('groups what is coming by day, overdue first and later last, with no columns', () => {
+    agendaOf([
+      bill({ id: 'late', name: 'Gym', next_due_on: shift(-2) }),
+      bill({ id: 'now', name: 'Rent', next_due_on: TODAY }),
+      bill({ id: 'soon', name: 'Internet', next_due_on: shift(1) }),
+      bill({ id: 'later', name: 'Taxes', next_due_on: shift(30) }),
+    ]);
+    show();
+    const titles = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(titles.slice(0, 4)).toEqual([
+      'Overdue',
+      expect.stringMatching(/^Today · /),
+      expect.stringMatching(/^Tomorrow · /),
+      'Later',
+    ]);
+    expect(screen.queryByRole('region', { name: 'Transfers' })).not.toBeInTheDocument();
+    // The coming week can be checked off; later ones are paid from their page.
+    expect(screen.getByRole('button', { name: 'Mark as paid: Gym' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mark as paid: Taxes' })).not.toBeInTheDocument();
+    expect(screen.getByText('Gym').closest('li')).toHaveTextContent('Overdue by 2 days');
+  });
+
+  it('records a fixed amount in one click, and says so', async () => {
+    agendaOf([bill()]);
+    show();
+    await userEvent.click(screen.getByRole('button', { name: 'Mark as paid: Rent' }));
+    expect(markPaid).toHaveBeenCalledWith({ id: 'b1', paidOn: TODAY });
+    expect(await screen.findByText(/Rent recorded\. Next due/)).toBeInTheDocument();
+  });
+
+  it('asks for a varying amount under its row before recording it', async () => {
+    agendaOf([bill({ name: 'Electricity', amount_is_variable: true })]);
+    show();
+    const check = screen.getByRole('button', { name: 'Mark as paid: Electricity' });
+    await userEvent.click(check);
+    expect(markPaid).not.toHaveBeenCalled();
+    expect(check).toHaveAttribute('aria-expanded', 'true');
+    const field = screen.getByLabelText('Amount');
+    await userEvent.clear(field);
+    await userEvent.type(field, '84.20');
+    await userEvent.click(screen.getByRole('button', { name: 'Mark as paid' }));
+    expect(markPaid).toHaveBeenCalledWith(expect.objectContaining({ amountMinor: 8420 }));
+    expect(await screen.findByText(/Electricity recorded\./)).toBeInTheDocument();
+  });
+
+  it('names transfers and income, and filters to one kind', async () => {
+    agendaOf([
+      bill({ id: 'b', name: 'Rent' }),
+      bill({ id: 't', name: 'Trip fund', label: 'transfer', kind: 'transfer', to_account_id: 'fund' }),
+      bill({ id: 'i', name: 'Pay', label: 'income', kind: 'income', from_account_id: null, to_account_id: 'chk' }),
+    ]);
+    show();
+    expect(screen.getByText('Trip fund').closest('li')).toHaveTextContent('Transfer');
+    expect(screen.getByRole('button', { name: 'Mark as done: Trip fund' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mark as received: Pay' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: /Transfers/ }));
+    expect(screen.getByText('Trip fund')).toBeInTheDocument();
+    expect(screen.queryByText('Rent')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pay')).not.toBeInTheDocument();
+  });
+
+  it('marks the month: what is still due, what is done, and how far along each kind is', () => {
+    agendaOf([
+      bill({ id: 'rent', name: 'Rent', amount_minor: 120000, next_due_on: shift(40) }),
+      bill({ id: 'net', name: 'Internet', amount_minor: 6300, next_due_on: TODAY }),
+    ]);
+    // Rent was paid on the 1st; Internet is still due today.
+    useMonthBillPayments.mockReturnValue({ data: [{ recurring_item_id: 'rent', paid_minor: 120000, last_paid_on: MONTH }] });
+    useUpcomingItems.mockReturnValue({
+      data: [{ recurring_item_id: 'net', kind: 'expense', due_on: TODAY, amount_minor: 6300 }],
+    });
+    show();
+    expect(screen.getByRole('button', { name: new RegExp(`, 1 due`) })).toHaveAttribute('aria-current', 'date');
+    const soFar = screen.getByRole('region', { name: 'This month so far' });
+    // $1,200.00 paid of $1,263.00.
+    expect(soFar).toHaveTextContent(/Bills paid.*\$1,200\.00.*of.*\$1,263\.00/);
+    expect(soFar).not.toHaveTextContent('Transfers done');
   });
 });
