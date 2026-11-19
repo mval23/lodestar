@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
+import { addMonths, monthStartInZone } from '../../lib/dates';
 import { pick } from '../../test/select';
 import { AccountsPage } from './AccountsPage';
 import { AccountSheet } from './AccountSheet';
@@ -9,6 +10,10 @@ import { netWorthOf, type AccountBalance } from './queries';
 const useAccounts = vi.fn();
 const create = vi.fn();
 const update = vi.fn();
+const setFavorite = vi.fn();
+const closings = vi.fn();
+const netWorth = vi.fn();
+const goals = vi.fn();
 
 vi.mock('./queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./queries')>();
@@ -19,8 +24,12 @@ vi.mock('./queries', async (importOriginal) => {
     useUpdateAccount: () => ({ mutateAsync: update, isPending: false }),
     useArchiveAccount: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useDeleteAccount: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useSetFavorite: () => ({ mutate: setFavorite, isPending: false }),
   };
 });
+vi.mock('../overview/queries', () => ({ useAccountClosings: () => ({ data: closings() }) }));
+vi.mock('../reports/queries', () => ({ useNetWorth: () => ({ data: netWorth() }) }));
+vi.mock('../goals/queries', () => ({ useGoals: () => ({ data: goals() }) }));
 
 vi.mock('../../lib/profile', () => ({ useCurrency: () => 'USD', useProfile: () => ({ data: { timezone: 'UTC' } }) }));
 
@@ -38,6 +47,7 @@ function balance(over: Partial<AccountBalance>): AccountBalance {
     money_out_minor: 0,
     balance_minor: 0,
     include_in_net_worth: true,
+    is_favorite: false,
     ...over,
   };
 }
@@ -48,7 +58,17 @@ beforeEach(() => {
   create.mockReset().mockResolvedValue({ id: 'new' });
   update.mockReset().mockResolvedValue({ id: 'a1' });
   useAccounts.mockReturnValue({ data: [], isPending: false, isError: false, isSuccess: true });
+  setFavorite.mockReset();
+  closings.mockReturnValue([]);
+  netWorth.mockReturnValue([]);
+  goals.mockReturnValue([]);
 });
+
+// This month and last, as the page works them out from the profile's zone.
+const THIS_MONTH = monthStartInZone('UTC');
+const LAST_MONTH = addMonths(THIS_MONTH, -1);
+const shown = (rows: AccountBalance[]) =>
+  useAccounts.mockReturnValue({ data: rows, isPending: false, isError: false, isSuccess: true });
 
 describe('netWorthOf', () => {
   it('sums by account type, so it matches net_worth_by_month', () => {
@@ -172,7 +192,8 @@ describe('AccountsPage', () => {
       isSuccess: true,
     });
     render(<MemoryRouter><AccountsPage /></MemoryRouter>);
-    expect(screen.getByText('Investment · Not in net worth')).toBeInTheDocument();
+    // Its group already says what it is, so the row only adds what is unusual.
+    expect(screen.getByText('Not in net worth')).toBeInTheDocument();
   });
 
   it('keeps archived accounts out of the main list', () => {
@@ -184,6 +205,86 @@ describe('AccountsPage', () => {
     });
     render(<MemoryRouter><AccountsPage /></MemoryRouter>);
     expect(screen.getByText('1 archived')).toBeInTheDocument();
+  });
+});
+
+describe('AccountsPage, favorites and movement', () => {
+  it('stars an account with one tap, without opening it', async () => {
+    shown([balance({ account_id: 'w', name: 'Wallet', type: 'cash', balance_minor: 4550 })]);
+    render(<MemoryRouter><AccountsPage /></MemoryRouter>);
+    const star = screen.getByRole('button', { name: 'Favorite: Wallet' });
+    expect(star).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(star);
+    expect(setFavorite).toHaveBeenCalledWith({ id: 'w', favorite: true });
+  });
+
+  it('lists favorites first, and keeps them in their own group so its subtotal is whole', () => {
+    shown([
+      balance({ account_id: 'a', name: 'Everyday checking', balance_minor: 285450 }),
+      balance({ account_id: 'w', name: 'Wallet', type: 'cash', balance_minor: 4550 }),
+      balance({ account_id: 'c', name: 'Blue card', type: 'credit_card', is_liability: true, balance_minor: -31000, is_favorite: true }),
+    ]);
+    render(<MemoryRouter><AccountsPage /></MemoryRouter>);
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(headings.slice(1, 2)).toEqual(['Favorites']);
+    const favorites = screen.getByRole('region', { name: 'Favorites' });
+    expect(within(favorites).getAllByRole('link').map((l) => l.textContent)).toEqual([expect.stringContaining('Blue card')]);
+    expect(within(favorites).getByRole('button', { name: 'Favorite: Blue card' })).toHaveAttribute('aria-pressed', 'true');
+    const cards = screen.getByRole('region', { name: /^Cards and loans/ });
+    expect(within(cards).getByRole('link', { name: /Blue card/ })).toBeInTheDocument();
+  });
+
+  it('shows how far each account and its group moved since last month ended, and its line', () => {
+    shown([
+      balance({ account_id: 'a', name: 'Everyday checking', balance_minor: 285450 }),
+      balance({ account_id: 'w', name: 'Wallet', type: 'cash', balance_minor: 4550 }),
+      balance({ account_id: 'n', name: 'New cash', type: 'cash', balance_minor: 1000 }),
+    ]);
+    closings.mockReturnValue([
+      { account_id: 'a', month: addMonths(LAST_MONTH, -1), closing_balance_minor: 90000 },
+      { account_id: 'a', month: LAST_MONTH, closing_balance_minor: 100000 },
+      { account_id: 'a', month: THIS_MONTH, closing_balance_minor: 285450 },
+      { account_id: 'w', month: LAST_MONTH, closing_balance_minor: 8050 },
+      { account_id: 'w', month: THIS_MONTH, closing_balance_minor: 4550 },
+      // Opened this month: there is no end of last month to compare with.
+      { account_id: 'n', month: THIS_MONTH, closing_balance_minor: 1000 },
+    ]);
+    render(<MemoryRouter><AccountsPage /></MemoryRouter>);
+    const row = (name: string) => screen.getByRole('link', { name: new RegExp(name) });
+    expect(row('Everyday checking').textContent).toMatch(/\+\$1,854\.50.* since/);
+    expect(row('Wallet').textContent).toMatch(new RegExp(`${MINUS}\\$35\\.00.* since`));
+    expect(row('New cash').textContent).not.toMatch(/since/);
+    // 185450 − 3500, with the new account left out of the sum.
+    expect(screen.getByRole('heading', { name: /^Cash/ }).textContent).toMatch(/\+\$1,819\.50.* since/);
+    expect(within(row('Everyday checking')).getByRole('img', { name: /from \$900\.00 to \$2,854\.50/ })).toBeInTheDocument();
+  });
+
+  it('shows the goal an account funds and how far along it is', () => {
+    shown([balance({ account_id: 's', name: 'Rainy day fund', type: 'savings', balance_minor: 500000 })]);
+    goals.mockReturnValue([
+      { goal_id: 'g', account_id: 's', name: 'Rainy day fund', target_minor: 1000000, archived_at: null, balance_minor: 500000 },
+    ]);
+    render(<MemoryRouter><AccountsPage /></MemoryRouter>);
+    expect(screen.getByRole('link', { name: /Rainy day fund/ }).textContent).toMatch(/Goal · 50% of \$10,000\.00/);
+  });
+
+  it('puts net worth beside its year, how far it moved, and where it sits', () => {
+    shown([
+      balance({ account_id: 'a', name: 'Everyday checking', balance_minor: 300000 }),
+      balance({ account_id: 's', name: 'Rainy day fund', type: 'savings', balance_minor: 100000 }),
+      balance({ account_id: 'c', name: 'Blue card', type: 'credit_card', is_liability: true, balance_minor: -50000 }),
+    ]);
+    netWorth.mockReturnValue([
+      { month: LAST_MONTH, assets_minor: 0, liabilities_minor: 0, net_worth_minor: 320000 },
+      { month: THIS_MONTH, assets_minor: 0, liabilities_minor: 0, net_worth_minor: 350000 },
+    ]);
+    const { container } = render(<MemoryRouter><AccountsPage /></MemoryRouter>);
+    expect(container.querySelector('.accounts-moved')?.textContent).toMatch(/\+\$300\.00.* since/);
+    expect(screen.getByRole('img', { name: /Net worth over the last 2 months/ })).toBeInTheDocument();
+    expect(screen.getByText('What you have')).toBeInTheDocument();
+    expect(screen.getByText('What you owe')).toBeInTheDocument();
+    expect(screen.getByText('Cash 75%')).toBeInTheDocument();
+    expect(screen.getByText('Savings 25%')).toBeInTheDocument();
   });
 });
 
@@ -246,6 +347,7 @@ describe('AccountSheet', () => {
       archived_at: null,
       source_ref: null,
       include_in_net_worth: false,
+      is_favorite: false,
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-01-01T00:00:00Z',
     };

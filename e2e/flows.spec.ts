@@ -275,6 +275,19 @@ test.describe('the money', () => {
     await expect(page.getByText('-$310.00')).toHaveCount(0);
   });
 
+  test('stars an account without opening it', async ({ page }) => {
+    const writes: { table: string; body: unknown }[] = [];
+    await signIn(page);
+    await stubSupabase(page, { tables: withData(), onWrite: (table, body) => writes.push({ table, body }) });
+    await page.goto('/accounts');
+
+    const star = page.getByRole('button', { name: 'Favorite: Blue card' });
+    await expect(star).toHaveAttribute('aria-pressed', 'false');
+    await star.click();
+    await expect.poll(() => writes).toContainEqual({ table: 'accounts', body: { is_favorite: true } });
+    await expect(page).toHaveURL(/\/accounts$/);
+  });
+
   test('shows an overspent budget as "Over plan by"', async ({ page }) => {
     await signIn(page);
     await stubSupabase(page, { tables: withData() });

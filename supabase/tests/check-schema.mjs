@@ -1297,6 +1297,25 @@ await test('an account left out of net worth leaves it, history and all, but sta
   eq(num((await one(asUser(C, latest))).net_worth_minor), without, 'the new one is left out too');
 });
 
+await test('a person stars their own accounts, and only their own', async () => {
+  const starred = (await insertAs(C, 'accounts', { name: 'C starred', type: 'cash', opening_balance_minor: 0 })).id;
+  eq((await one(asUser(C, `select is_favorite from public.account_balances where account_id = $1`, [starred]))).is_favorite,
+    false, 'not starred by default');
+  const latest = `select net_worth_minor from public.net_worth_by_month order by month desc limit 1`;
+  const before = num((await one(asUser(C, latest))).net_worth_minor);
+  await asUser(C, `update public.accounts set is_favorite = true where id = $1`, [starred]);
+  const row = await one(asUser(C, `select is_favorite, balance_minor from public.account_balances where account_id = $1`, [starred]));
+  eq([row.is_favorite, num(row.balance_minor)], [true, 0], 'starred, balance unchanged');
+  eq(num((await one(asUser(C, latest))).net_worth_minor), before, 'net worth unchanged');
+  // Another person can neither see nor star it.
+  const other = await asUser(B, `update public.accounts set is_favorite = false where id = $1`, [starred]);
+  eq(other.affectedRows ?? 0, 0, 'B changes nothing');
+  eq((await one(asUser(C, `select is_favorite from public.accounts where id = $1`, [starred]))).is_favorite, true, 'still starred');
+  // A new account can be starred as it is added.
+  const born = await insertAs(C, 'accounts', { name: 'C born starred', type: 'savings', opening_balance_minor: 0, is_favorite: true });
+  eq(born.is_favorite, true, 'insert grant');
+});
+
 // ===========================================================================
 // Reports: C's fixed history again. Each active month Sep 2025 – Feb 2026
 // (November empty): +3,000.00 salary, 1,000.00 into the fund, 300.00 out.

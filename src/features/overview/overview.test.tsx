@@ -81,6 +81,7 @@ function account(id: string, name: string, type: AccountBalance['type'], balance
     money_in_minor: 0,
     money_out_minor: 0,
     include_in_net_worth: true,
+    is_favorite: false,
   };
 }
 
