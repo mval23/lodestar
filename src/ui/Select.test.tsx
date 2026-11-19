@@ -21,6 +21,38 @@ function Picker({ initial = '', onKeyDown }: { initial?: string; onKeyDown?: (ke
 }
 
 describe('Select', () => {
+  // An iPhone with the keyboard up: Safari has panned the visible part of the
+  // page 400 px down and shrunk it to 300 px. The field sits near its bottom,
+  // so the list goes above it, and must stay inside that band rather than be
+  // measured from the top of the page.
+  it('opens its list inside the part of the page on screen when a phone keyboard is up', async () => {
+    const listeners = { addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: { offsetTop: 400, offsetLeft: 0, height: 300, width: 390, ...listeners },
+    });
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const box = this.classList.contains('combo-popup')
+        ? { top: 0, bottom: 180, left: 0, right: 358, width: 358, height: 180 }
+        : { top: 600, bottom: 644, left: 16, right: 374, width: 358, height: 44 };
+      return { ...box, x: box.left, y: box.top, toJSON: () => box } as DOMRect;
+    });
+    try {
+      render(<Picker />);
+      await userEvent.click(screen.getByRole('combobox', { name: 'From' }));
+      const popup = screen.getByRole('listbox', { name: 'From' }).closest('.combo-popup') as HTMLElement;
+      // 192 px free above the field, inside the band: the list fits there.
+      expect(popup.style.maxHeight).toBe('186px');
+      // Its top edge 6 px above the field, less its height: 600 − 6 − 180,
+      // inside the band, which starts at 400.
+      expect(popup.style.top).toBe('414px');
+      expect(listeners.addEventListener).toHaveBeenCalledWith('scroll', expect.any(Function));
+    } finally {
+      rect.mockRestore();
+      Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
   it('is a field that searches as you type, with no second search box', async () => {
     render(<Picker />);
     const field = screen.getByRole('combobox', { name: 'From' });

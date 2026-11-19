@@ -75,8 +75,20 @@ export function Select({
   };
 
   // Place the list under the field, or above it when there is more room
-  // there, within the visible screen, which shrinks when a phone's keyboard
-  // is up. It follows the field while anything scrolls.
+  // there, within the part of the page actually on screen.
+  //
+  // On a phone that part is not the window. When the keyboard comes up,
+  // Safari shrinks the visible area and also pans it down the page, so it
+  // starts partway down rather than at the top (visualViewport.offsetTop).
+  // The field's position and the list's are both measured from the top of
+  // the page, so the visible band is offsetTop to offsetTop + height. The
+  // list is always placed by its top edge, from its measured height, because
+  // Safari's idea of the window's bottom moves with the keyboard.
+  //
+  // It is placed again whenever anything scrolls or resizes, whenever the
+  // list itself changes height as the search narrows it, and on every frame
+  // for the first moments, while the keyboard slides in and Safari scrolls
+  // the field into view, since those don't always send an event.
   useLayoutEffect(() => {
     if (!open) return;
     const popup = popupRef.current;
@@ -89,33 +101,47 @@ export function Select({
     }
     const place = () => {
       const rect = field.getBoundingClientRect();
-      const viewWidth = window.innerWidth;
-      const viewHeight = window.visualViewport?.height ?? window.innerHeight;
+      const view = window.visualViewport;
+      const viewTop = view?.offsetTop ?? 0;
+      const viewLeft = view?.offsetLeft ?? 0;
+      const viewHeight = view?.height ?? window.innerHeight;
+      const viewWidth = view?.width ?? window.innerWidth;
       const width = Math.min(viewWidth - 16, Math.max(rect.width, 240));
-      const left = Math.min(Math.max(8, rect.right - width), viewWidth - width - 8);
-      const below = viewHeight - rect.bottom - 8;
-      const above = rect.top - 8;
+      const left = Math.min(Math.max(viewLeft + 8, rect.right - width), viewLeft + viewWidth - width - 8);
+      const below = viewTop + viewHeight - rect.bottom - 8;
+      const above = rect.top - viewTop - 8;
       const up = below < 240 && above > below;
       popup.style.width = `${width}px`;
       popup.style.left = `${left}px`;
       popup.style.right = 'auto';
+      popup.style.bottom = 'auto';
       popup.style.maxHeight = `${Math.max(120, Math.min(320, (up ? above : below) - 6))}px`;
-      if (up) {
-        popup.style.top = 'auto';
-        popup.style.bottom = `${window.innerHeight - rect.top + 6}px`;
-      } else {
-        popup.style.top = `${rect.bottom + 6}px`;
-        popup.style.bottom = 'auto';
-      }
+      const height = popup.getBoundingClientRect().height;
+      popup.style.top = `${up ? rect.top - 6 - height : rect.bottom + 6}px`;
     };
     place();
+
+    let frame = 0;
+    const settleUntil = performance.now() + 800;
+    const settle = () => {
+      place();
+      if (performance.now() < settleUntil) frame = requestAnimationFrame(settle);
+    };
+    frame = requestAnimationFrame(settle);
+
+    const resized = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(place);
+    resized?.observe(popup);
     window.addEventListener('resize', place);
     window.addEventListener('scroll', place, true);
     window.visualViewport?.addEventListener('resize', place);
+    window.visualViewport?.addEventListener('scroll', place);
     return () => {
+      cancelAnimationFrame(frame);
+      resized?.disconnect();
       window.removeEventListener('resize', place);
       window.removeEventListener('scroll', place, true);
       window.visualViewport?.removeEventListener('resize', place);
+      window.visualViewport?.removeEventListener('scroll', place);
     };
   }, [open]);
 
