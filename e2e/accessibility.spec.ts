@@ -156,7 +156,7 @@ test.describe('editing in place', () => {
     await signIn(page);
     await stubSupabase(page, { tables: withLedger() });
     await page.goto(`/accounts/${LEDGER_ACCOUNT}`);
-    const table = page.getByRole('table', { name: /Expenses on this account/ });
+    const table = page.getByRole('table', { name: /Transactions on this account/ });
     await table.getByRole('button', { name: 'Amount, 179.00. Edit' }).click();
     await expect(table.getByRole('textbox', { name: 'Amount' })).toBeFocused();
     const results = await scan(page);

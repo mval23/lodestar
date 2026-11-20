@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { SquareStack, Star } from 'lucide-react';
+import { SquareStack } from 'lucide-react';
 import { addMonths, formatDateShort, monthStartInZone } from '../../lib/dates';
 import { describeMoney, type Currency } from '../../lib/money';
 import { useCurrency, useProfile } from '../../lib/profile';
@@ -17,10 +17,10 @@ import { useNetWorth } from '../reports/queries';
 import { AccountSheet } from './AccountSheet';
 import { AccountsSummary } from './AccountsSummary';
 import { ACCOUNT_GROUPS } from './groups';
+import { StarButton } from './StarButton';
 import {
   accountTypeLabel,
   useAccounts,
-  useSetFavorite,
   type Account,
   type AccountBalance,
 } from './queries';
@@ -215,7 +215,6 @@ function AccountRow({
   since: string;
   currency: Currency;
 }) {
-  const setFavorite = useSetFavorite();
   const change = changeOf(row, trend);
   const series = trend?.series ?? [];
 
@@ -225,15 +224,7 @@ function AccountRow({
 
   return (
     <li className="account-row">
-      <button
-        type="button"
-        className="star-toggle"
-        aria-pressed={row.is_favorite}
-        aria-label={`Favorite: ${row.name}`}
-        onClick={() => setFavorite.mutate({ id: row.account_id, favorite: !row.is_favorite })}
-      >
-        <Star size={18} strokeWidth={1.75} fill={row.is_favorite ? 'currentColor' : 'none'} aria-hidden="true" />
-      </button>
+      <StarButton accountId={row.account_id} name={row.name} favorite={row.is_favorite} />
       <Link to={accountPath(row.account_id)} className="account-link">
         <span className="row-label">
           {row.name}
