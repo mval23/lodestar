@@ -38,6 +38,11 @@ export function Select({
   const fieldRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  // Which side of the field the list opened on. It is chosen once, when the
+  // list opens, so the list never jumps from one side to the other while the
+  // keyboard slides in or the search narrows it.
+  const sideRef = useRef<'below' | 'above' | null>(null);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [active, setActive] = useState(0);
@@ -88,7 +93,13 @@ export function Select({
   // It is placed again whenever anything scrolls or resizes, whenever the
   // list itself changes height as the search narrows it, and on every frame
   // for the first moments, while the keyboard slides in and Safari scrolls
-  // the field into view, since those don't always send an event.
+  // the field into view, since those don't always send an event. Each time
+  // it stays on the side it opened on, unless that side has become too
+  // cramped to use and the other has more room.
+  //
+  // On a touch screen, a field in the lower part of the screen is first
+  // brought up near the top (its scroll-margin keeps it clear of a sheet's
+  // header), so its list opens below it, above the keyboard, and stays put.
   useLayoutEffect(() => {
     if (!open) return;
     const popup = popupRef.current;
@@ -98,6 +109,13 @@ export function Select({
       popup.showPopover?.();
     } catch {
       // Already showing, or popovers unsupported: it is placed either way.
+    }
+    sideRef.current = null;
+    if (window.matchMedia?.('(pointer: coarse)').matches) {
+      const view = window.visualViewport;
+      const viewTop = view?.offsetTop ?? 0;
+      const viewHeight = view?.height ?? window.innerHeight;
+      if (field.getBoundingClientRect().top - viewTop > viewHeight * 0.4) field.scrollIntoView?.({ block: 'start' });
     }
     const place = () => {
       const rect = field.getBoundingClientRect();
@@ -110,7 +128,12 @@ export function Select({
       const left = Math.min(Math.max(viewLeft + 8, rect.right - width), viewLeft + viewWidth - width - 8);
       const below = viewTop + viewHeight - rect.bottom - 8;
       const above = rect.top - viewTop - 8;
-      const up = below < 240 && above > below;
+      let side = sideRef.current ?? (below < 240 && above > below ? 'above' : 'below');
+      const room = side === 'above' ? above : below;
+      const other = side === 'above' ? below : above;
+      if (room < 120 && other > room) side = side === 'above' ? 'below' : 'above';
+      sideRef.current = side;
+      const up = side === 'above';
       popup.style.width = `${width}px`;
       popup.style.left = `${left}px`;
       popup.style.right = 'auto';
@@ -145,11 +168,20 @@ export function Select({
     };
   }, [open]);
 
-  // Keep the highlighted option in view as the arrow keys move it.
+  // Keep the highlighted option in view as the arrow keys move it. Only the
+  // list scrolls: scrollIntoView would also scroll the page on a phone, on
+  // every letter typed, and carry the field and its list with it.
   useLayoutEffect(() => {
     if (!open) return;
     const option = shown[activeIndex];
-    if (option) document.getElementById(optionId(option))?.scrollIntoView?.({ block: 'nearest' });
+    const list = listRef.current;
+    const element = option ? document.getElementById(optionId(option)) : null;
+    if (list && element) {
+      const box = list.getBoundingClientRect();
+      const item = element.getBoundingClientRect();
+      if (item.top < box.top) list.scrollTop -= box.top - item.top;
+      else if (item.bottom > box.bottom) list.scrollTop += item.bottom - box.bottom;
+    }
     // optionId only joins listId and the value, both covered here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, activeIndex, shown]);
@@ -251,7 +283,7 @@ export function Select({
             event.stopPropagation();
           }}
         >
-          <ul id={listId} className="select-list" role="listbox" aria-label={label}>
+          <ul ref={listRef} id={listId} className="select-list" role="listbox" aria-label={label}>
             {shown.map((option, index) => (
               <li
                 key={option.value}

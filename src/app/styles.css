@@ -13,6 +13,12 @@ html {
   /* No double-tap zoom on a button or row; pinch-to-zoom still works. */
   touch-action: manipulation;
 }
+/* The rule above stops at the first part that scrolls on its own, such as a
+   dropdown's list or a sheet, where two quick taps zoomed the page again. So
+   every element carries it; a class that needs something else still wins. */
+* {
+  touch-action: manipulation;
+}
 
 body {
   margin: 0;
@@ -1096,6 +1102,11 @@ a:hover {
 .select-combo[data-open] {
   color: var(--ink);
   cursor: text;
+}
+/* On a phone an opening picker is scrolled up near the top of what it sits
+   in; this keeps it clear of a sheet's header or the page's top bar. */
+.select-combo {
+  scroll-margin-top: 96px;
 }
 .select-field {
   display: inline-grid;
