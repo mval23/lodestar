@@ -289,17 +289,16 @@ export const LEDGER_PAGE = 50;
 // One kind of entry for one account, newest first, each with the balance just
 // after it. The running balance is summed in Postgres over the whole account,
 // so filtering by kind here never changes it.
-export function useAccountLedger(id: string | undefined, kind: LedgerKind, page = 1) {
+// 'all' is every kind, newest first, as the account page's All tab shows it.
+export function useAccountLedger(id: string | undefined, kind: LedgerKind | 'all', page = 1) {
   return useQuery({
     queryKey: [...accountsKey, 'ledger', id, kind, page],
     enabled: Boolean(id),
     queryFn: async (): Promise<{ rows: LedgerEntry[]; total: number }> => {
       const start = (page - 1) * LEDGER_PAGE;
-      const { data, error, count } = await db()
-        .from('account_ledger')
-        .select('*', { count: 'exact' })
-        .eq('account_id', id!)
-        .eq('kind', kind)
+      let query = db().from('account_ledger').select('*', { count: 'exact' }).eq('account_id', id!);
+      if (kind !== 'all') query = query.eq('kind', kind);
+      const { data, error, count } = await query
         .order('occurred_on', { ascending: false })
         .order('created_at', { ascending: false })
         .order('transaction_id', { ascending: false })
@@ -309,7 +308,7 @@ export function useAccountLedger(id: string | undefined, kind: LedgerKind, page 
         total: count ?? 0,
         rows: data.map((row) => ({
           transaction_id: row.transaction_id ?? '',
-          kind: row.kind ?? kind,
+          kind: row.kind ?? (kind === 'all' ? 'expense' : kind),
           occurred_on: row.occurred_on ?? '',
           signed_amount_minor: row.signed_amount_minor ?? 0,
           description: row.description ?? '',
@@ -386,3 +385,4 @@ export function useAccountSummary(id: string | undefined, from: string, to: stri
     },
   });
 }
+

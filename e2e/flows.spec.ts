@@ -233,7 +233,7 @@ test.describe('editing in place', () => {
     });
     await page.goto(`/accounts/${LEDGER_ACCOUNT}`);
 
-    const table = page.getByRole('table', { name: /Expenses on this account/ });
+    const table = page.getByRole('table', { name: /Transactions on this account/ });
     await table.getByRole('button', { name: 'Amount, 179.00. Edit' }).click();
     // The value is selected, so typing replaces it, as in a spreadsheet.
     await page.keyboard.type('185.50');
@@ -250,7 +250,7 @@ test.describe('editing in place', () => {
     await stubSupabase(page, { tables: withLedger(), onWrite: (table) => writes.push(table) });
     await page.goto(`/accounts/${LEDGER_ACCOUNT}`);
 
-    const table = page.getByRole('table', { name: /Expenses on this account/ });
+    const table = page.getByRole('table', { name: /Transactions on this account/ });
     await table.getByRole('button', { name: 'Description, Utilities. Edit' }).click();
     await page.keyboard.type('Something else');
     await page.keyboard.press('Escape');

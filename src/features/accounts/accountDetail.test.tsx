@@ -11,6 +11,9 @@ const useAccountOutflows = vi.fn();
 const useAccountMonths = vi.fn();
 const useAccountLedger = vi.fn();
 const create = vi.fn();
+const setFavorite = vi.fn();
+const useBills = vi.fn();
+const useGoals = vi.fn();
 
 const ID = '0a8f7b2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b';
 const OTHER = '11111111-2222-4333-8444-555555555555';
@@ -122,6 +125,7 @@ vi.mock('./queries', async (importOriginal) => {
       data: [balance(), balance({ account_id: OTHER, name: 'Emergency savings', type: 'savings' })],
     }),
     useArchiveAccount: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useSetFavorite: () => ({ mutate: setFavorite, isPending: false }),
   };
 });
 
@@ -151,12 +155,12 @@ vi.mock('../categories/queries', async (importOriginal) => {
 
 vi.mock('../goals/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../goals/queries')>();
-  return { ...actual, useGoals: () => ({ data: [] }) };
+  return { ...actual, useGoals: () => useGoals(), useGoalPace: () => ({ data: { estimated_month: '2028-11-01' } }) };
 });
 
 vi.mock('../bills/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../bills/queries')>();
-  return { ...actual, useBills: () => ({ data: [] }) };
+  return { ...actual, useBills: () => useBills() };
 });
 
 vi.mock('../../lib/profile', () => ({
@@ -176,6 +180,9 @@ function renderPage(id = ID) {
 
 beforeEach(() => {
   create.mockReset().mockResolvedValue({ id: 'new' });
+  setFavorite.mockReset();
+  useBills.mockReturnValue({ data: [] });
+  useGoals.mockReturnValue({ data: [] });
   useAccountBalance.mockReturnValue({ data: balance(), isSuccess: true, isError: false });
   useAccountMonths.mockReturnValue({
     data: [
@@ -227,18 +234,69 @@ describe('AccountDetailPage', () => {
 
     const tabs = screen.getByRole('tablist', { name: 'Activity by kind' });
     // The figures above already say how much moved; the tabs only choose.
-    expect(within(tabs).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Income', 'Expenses', 'Transfers']);
+    expect(within(tabs).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['All', 'Income', 'Expenses', 'Transfers']);
   });
 
-  it('gives the period’s typical month, the changes since month ends, and the lowest balance', () => {
+  it('gives the changes since month ends and the lowest balance, and a typical month over the chart’s months', () => {
     renderPage();
-    const band = screen.getByRole('region', { name: 'This account' });
-    expect(band).toHaveTextContent(/−\$2,180\.78.*since Aug 31.*−\$128\.28.*since Sep 30, 2025/);
-    expect(within(band).getByText('In, a typical month').closest('.fig-cell')).toHaveTextContent('$5,683.64');
-    expect(within(band).getByText('Out, a typical month').closest('.fig-cell')).toHaveTextContent('$5,480.00');
-    expect(within(band).getByText('Lowest, last 90 days').closest('.fig-cell')).toHaveTextContent(/\$2,865\.13.*Sep 12, 2026/);
-    // What stands out, from the same figures.
-    expect(screen.getByText(/Everyday checking is/).closest('.stands-out')).toHaveTextContent(/\$2,180\.78.*lower than at Aug 31.*stayed above \$2,865\.13/);
+    const standing = screen.getByRole('region', { name: 'Balance' });
+    expect(standing).toHaveTextContent(/−\$2,180\.78.*since Aug 31.*−\$128\.28.*since Sep 30, 2025/);
+    expect(standing).toHaveTextContent(/Lowest in the last 90 days: \$2,865\.13.*Sep 12/);
+    const figure = (title: string) => screen.getByText(title).closest('.typical-figures > div');
+    expect(figure('In, a typical month')).toHaveTextContent('$5,683.64');
+    expect(figure('Out, a typical month')).toHaveTextContent('$5,480.00');
+    // The same change is said once, under the balance, not again in a sentence above it.
+    expect(screen.queryByText(/Everyday checking is/)).not.toBeInTheDocument();
+  });
+
+  it('draws money in and out as two lines, with the months as a table too', async () => {
+    renderPage();
+    expect(screen.getByRole('img', { name: /Money in and out, 2 months/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Show as table' }));
+    const table = screen.getByRole('region', { name: 'Money in and out, as a table' });
+    expect(within(table).getByText('August 2026').closest('tr')).toHaveTextContent(/\$2,910\.00.*\$0\.00.*\$3,000\.00/);
+  });
+
+  it('stars the account beside its name', async () => {
+    renderPage();
+    const star = screen.getByRole('button', { name: 'Favorite: Everyday checking' });
+    expect(star).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(star);
+    expect(setFavorite).toHaveBeenCalledWith({ id: ID, favorite: true });
+  });
+
+  it('lists the bills on this account, soonest first, signed for this account', () => {
+    const bill = (over: Record<string, unknown>) => ({
+      id: 'b', name: '', label: 'bill', kind: 'expense', amount_minor: 0, amount_is_variable: false, from_account_id: ID,
+      to_account_id: null, category_id: null, cadence_unit: 'month', cadence_interval: 1, anchor_on: '2026-01-01',
+      next_due_on: '2099-01-01', ends_on: null, archived_at: null, ...over,
+    });
+    useBills.mockReturnValue({
+      data: [
+        bill({ id: 'b1', name: 'Rent', amount_minor: 120000, next_due_on: '2099-02-01' }),
+        bill({ id: 'b2', name: 'Pay', kind: 'income', label: 'income', amount_minor: 305000, from_account_id: null, to_account_id: ID, next_due_on: '2099-01-28' }),
+        bill({ id: 'b3', name: 'Someone else’s', from_account_id: OTHER }),
+      ],
+    });
+    renderPage();
+    const card = screen.getByRole('region', { name: 'Bills on this account' });
+    const rows = within(card).getAllByRole('link').filter((l) => l.getAttribute('href')?.startsWith('/bills/'));
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringMatching(/^PayIncome.*Monthly.*\+\$3,050\.00/),
+      expect.stringMatching(/^Rent.*Monthly.*−\$1,200\.00/),
+    ]);
+  });
+
+  it('shows the goal this account funds, and leaves the card out when there is none', () => {
+    renderPage();
+    expect(screen.queryByRole('region', { name: 'Funds a goal' })).not.toBeInTheDocument();
+    useGoals.mockReturnValue({
+      data: [{ goal_id: 'g1', account_id: ID, name: 'Rainy day fund', target_minor: 1000000, monthly_plan_minor: 25000, balance_minor: 500000, archived_at: null }],
+    });
+    renderPage();
+    const card = screen.getByRole('region', { name: 'Funds a goal' });
+    expect(card).toHaveTextContent(/50.*of \$10,000\.00/);
+    expect(card).toHaveTextContent(/\$250\.00 a month planned · at the recent pace, around November 2028/);
   });
 
   it('says where the money goes, transfers named for where they went and tagged', async () => {
@@ -248,16 +306,30 @@ describe('AccountDetailPage', () => {
     expect(rows).toEqual(['Visa card payments · transfer', 'Rent', 'Into goals · transfer', 'Cash to Wallet · transfer', 'No category']);
     expect(within(goes).getByText('Rent').closest('tr')).toHaveTextContent(/\$4,950\.00.*30\.1%/);
     expect(goes).toHaveTextContent(/\$16,440\.00/);
-    // The period moves both the typical months and where it goes.
-    await userEvent.click(screen.getByRole('radio', { name: '12 months' }));
+    // Where it goes has its own period.
+    await userEvent.click(within(goes).getByRole('radio', { name: '12 months' }));
     expect(useAccountOutflows).toHaveBeenLastCalledWith(ID, expect.any(String), expect.any(String));
     const [, from, to] = useAccountOutflows.mock.lastCall as [string, string, string];
     expect((Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(to.slice(5, 7)) - Number(from.slice(5, 7))).toBe(12);
   });
 
-  it('opens on expenses and moves to another kind', async () => {
+  it('shows the biggest few places money went, and the rest one tap away', async () => {
+    useAccountOutflows.mockReturnValue({
+      data: Array.from({ length: 9 }, (_, i) => line({ name: `Category ${i + 1}`, category_id: `c${i}`, out_minor: 90000 - i * 1000 })),
+      isError: false,
+    });
     renderPage();
-    expect(screen.getByRole('tab', { name: /Expenses/ })).toHaveAttribute('aria-selected', 'true');
+    const goes = screen.getByRole('region', { name: 'Where it goes' });
+    expect(within(goes).getAllByRole('row')).toHaveLength(1 + 6);
+    await userEvent.click(within(goes).getByRole('button', { name: 'Show 3 more' }));
+    expect(within(goes).getAllByRole('row')).toHaveLength(1 + 9);
+    expect(within(goes).getByRole('button', { name: 'Show the top 6 only' })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('opens on All and moves to one kind', async () => {
+    renderPage();
+    expect(screen.getByRole('tab', { name: /All/ })).toHaveAttribute('aria-selected', 'true');
+    expect(useAccountLedger).toHaveBeenCalledWith(ID, 'all');
     await userEvent.click(screen.getByRole('tab', { name: /Income/ }));
     expect(screen.getByRole('tab', { name: /Income/ })).toHaveAttribute('aria-selected', 'true');
     expect(useAccountLedger).toHaveBeenCalledWith(ID, 'income');
@@ -272,7 +344,7 @@ describe('AccountDetailPage', () => {
 
   it('shows each entry with the balance after it', () => {
     renderPage();
-    const table = screen.getByRole('table', { name: /Expenses on this account/ });
+    const table = screen.getByRole('table', { name: /Transactions on this account/ });
     expect(within(table).getByText('Rent')).toBeInTheDocument();
     expect(within(table).getByRole('combobox', { name: 'Category of “Rent”' })).toHaveValue('Housing');
     expect(within(table).getByText('−$1,450.00')).toBeInTheDocument();
@@ -356,6 +428,12 @@ describe('AccountDetailPage', () => {
     );
   });
 
+  it('asks which kind to add on All, and adds that kind', async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole('radio', { name: 'Income' }));
+    expect(screen.getByRole('form', { name: 'Add income' })).toBeInTheDocument();
+  });
+
   it('adds income that arrives in this account', async () => {
     renderPage();
     await userEvent.click(screen.getByRole('tab', { name: /Income/ }));
@@ -419,9 +497,8 @@ describe('AccountDetailPage', () => {
     expect(screen.getByText('Owed')).toBeInTheDocument();
     // The figure stays negative rather than being flipped to read nicely.
     expect(screen.getAllByText('−$310.00').length).toBeGreaterThan(0);
-    const band = screen.getByRole('region', { name: 'This account' });
-    expect(within(band).getByText('Purchases, a typical month').closest('.fig-cell')).toHaveTextContent('$3,500.00');
-    expect(within(band).getByText('Most owed, last 90 days').closest('.fig-cell')).toHaveTextContent('−$1,389.48');
+    expect(screen.getByText('Purchases, a typical month').closest('.typical-figures > div')).toHaveTextContent('$3,500.00');
+    expect(screen.getByRole('region', { name: 'Owed' })).toHaveTextContent(/Most owed in the last 90 days: −\$1,389\.48/);
   });
 
   it('estimates when a loan is paid off, and says interest isn’t separated', () => {
@@ -432,7 +509,7 @@ describe('AccountDetailPage', () => {
     });
     useAccountSummary.mockReturnValue({ data: summary({ balance_minor: -556000, avg_transfer_in_minor: 38500, payments_left: 15 }), isError: false });
     renderPage();
-    const cell = screen.getByText(/Paid off around/).closest('.fig-cell');
+    const cell = screen.getByText(/Paid off around/).closest('.typical-figures > div');
     expect(cell).toHaveTextContent(/Estimate/);
     expect(cell).toHaveTextContent(/15 more payments at that amount; interest isn’t separated/);
   });

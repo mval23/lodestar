@@ -30,21 +30,24 @@ const KIND_SINGULAR: Record<TxnKind, string> = { income: 'income', expense: 'an 
 const KIND_LABEL_SINGULAR: Record<TxnKind, string> = { income: 'Income', expense: 'Expense', transfer: 'Transfer' };
 export const KIND_ORDER: TxnKind[] = ['income', 'expense', 'transfer'];
 
-// A tab can carry its total and row count, or be just its name.
-export type KindTab = { kind: TxnKind; summary?: ReactNode; count?: number };
+// A tab can carry its total and row count, or be just its name. 'all' is a
+// tab of every kind, where a page offers one.
+export type TabKind = TxnKind | 'all';
+export type KindTab<K extends TabKind = TxnKind> = { kind: K; summary?: ReactNode; count?: number };
+const tabLabel = (kind: TabKind) => (kind === 'all' ? 'All' : KIND_LABEL[kind]);
 
 // A tablist in the WAI-ARIA pattern: arrow keys move between tabs, and only
 // the selected tab is in the tab order.
-export function KindTabs({
+export function KindTabs<K extends TabKind>({
   tabs,
   value,
   onChange,
   label,
   children,
 }: {
-  tabs: KindTab[];
-  value: TxnKind;
-  onChange: (kind: TxnKind) => void;
+  tabs: KindTab<K>[];
+  value: K;
+  onChange: (kind: K) => void;
   label: string;
   children: ReactNode;
 }) {
@@ -85,7 +88,7 @@ export function KindTabs({
               onClick={() => onChange(tab.kind)}
               onKeyDown={(event) => onKey(event, index)}
             >
-              <span className="kind-tab-label">{KIND_LABEL[tab.kind]}</span>
+              <span className="kind-tab-label">{tabLabel(tab.kind)}</span>
               {tab.summary !== undefined && <span className="kind-tab-total">{tab.summary}</span>}
               {tab.count !== undefined && (
                 <span className="kind-tab-count">
