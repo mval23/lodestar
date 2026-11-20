@@ -53,6 +53,59 @@ describe('Select', () => {
     }
   });
 
+  // The keyboard sliding in shrinks the room under the field. The list used
+  // to choose its side afresh on every move and could jump above the field
+  // and back; now it keeps its side until that side is too cramped to use.
+  it('keeps the list on the side it opened on while the keyboard slides in', async () => {
+    const view = { offsetTop: 0, offsetLeft: 0, height: 800, width: 390, addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: view });
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const box = this.classList.contains('combo-popup')
+        ? { top: 0, bottom: 150, left: 0, right: 358, width: 358, height: 150 }
+        : { top: 250, bottom: 294, left: 16, right: 374, width: 358, height: 44 };
+      return { ...box, x: box.left, y: box.top, toJSON: () => box } as DOMRect;
+    });
+    try {
+      render(<Picker />);
+      await userEvent.click(screen.getByRole('combobox', { name: 'From' }));
+      const popup = screen.getByRole('listbox', { name: 'From' }).closest('.combo-popup') as HTMLElement;
+      expect(popup.style.top).toBe('300px');
+
+      // The keyboard leaves 160 px under the field and 242 above: still below.
+      view.height = 462;
+      window.dispatchEvent(new Event('resize'));
+      expect(popup.style.top).toBe('300px');
+
+      // Only 60 px left under it: now it moves above, its bottom by the field.
+      view.height = 362;
+      window.dispatchEvent(new Event('resize'));
+      expect(popup.style.top).toBe('94px');
+    } finally {
+      rect.mockRestore();
+      Reflect.deleteProperty(window, 'visualViewport');
+    }
+  });
+
+  // scrollIntoView on the highlighted option also scrolled the page on a
+  // phone, on every letter typed, so the field and its list moved about.
+  it('never scrolls the page to show an option while you type or arrow through', async () => {
+    const scrolled: Element[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this);
+    };
+    try {
+      render(<Picker />);
+      const field = screen.getByRole('combobox', { name: 'From' });
+      await userEvent.click(field);
+      await userEvent.type(field, 'c');
+      await userEvent.keyboard('{ArrowDown}{ArrowDown}');
+      expect(scrolled.filter((element) => element.getAttribute('role') === 'option')).toEqual([]);
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
   it('is a field that searches as you type, with no second search box', async () => {
     render(<Picker />);
     const field = screen.getByRole('combobox', { name: 'From' });
