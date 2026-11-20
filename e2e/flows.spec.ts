@@ -495,3 +495,34 @@ test.describe('leaving', () => {
     expect(calls).not.toContain('function:delete-account');
   });
 });
+
+test.describe('a picker on a phone', () => {
+  test('fills the screen, searches, and leaves the sheet behind it as it was', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'Only a phone gets the full-screen picker.');
+
+    await signIn(page);
+    await stubSupabase(page, { tables: withData() });
+    await page.goto('/activity');
+    await page.getByRole('button', { name: /^Filters/ }).click();
+    const filters = page.getByRole('dialog', { name: 'Filters' });
+    const field = filters.getByRole('combobox', { name: 'Account', exact: true });
+    // Tapping the field never raises the keyboard: it only opens the picker.
+    await expect(field).toHaveAttribute('inputmode', 'none');
+    await field.tap();
+
+    const picker = page.getByRole('dialog', { name: 'Account', exact: true });
+    await expect(picker).toBeVisible();
+    // Once it has slid in, it covers the whole screen.
+    await picker.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    const box = (await picker.boundingBox())!;
+    const view = page.viewportSize()!;
+    expect([box.x, box.y, box.width, box.height].map(Math.round)).toEqual([0, 0, view.width, view.height]);
+
+    await picker.getByRole('searchbox', { name: 'Search: Account' }).fill('every');
+    await picker.getByRole('option', { name: 'Everyday checking' }).tap();
+
+    await expect(picker).toHaveCount(0);
+    await expect(filters).toBeVisible();
+    await expect(field).toHaveValue('Everyday checking');
+  });
+});

@@ -42,7 +42,7 @@ vi.mock('./queries', async (importOriginal) => {
 const phone = vi.fn(() => false);
 vi.mock('../../lib/media', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/media')>();
-  return { ...actual, useMediaQuery: () => phone() };
+  return { ...actual, useMediaQuery: (query: string) => query === actual.PHONE && phone() };
 });
 const startTour = vi.fn();
 vi.mock('../tour/Tour', () => ({

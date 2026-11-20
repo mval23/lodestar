@@ -1162,6 +1162,73 @@ a:hover {
   overflow: hidden;
 }
 
+/* The phone picker: it fills the part of the screen that is visible (script
+   sets its box from the visual viewport, so the keyboard never covers the end
+   of the list), with the sheet bar, a search capsule and a grouped list. */
+.picker-sheet {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  max-width: none;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  background: var(--ground);
+  color: var(--ink);
+  overflow: hidden;
+  outline: none;
+  animation: picker-in var(--dur-fast) var(--ease-spring);
+}
+@keyframes picker-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+.picker-sheet-bar {
+  flex: none;
+  padding-top: calc(var(--space-2) + env(safe-area-inset-top, 0px));
+}
+.picker-sheet-bar .headline {
+  margin: 0;
+}
+/* .search-capsule grows to fill a row; here the column is the row's axis. */
+.picker-sheet .picker-sheet-search {
+  flex: none;
+  margin: var(--space-3) var(--space-4) var(--space-2);
+}
+/* As tall as its options, and no taller than the room left, where it scrolls. */
+.picker-sheet .select-list {
+  flex: 0 1 auto;
+  min-height: 0;
+  margin: 0 var(--space-4);
+  padding: var(--space-1);
+  margin-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  overscroll-behavior: contain;
+}
+.picker-sheet .select-list li {
+  min-height: 48px;
+  font-size: 16px;
+}
+/* A finger has no hover, so on a phone the highlight only follows the arrow
+   keys of a paired keyboard; a tap shows as the press itself. */
+.picker-sheet .select-list li.active {
+  background: none;
+}
+.picker-sheet .select-list li:active,
+.picker-sheet:has(input:focus-visible) .select-list li.active {
+  background: var(--sunk);
+}
+/* The page behind the picker stays where it was. */
+html.picker-open,
+html.picker-open body {
+  overflow: hidden;
+}
+
 /* display must stay on the [open] state: a bare `display: flex` would beat
    the browser's own `dialog:not([open]) { display: none }` and leave every
    list rendered inline. */

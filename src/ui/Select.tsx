@@ -1,5 +1,6 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Search } from 'lucide-react';
+import { PICKER_SHEET, useMediaQuery } from '../lib/media';
 
 export type SelectOption = { value: string; label: string; hint?: string };
 
@@ -13,6 +14,13 @@ export type SelectOption = { value: string; label: string; hint?: string };
 // is a listbox it controls, the highlighted option is its active descendant,
 // and arrow keys, Enter and Esc all work. The list is a popover, so it sits in
 // the top layer above any sheet it opens from without making the field inert.
+//
+// On a phone the list is not tied to the field at all. A small list floating
+// under a field gets pushed around while the keyboard slides in and Safari
+// scrolls, so there the field opens a picker that fills the screen: its name,
+// a search box, and every option in a tall, scrolling list. Nothing in it is
+// placed against the field, so nothing can move. The keyboard comes up only
+// when the search box is tapped, or when the picker was opened from a keyboard.
 export function Select({
   id,
   value,
@@ -39,6 +47,11 @@ export function Select({
   const inputRef = useRef<HTMLInputElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const sheetSearchRef = useRef<HTMLInputElement>(null);
+  // Whether the list was opened from the keyboard, so the phone picker knows
+  // to put the cursor in its search box rather than wait for a tap.
+  const byKeyRef = useRef(false);
+  const sheet = useMediaQuery(PICKER_SHEET);
   // Which side of the field the list opened on. It is chosen once, when the
   // list opens, so the list never jumps from one side to the other while the
   // keyboard slides in or the search narrows it.
@@ -60,8 +73,9 @@ export function Select({
   const activeIndex = Math.min(active, Math.max(0, shown.length - 1));
   const optionId = (option: SelectOption) => `${listId}-${option.value}`;
 
-  const openList = (typed = '') => {
+  const openList = (typed = '', byKey = false) => {
     if (disabled) return;
+    byKeyRef.current = byKey || typed !== '';
     // Typing starts at the first match; a click starts at the current choice.
     const current = options.findIndex((option) => option.value === value);
     setSearch(typed);
@@ -72,6 +86,9 @@ export function Select({
   const close = () => {
     setOpen(false);
     setSearch('');
+    // The phone picker took focus away from the field; give it back. The
+    // field is read-only there, so this never raises the keyboard.
+    if (sheet) inputRef.current?.focus({ preventScroll: true });
   };
 
   const choose = (next: string) => {
@@ -101,7 +118,7 @@ export function Select({
   // brought up near the top (its scroll-margin keeps it clear of a sheet's
   // header), so its list opens below it, above the keyboard, and stays put.
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open || sheet) return;
     const popup = popupRef.current;
     const field = fieldRef.current;
     if (!popup || !field) return;
@@ -166,7 +183,42 @@ export function Select({
       window.visualViewport?.removeEventListener('resize', place);
       window.visualViewport?.removeEventListener('scroll', place);
     };
-  }, [open]);
+  }, [open, sheet]);
+
+  // The phone picker covers the part of the screen actually visible, which
+  // shrinks when the keyboard comes up, so the end of the list is never
+  // hidden under it. The page behind it stays where it was.
+  useLayoutEffect(() => {
+    if (!open || !sheet) return;
+    const popup = popupRef.current;
+    if (!popup) return;
+    try {
+      popup.showPopover?.();
+    } catch {
+      // Already showing, or popovers unsupported: it covers the screen either way.
+    }
+    const fit = () => {
+      const view = window.visualViewport;
+      popup.style.top = `${view?.offsetTop ?? 0}px`;
+      popup.style.left = `${view?.offsetLeft ?? 0}px`;
+      popup.style.height = `${view?.height ?? window.innerHeight}px`;
+      popup.style.width = `${view?.width ?? window.innerWidth}px`;
+    };
+    fit();
+    if (byKeyRef.current) sheetSearchRef.current?.focus({ preventScroll: true });
+    else popup.focus({ preventScroll: true });
+    const root = document.documentElement;
+    root.classList.add('picker-open');
+    window.visualViewport?.addEventListener('resize', fit);
+    window.visualViewport?.addEventListener('scroll', fit);
+    window.addEventListener('resize', fit);
+    return () => {
+      root.classList.remove('picker-open');
+      window.visualViewport?.removeEventListener('resize', fit);
+      window.visualViewport?.removeEventListener('scroll', fit);
+      window.removeEventListener('resize', fit);
+    };
+  }, [open, sheet]);
 
   // Keep the highlighted option in view as the arrow keys move it. Only the
   // list scrolls: scrollIntoView would also scroll the page on a phone, on
@@ -190,7 +242,7 @@ export function Select({
     if (!open) {
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter') {
         event.preventDefault();
-        openList();
+        openList('', true);
       } else if (event.key.length === 1 && event.key !== ' ' && !event.ctrlKey && !event.metaKey && !event.altKey) {
         // The first letter typed replaces the choice shown and starts the search.
         event.preventDefault();
@@ -215,6 +267,54 @@ export function Select({
       close();
     }
   };
+
+  // The phone picker's keys, for a keyboard paired with a phone: arrows move
+  // the highlight, Enter chooses it, and Esc closes the picker only, never
+  // the sheet it opened from. Enter on the Cancel button is left to it.
+  const onSheetKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    } else if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && shown.length > 0) {
+      event.preventDefault();
+      const next = event.key === 'ArrowDown' ? activeIndex + 1 : activeIndex - 1;
+      setActive((next + shown.length) % shown.length);
+    } else if (event.key === 'Enter' && !(event.target instanceof HTMLButtonElement)) {
+      event.preventDefault();
+      const option = shown[activeIndex];
+      if (option) choose(option.value);
+    }
+  };
+
+  const list = (
+    <ul ref={listRef} id={listId} className="select-list" role="listbox" aria-label={label}>
+      {shown.map((option, index) => (
+        <li
+          key={option.value}
+          id={optionId(option)}
+          role="option"
+          // Without this the hint would be read as part of the name.
+          aria-label={option.hint ? option.label : undefined}
+          aria-selected={option.value === value}
+          className={index === activeIndex ? 'active' : undefined}
+          // A finger has no hover: on a phone a tap would light the row it
+          // lands on a moment before the picker closes.
+          onMouseEnter={sheet ? undefined : () => setActive(index)}
+          onClick={() => choose(option.value)}
+        >
+          <span className="select-label">
+            {option.label}
+            {option.hint && <small>{option.hint}</small>}
+          </span>
+          {option.value === value && <Check strokeWidth={2} aria-hidden />}
+        </li>
+      ))}
+      {shown.length === 0 && (
+        <li className="select-empty">{search.trim() ? `Nothing matches “${search.trim()}”.` : emptyText}</li>
+      )}
+    </ul>
+  );
 
   // The width the field takes: the text it shows, so a picker in a filter
   // bar or a table cell is no wider than its words, as a button would be.
@@ -250,13 +350,17 @@ export function Select({
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
-          aria-activedescendant={open && shown[activeIndex] ? optionId(shown[activeIndex]) : undefined}
+          aria-activedescendant={open && !sheet && shown[activeIndex] ? optionId(shown[activeIndex]) : undefined}
+          // On a phone the field only opens the picker, whose search box takes
+          // the typing, so tapping it never brings up the keyboard.
+          readOnly={sheet}
+          inputMode={sheet ? 'none' : undefined}
           autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
           disabled={disabled}
-          value={open ? search : (selected?.label ?? '')}
-          placeholder={open ? (selected?.label ?? placeholder) : placeholder}
+          value={open && !sheet ? search : (selected?.label ?? '')}
+          placeholder={open && !sheet ? (selected?.label ?? placeholder) : placeholder}
           onChange={(event) => {
             if (!open) setOpen(true);
             setSearch(event.target.value);
@@ -265,13 +369,14 @@ export function Select({
           onClick={() => {
             if (!open) openList();
           }}
-          onBlur={close}
+          // The phone picker takes focus when it opens; that isn't leaving.
+          onBlur={sheet ? undefined : close}
           onKeyDown={onKeyDown}
         />
       </span>
       <ChevronDown strokeWidth={1.75} aria-hidden />
 
-      {open && (
+      {open && !sheet && (
         <div
           ref={popupRef}
           className="combo-popup"
@@ -283,30 +388,52 @@ export function Select({
             event.stopPropagation();
           }}
         >
-          <ul ref={listRef} id={listId} className="select-list" role="listbox" aria-label={label}>
-            {shown.map((option, index) => (
-              <li
-                key={option.value}
-                id={optionId(option)}
-                role="option"
-                // Without this the hint would be read as part of the name.
-                aria-label={option.hint ? option.label : undefined}
-                aria-selected={option.value === value}
-                className={index === activeIndex ? 'active' : undefined}
-                onMouseEnter={() => setActive(index)}
-                onClick={() => choose(option.value)}
-              >
-                <span className="select-label">
-                  {option.label}
-                  {option.hint && <small>{option.hint}</small>}
-                </span>
-                {option.value === value && <Check strokeWidth={2} aria-hidden />}
-              </li>
-            ))}
-            {shown.length === 0 && (
-              <li className="select-empty">{search.trim() ? `Nothing matches “${search.trim()}”.` : emptyText}</li>
-            )}
-          </ul>
+          {list}
+        </div>
+      )}
+
+      {open && sheet && (
+        <div
+          ref={popupRef}
+          className="picker-sheet"
+          popover="manual"
+          role="dialog"
+          aria-modal="true"
+          aria-label={label}
+          tabIndex={-1}
+          onKeyDown={onSheetKeyDown}
+          // Keeps a press inside the picker from reaching the field, which
+          // would close it. The search box still takes focus when tapped.
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="sheet-bar picker-sheet-bar">
+            <button type="button" className="btn btn-plain" onClick={close}>
+              Cancel
+            </button>
+            <p className="headline">{label}</p>
+            <span />
+          </div>
+          <label className="search-capsule picker-sheet-search">
+            <Search strokeWidth={1.75} aria-hidden />
+            <input
+              ref={sheetSearchRef}
+              type="search"
+              placeholder="Search"
+              aria-label={`Search: ${label}`}
+              aria-controls={listId}
+              aria-activedescendant={shown[activeIndex] ? optionId(shown[activeIndex]) : undefined}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="done"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setActive(0);
+              }}
+            />
+          </label>
+          {list}
         </div>
       )}
     </div>
