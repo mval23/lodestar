@@ -7,9 +7,12 @@ import { envResult } from './lib/env';
 import { AuthProvider } from './app/AuthProvider';
 import { ConfigErrorPage } from './app/ConfigErrorPage';
 import { applyTheme, readTheme } from './lib/theme';
+import { steadyViewport } from './lib/viewport';
 
 // Before the first paint, so a chosen theme never flashes the other one.
 applyTheme(readTheme());
+// So Safari on an iPhone stops zooming the page in on its own.
+steadyViewport();
 
 const queryClient = new QueryClient({
   defaultOptions: {

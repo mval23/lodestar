@@ -165,4 +165,102 @@ describe('Select', () => {
     await userEvent.click(screen.getByRole('option', { name: 'Bancolombia' }));
     expect(screen.getByRole('combobox', { name: 'From' })).toHaveValue('Bancolombia');
   });
+
+  // A phone: a narrow touch screen. The field opens a picker that fills the
+  // screen instead of a list hung under it, so nothing is placed against the
+  // field and the keyboard can't push it around.
+  describe('on a phone', () => {
+    const real = window.matchMedia;
+    beforeEach(() => {
+      window.matchMedia = ((query: string) => ({
+        matches: query.includes('pointer: coarse') || !query.includes('max-width'),
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      })) as typeof window.matchMedia;
+    });
+    afterEach(() => {
+      window.matchMedia = real;
+    });
+
+    it('opens a full-screen picker with its own search, and the field never raises the keyboard', async () => {
+      render(<Picker initial="cash" />);
+      const field = screen.getByRole('combobox', { name: 'From' });
+      expect(field).toHaveAttribute('readonly');
+      expect(field).toHaveAttribute('inputmode', 'none');
+      await userEvent.click(field);
+      const picker = screen.getByRole('dialog', { name: 'From' });
+      expect(picker).toHaveClass('picker-sheet');
+      // Opened by a tap: the picker has focus, not its search box, so the
+      // keyboard stays down until the search box is tapped.
+      expect(picker).toHaveFocus();
+      expect(within(picker).getAllByRole('option')).toHaveLength(4);
+      // The field still shows the choice behind it.
+      expect(field).toHaveValue('Cash');
+    });
+
+    it('fills the visible part of the screen, above the keyboard', async () => {
+      Object.defineProperty(window, 'visualViewport', {
+        configurable: true,
+        value: { offsetTop: 120, offsetLeft: 0, height: 420, width: 390, addEventListener: vi.fn(), removeEventListener: vi.fn() },
+      });
+      try {
+        render(<Picker />);
+        await userEvent.click(screen.getByRole('combobox', { name: 'From' }));
+        const picker = screen.getByRole('dialog', { name: 'From' });
+        expect(picker.style.top).toBe('120px');
+        expect(picker.style.height).toBe('420px');
+        expect(picker.style.width).toBe('390px');
+      } finally {
+        Reflect.deleteProperty(window, 'visualViewport');
+      }
+    });
+
+    it('narrows the list as you search, and a tap chooses and closes it', async () => {
+      render(<Picker />);
+      await userEvent.click(screen.getByRole('combobox', { name: 'From' }));
+      await userEvent.type(screen.getByRole('searchbox', { name: 'Search: From' }), 'ch');
+      const list = screen.getByRole('listbox', { name: 'From' });
+      expect(within(list).getAllByRole('option').map((o) => o.textContent)).toEqual(['Christmas']);
+      await userEvent.click(within(list).getByRole('option', { name: 'Christmas' }));
+      expect(screen.queryByRole('dialog', { name: 'From' })).not.toBeInTheDocument();
+      const field = screen.getByRole('combobox', { name: 'From' });
+      expect(field).toHaveValue('Christmas');
+      // Focus goes back to the field it came from.
+      expect(field).toHaveFocus();
+    });
+
+    it('keeps the page behind it still while it is open', async () => {
+      render(<Picker />);
+      await userEvent.click(screen.getByRole('combobox', { name: 'From' }));
+      expect(document.documentElement).toHaveClass('picker-open');
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(screen.queryByRole('dialog', { name: 'From' })).not.toBeInTheDocument();
+      expect(document.documentElement).not.toHaveClass('picker-open');
+    });
+
+    it('works from a paired keyboard: the search box takes the typing, Enter chooses, Esc closes only the picker', async () => {
+      const keys = vi.fn();
+      render(<Picker onKeyDown={keys} />);
+      const field = screen.getByRole('combobox', { name: 'From' });
+      field.focus();
+      await userEvent.keyboard('b');
+      const search = screen.getByRole('searchbox', { name: 'Search: From' });
+      expect(search).toHaveFocus();
+      expect(search).toHaveValue('b');
+      await userEvent.keyboard('{Enter}');
+      expect(field).toHaveValue('Bancolombia');
+
+      await userEvent.keyboard('{ArrowDown}');
+      expect(screen.getByRole('dialog', { name: 'From' })).toBeInTheDocument();
+      await userEvent.keyboard('{Escape}');
+      expect(screen.queryByRole('dialog', { name: 'From' })).not.toBeInTheDocument();
+      expect(keys).not.toHaveBeenCalledWith('Escape');
+      expect(field).toHaveValue('Bancolombia');
+    });
+  });
 });

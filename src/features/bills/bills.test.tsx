@@ -19,7 +19,10 @@ const useMonthBillPayments = vi.fn();
 // Which layout the page picks: a phone's columns, or the wide agenda.
 const screenSize = { phone: true };
 
-vi.mock('../../lib/media', () => ({ PHONE: '(max-width: 767px)', useMediaQuery: () => screenSize.phone }));
+vi.mock('../../lib/media', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/media')>();
+  return { ...actual, useMediaQuery: (query: string) => query === actual.PHONE && screenSize.phone };
+});
 
 vi.mock('../months/queries', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../months/queries')>();
