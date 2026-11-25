@@ -2732,16 +2732,15 @@ label.search-capsule input {
 }
 .agenda-row {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-columns: 52px minmax(0, 1fr) auto auto;
   align-items: center;
+  column-gap: var(--space-4);
 }
 .agenda-link {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: var(--space-4);
   min-height: 56px;
-  padding: var(--space-2) var(--space-4) var(--space-2) 0;
+  padding: var(--space-2) 0;
   color: var(--ink);
   font-size: 15px;
 }
@@ -2770,8 +2769,49 @@ label.search-capsule input {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+/* A plain amount keeps the button's inset, so every amount ends on one line. */
+span.agenda-amount {
+  padding-right: var(--space-2);
+}
+/* The amount opens the amount and date under the row; at rest it reads as
+   an amount, and shows it can be changed by tinting, with a pencil, on hover. */
+.agenda-amount-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  justify-self: end;
+  min-height: 36px;
+  padding: 4px var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+.agenda-amount-edit svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-3);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-spring);
+}
+.agenda-amount-edit:hover,
+.agenda-amount-edit[aria-expanded='true'] {
+  background: var(--sunk);
+}
+.agenda-amount-edit:hover svg,
+.agenda-amount-edit:focus-visible svg,
+.agenda-amount-edit[aria-expanded='true'] svg {
+  opacity: 1;
+}
+.agenda-amount-edit:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--blue) 50%, transparent);
+}
 .agenda-when {
   min-width: 168px;
+  padding-right: var(--space-4);
   text-align: right;
   font-size: 12px;
   color: var(--ink-3);
