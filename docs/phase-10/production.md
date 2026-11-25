@@ -64,6 +64,11 @@ database. So:
   still uses must ship after the app stops using it, never with it. Adding
   things is always safe in this order.
 
+If a merge to `main` never shows up as a Production deployment (on Nov 25,
+2026 Vercel missed one: no deployment and no status on the commit), any new
+commit on `main` starts one. Redeploying the latest Production deployment
+from Vercel's Deployments page works too.
+
 ## Monitoring
 
 `.github/workflows/health.yml` runs `scripts/health/cli.mjs` against staging
