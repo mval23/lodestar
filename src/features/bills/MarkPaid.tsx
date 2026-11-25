@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCurrency } from '../../lib/profile';
 import { formatDate } from '../../lib/dates';
 import { parseMoney, toAmountInput } from '../../lib/money';
@@ -15,27 +15,41 @@ import { recordAction, useMarkBillPaid, type RecurringItem } from './queries';
 // `compact` is the Goals column, where every row is a transfer into a goal
 // and the one-word "Done" is enough. `onRecorded` and `onCancel` are for a
 // caller that says "recorded" itself and closes the form, as the Bills
-// agenda does, since the row moves on once its date does.
+// agenda does, since the row moves on once its date does. `startAsking`
+// opens straight on the amount and date, for a caller that was asked for a
+// different amount.
 export function MarkPaid({
   bill,
   today,
   compact,
   onRecorded,
   onCancel,
+  startAsking = false,
 }: {
   bill: RecurringItem;
   today: string;
   compact?: boolean;
+  startAsking?: boolean;
   onRecorded?: (nextDueOn: string) => void;
   onCancel?: () => void;
 }) {
   const currency = useCurrency();
   const markPaid = useMarkBillPaid();
-  const [asking, setAsking] = useState(false);
+  const [asking, setAsking] = useState(startAsking);
   const [amount, setAmount] = useState(() => toAmountInput(bill.amount_minor, currency));
   const [paidOn, setPaidOn] = useState(today);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
+
+  // Opened to change the amount: the amount is ready to type over.
+  useEffect(() => {
+    if (!startAsking) return;
+    amountRef.current?.focus();
+    amountRef.current?.select();
+    // Only when it first opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const parsed = parseMoney(amount, currency);
   // Income is received, not paid; a transfer is just done.
@@ -88,6 +102,7 @@ export function MarkPaid({
           <label className="confirm-field">
             <span>Amount</span>
             <input
+              ref={amountRef}
               inputMode="decimal"
               className="num"
               value={amount}

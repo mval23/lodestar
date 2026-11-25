@@ -389,6 +389,23 @@ describe('BillsPage on a wide screen', () => {
     expect(await screen.findByText(/Electricity recorded\./)).toBeInTheDocument();
   });
 
+  it('records a different amount for a fixed bill from its amount', async () => {
+    agendaOf([bill({ name: 'Water' })]);
+    show();
+    const amount = screen.getByRole('button', { name: 'Different amount or date: Water' });
+    await userEvent.click(amount);
+    expect(amount).toHaveAttribute('aria-expanded', 'true');
+    expect(markPaid).not.toHaveBeenCalled();
+    // The amount is selected, ready to be typed over.
+    const field = screen.getByLabelText('Amount');
+    expect(field).toHaveFocus();
+    await userEvent.keyboard('61.30');
+    expect(field).toHaveValue('61.30');
+    await userEvent.click(screen.getByRole('button', { name: 'Mark as paid' }));
+    expect(markPaid).toHaveBeenCalledWith(expect.objectContaining({ amountMinor: 6130 }));
+    expect(await screen.findByText(/Water recorded\./)).toBeInTheDocument();
+  });
+
   it('names transfers and income, and filters to one kind', async () => {
     agendaOf([
       bill({ id: 'b', name: 'Rent' }),

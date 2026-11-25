@@ -43,7 +43,8 @@ describe('DatePicker', () => {
     render(<Field onChange={onChange} />);
     await userEvent.click(screen.getByRole('button', { name: /^Date,/ }));
     await userEvent.keyboard('{ArrowRight}{ArrowDown}{PageDown}');
-    expect(screen.getByRole('button', { name: 'Nov 25, 2026' })).toHaveFocus();
+    // On Nov 25, 2026 itself the day is named "Nov 25, 2026, today".
+    expect(screen.getByRole('button', { name: /^Nov 25, 2026(, today)?$/ })).toHaveFocus();
     await userEvent.keyboard('{Enter}');
     expect(onChange).toHaveBeenCalledWith('2026-11-25');
   });

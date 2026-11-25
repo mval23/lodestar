@@ -7,6 +7,7 @@ import { Amount } from '../../ui/Amount';
 import { Notice } from '../../ui/Notice';
 import { dataErrorMessage } from '../auth/errors';
 import { useMonthBillPayments } from '../months/queries';
+import { Pencil } from 'lucide-react';
 import { MarkPaid } from './MarkPaid';
 import {
   describeDue,
@@ -204,8 +205,10 @@ function metaOf(bill: RecurringItem, names: AccountNames): string {
 }
 
 // One line per item. The round check records it at once, unless its amount
-// varies, when it opens the amount and date beneath the row first. Only the
-// coming week can be checked off here; anything later is paid from its page.
+// varies, when it opens the amount and date beneath the row first. The
+// amount is a button too: it opens the same form for any item, to record a
+// different amount or day. Only the coming week can be checked off here;
+// anything later is paid from its page.
 function AgendaRow({
   bill,
   today,
@@ -273,17 +276,31 @@ function AgendaRow({
           </span>
           <small>{metaOf(bill, accountNames)}</small>
         </span>
+      </Link>
+      {actionable ? (
+        <button
+          type="button"
+          className="agenda-amount agenda-amount-edit"
+          aria-label={`Different amount or date: ${bill.name}`}
+          aria-expanded={asking}
+          onClick={() => onAsk(!asking)}
+        >
+          <Pencil strokeWidth={1.75} aria-hidden />
+          <Amount minor={bill.amount_minor} currency={currency} signed={bill.kind === 'income'} />
+        </button>
+      ) : (
         <span className="agenda-amount">
           <Amount minor={bill.amount_minor} currency={currency} signed={bill.kind === 'income'} />
         </span>
-        {/* Always there, empty under a day's heading, so amounts line up. */}
-        <span className={`agenda-when${group === 'overdue' ? ' due-overdue' : ''}`}>{when}</span>
-      </Link>
+      )}
+      {/* Always there, empty under a day's heading, so amounts line up. */}
+      <span className={`agenda-when${group === 'overdue' ? ' due-overdue' : ''}`}>{when}</span>
       {asking && (
         <div className="agenda-ask">
           <MarkPaid
             bill={bill}
             today={today}
+            startAsking
             onRecorded={(next) => onRecorded(bill, next)}
             onCancel={() => onAsk(false)}
           />
