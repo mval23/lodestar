@@ -5115,7 +5115,9 @@ button.month-cal-day:hover {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
   gap: var(--space-4);
-  align-items: stretch;
+  /* Each card as tall as what it holds: a long bill list never leaves
+     the balance standing in an empty box. */
+  align-items: start;
 }
 .account-top.with-goal {
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 1fr);
@@ -5254,8 +5256,71 @@ button.month-cal-day:hover {
 .show-more {
   padding-left: 0;
 }
-.quick-kind {
-  margin: var(--space-3) 0 0;
+/* On an account's All tab the add row opens with what to add, a picker
+   like the row's others, then the same fields. The plus is left out there,
+   as the picker already says what the row is for. */
+.quick-add-row.with-kind {
+  display: flex;
+  align-items: center;
+  padding-left: var(--space-4);
+  background: var(--ground);
+  border-bottom: 1px solid var(--line);
+}
+.quick-add-row.with-kind .quick-add {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+.quick-add-row.with-kind .quick-add-fields {
+  padding-left: var(--space-2);
+}
+.quick-add-row.with-kind .quick-add-icon {
+  display: none;
+}
+.select-trigger.quick-kind {
+  flex: none;
+  width: auto;
+  justify-content: flex-start;
+  gap: var(--space-1);
+  min-height: 36px;
+  padding: 6px var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--sunk);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+.select-combo.quick-kind:focus-within {
+  outline: none;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--blue) 50%, transparent);
+}
+@media (max-width: 767px) {
+  .quick-add-row.with-kind {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--space-3) 0 0;
+    background: transparent;
+    border-bottom: 0;
+  }
+  .quick-add-row.with-kind .select-trigger.quick-kind {
+    margin-left: var(--space-4);
+  }
+  .quick-add-row.with-kind .quick-add {
+    align-self: stretch;
+  }
+  /* The fields are a card on a phone, with its own inset. */
+  .quick-add-row.with-kind .quick-add-fields {
+    padding-left: 0;
+  }
+  .quick-add-row.with-kind .select-trigger.quick-kind {
+    font-size: 16px;
+  }
+}
+/* A transfer's line under its description ("From Cash") starts where the
+   description and the category pickers on other rows start. */
+.activity-table td.cell .activity-detail {
+  padding: 4px var(--space-2);
 }
 
 @media (max-width: 1023px) {

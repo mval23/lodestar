@@ -287,6 +287,24 @@ describe('AccountDetailPage', () => {
     ]);
   });
 
+  it('lists the next four bills, and the rest behind "Show more"', async () => {
+    const bill = (n: number) => ({
+      id: `b${n}`, name: `Bill ${n}`, label: 'bill', kind: 'expense', amount_minor: 1000 * n, amount_is_variable: false,
+      from_account_id: ID, to_account_id: null, category_id: null, cadence_unit: 'month', cadence_interval: 1,
+      anchor_on: '2026-01-01', next_due_on: `2099-01-${String(10 + n).padStart(2, '0')}`, ends_on: null, archived_at: null,
+    });
+    useBills.mockReturnValue({ data: [1, 2, 3, 4, 5, 6, 7].map(bill) });
+    renderPage();
+    const card = screen.getByRole('region', { name: 'Bills on this account' });
+    const names = () =>
+      within(card).getAllByRole('link').filter((l) => l.getAttribute('href')?.startsWith('/bills/')).map((l) => l.textContent?.slice(0, 6));
+    expect(names()).toEqual(['Bill 1', 'Bill 2', 'Bill 3', 'Bill 4']);
+    await userEvent.click(within(card).getByRole('button', { name: 'Show 3 more' }));
+    expect(names()).toHaveLength(7);
+    await userEvent.click(within(card).getByRole('button', { name: 'Show the next 4 only' }));
+    expect(names()).toHaveLength(4);
+  });
+
   it('shows the goal this account funds, and leaves the card out when there is none', () => {
     renderPage();
     expect(screen.queryByRole('region', { name: 'Funds a goal' })).not.toBeInTheDocument();
@@ -430,7 +448,8 @@ describe('AccountDetailPage', () => {
 
   it('asks which kind to add on All, and adds that kind', async () => {
     renderPage();
-    await userEvent.click(screen.getByRole('radio', { name: 'Income' }));
+    expect(screen.getByRole('form', { name: 'Add an expense' })).toBeInTheDocument();
+    await pick('What to add', 'Income');
     expect(screen.getByRole('form', { name: 'Add income' })).toBeInTheDocument();
   });
 

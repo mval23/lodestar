@@ -11,6 +11,7 @@ import { DetailHeader, DetailNotFound, SectionHead } from '../../ui/Detail';
 import { InOutChart } from '../../ui/InOutChart';
 import { Notice } from '../../ui/Notice';
 import { ScrollTable } from '../../ui/ScrollTable';
+import { Select } from '../../ui/Select';
 import { dataErrorMessage } from '../auth/errors';
 import { useCategories } from '../categories/queries';
 import { useGoalPace, useGoals, type GoalProgress } from '../goals/queries';
@@ -79,6 +80,9 @@ type Period = (typeof PERIODS)[number];
 // How many of the biggest outflows show before "Show more": with many
 // categories, the long tail is one tap away rather than in the way.
 const TOP_OUTFLOWS = 6;
+// The soonest few bills; the rest wait behind "Show N more", so a long
+// schedule doesn't stretch the top of the page.
+const NEXT_BILLS = 4;
 
 const shortDay = (day: string) => formatDateShort(day);
 
@@ -217,6 +221,9 @@ function AccountDetail({ account }: { account: AccountBalance }) {
 // first, each signed for this account: money in it gets a plus.
 function BillsOnAccount({ account, bills, today }: { account: AccountBalance; bills: RecurringItem[]; today: string }) {
   const currency = useCurrency();
+  const [all, setAll] = useState(false);
+  const shown = all ? bills : bills.slice(0, NEXT_BILLS);
+  const hidden = bills.length - shown.length;
   return (
     <section className="group account-bills" aria-labelledby="account-bills">
       <div className="card-head">
@@ -231,7 +238,7 @@ function BillsOnAccount({ account, bills, today }: { account: AccountBalance; bi
         <p className="secondary flush">Nothing is scheduled on this account. Add a bill, income or transfer on Bills.</p>
       ) : (
         <ul className="account-bill-list">
-          {bills.map((bill) => {
+          {shown.map((bill) => {
             const incoming = bill.to_account_id === account.account_id;
             const overdue = dueStateOf(bill.next_due_on, today) === 'overdue';
             return (
@@ -259,6 +266,13 @@ function BillsOnAccount({ account, bills, today }: { account: AccountBalance; bi
             );
           })}
         </ul>
+      )}
+      {bills.length > NEXT_BILLS && (
+        <p className="flush">
+          <button type="button" className="btn btn-plain show-more" aria-expanded={all} onClick={() => setAll((v) => !v)}>
+            {all ? `Show the next ${NEXT_BILLS} only` : `Show ${hidden} more`}
+          </button>
+        </p>
       )}
     </section>
   );
@@ -525,17 +539,25 @@ function AccountActivity({ account, today }: { account: AccountBalance; today: s
         onChange={setKind}
         tabs={[{ kind: 'all' }, ...KIND_ORDER.map((k) => ({ kind: k }))]}
       >
-        {kind === 'all' && (
-          <div className="segmented quick-kind" role="radiogroup" aria-label="Add">
-            {(['expense', 'income', 'transfer'] as const).map((k) => (
-              <label key={k}>
-                <input type="radio" name="account-add-kind" value={k} checked={adding === k} onChange={() => setAdding(k)} />
-                {k === 'expense' ? 'Expense' : k === 'income' ? 'Income' : 'Transfer'}
-              </label>
-            ))}
-          </div>
-        )}
-        <QuickAdd key={`${account.account_id}-${addKind}`} scope={{ kind: addKind, accountId: account.account_id, defaultDate: today }} />
+        {/* On All, what to add is the first field of the add row, kept
+            outside the form so switching it keeps its focus while the form
+            starts afresh for the new kind. */}
+        <div className={kind === 'all' ? 'quick-add-row with-kind' : 'quick-add-row'}>
+          {kind === 'all' && (
+            <Select
+              className="quick-kind"
+              label="What to add"
+              value={adding}
+              onChange={(next) => setAdding(next as TxnKind)}
+              options={[
+                { value: 'expense', label: 'Expense' },
+                { value: 'income', label: 'Income' },
+                { value: 'transfer', label: 'Transfer' },
+              ]}
+            />
+          )}
+          <QuickAdd key={`${account.account_id}-${addKind}`} scope={{ kind: addKind, accountId: account.account_id, defaultDate: today }} />
+        </div>
         <LedgerTable accountId={account.account_id} kind={kind} />
       </KindTabs>
     </section>
